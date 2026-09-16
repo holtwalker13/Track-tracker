@@ -26,12 +26,15 @@ export function PlayerAvatar({
   name,
   size = "md",
   className,
+  seed,
 }: {
   name: string;
   size?: "sm" | "md" | "lg";
   className?: string;
+  /** Stable unique key so same-named athletes get different colors */
+  seed?: string;
 }) {
-  const color = PALETTE[hashName(name) % PALETTE.length];
+  const color = PALETTE[hashName(seed ?? name) % PALETTE.length];
   const dim =
     size === "sm" ? "h-8 w-8 text-[11px]" : size === "lg" ? "h-16 w-16 text-xl" : "h-10 w-10 text-sm";
 

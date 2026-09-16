@@ -4,19 +4,22 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "3000:3000"
+      # Host 3001 → container 3000 (change left side if 3001 is taken)
+      - "3001:3000"
     environment:
-      DATABASE_URL: "file:./dev.db"
+      DATABASE_URL: "file:/data/dev.db"
       SESSION_SECRET: "local-docker-dev-session-secret-min-32-chars"
-      # Set FORCE_SEED=1 to re-run demo seed (wipes are handled in seed script)
       FORCE_SEED: "${FORCE_SEED:-0}"
       APP_MODE: "${APP_MODE:-development}"
     volumes:
-      # Persist SQLite DB between restarts
-      - sap-db:/app/prisma
-      # Optional: live code mount for local edits (uncomment on desktop)
-      # - .:/app
-      # - /app/node_modules
+      # Only persist the SQLite file — do NOT mount over /app/prisma (that hides schema.prisma)
+      - sap-db:/data
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/login').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 120s
 
 volumes:
   sap-db:

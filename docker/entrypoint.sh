@@ -2,23 +2,23 @@
 set -e
 
 cd /app
+mkdir -p /data
 
-if [ ! -f .env ]; then
-  cp .env.example .env
-fi
-
-# Load DATABASE_URL from .env for Prisma
-export $(grep -v '^#' .env | xargs)
-
+echo "==> Prisma: applying schema..."
 npx prisma db push
 
-if [ ! -f prisma/dev.db ] || [ "${FORCE_SEED}" = "1" ]; then
+if [ ! -f /data/.seeded ] || [ "${FORCE_SEED}" = "1" ]; then
+  echo "==> Seeding database (first run can take 1–2 minutes)..."
   npm run db:seed
+  touch /data/.seeded
+  echo "==> Seed complete."
 fi
+
+echo "==> Starting app on http://0.0.0.0:3000 (open http://localhost:3001 on your machine)..."
 
 if [ "${APP_MODE}" = "production" ]; then
   npm run build
-  exec npm run start
+  exec npx next start -H 0.0.0.0 -p 3000
 fi
 
-exec npm run dev -- --hostname 0.0.0.0 --port 3000
+exec npx next dev -H 0.0.0.0 -p 3000

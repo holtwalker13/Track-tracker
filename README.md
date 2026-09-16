@@ -22,7 +22,14 @@ git checkout cursor/student-athletic-platform-601a
 docker compose up --build
 ```
 
-First start runs migrations and seeds demo data (can take 1–2 minutes). Then open [http://localhost:3000](http://localhost:3000).
+First start runs migrations and seeds demo data (can take 1–2 minutes). Then open **http://localhost:3001** (Docker maps host `3001` → app `3000`).
+
+If you see “connection refused”, the container probably exited during startup. Run `docker compose logs -f app` and look for errors. After pulling the latest fix, reset volumes once:
+
+```bash
+docker compose down -v
+docker compose up --build
+```
 
 Re-seed from scratch:
 

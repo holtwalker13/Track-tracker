@@ -4,7 +4,8 @@ RUN apt-get update -y && apt-get install -y openssl ca-certificates && rm -rf /v
 
 FROM base AS deps
 COPY package.json package-lock.json ./
-RUN npm ci
+# postinstall runs prisma generate; schema is not copied yet
+RUN npm ci --ignore-scripts
 
 FROM base AS runner
 ENV NODE_ENV=development

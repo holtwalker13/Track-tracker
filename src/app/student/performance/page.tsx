@@ -1,50 +1,49 @@
 import { redirect } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
-import { Card, CardTitle } from "@/components/ui/card";
 import { STUDENT_NAV } from "@/lib/navigation";
 import { requireSession } from "@/lib/auth/session";
-import { getStudentContext, getStudentScorecard } from "@/lib/queries/student";
-import { PercentileBar } from "@/components/charts/percentile-bar";
-import { prisma } from "@/lib/db";
+import { getStudentContext } from "@/lib/queries/student";
+import { getLatestResultsGrouped, getScholasticAttemptLog } from "@/lib/queries/attempt-log";
+import { LatestResultsGrouped } from "@/components/performance/latest-results-grouped";
+import { AttemptSchedule } from "@/components/performance/attempt-schedule";
 
 export default async function StudentPerformancePage() {
   const session = await requireSession(["STUDENT"]);
   if (!session?.studentId) redirect("/login");
 
-  const { currentGrade } = await getStudentContext(session.studentId);
-  const scorecard = await getStudentScorecard(session.studentId, currentGrade);
+  const { student, currentGrade } = await getStudentContext(session.studentId);
+  const enrollment = student.enrollments[0];
 
-  const cards = await Promise.all(
-    scorecard.map(async (c) => {
-      const bench = await prisma.benchmarkValue.findFirst({
-        where: { activityId: c.activity.id, gradeLevel: currentGrade },
-      });
-      return { c, bench };
-    })
-  );
+  const [latestGrouped, attemptLog] = await Promise.all([
+    getLatestResultsGrouped(session.studentId, enrollment?.schoolYearId),
+    getScholasticAttemptLog(session.studentId),
+  ]);
 
   return (
     <AppShell title="My Performance" nav={STUDENT_NAV}>
-      <div className="space-y-6">
-        {cards.map(({ c, bench }) => (
-          <Card key={c.activity.id}>
-            <CardTitle>{c.activity.name}</CardTitle>
-            <p className="mt-2 text-3xl font-bold">{c.display}</p>
-            {bench && c.percentile != null && (
-              <div className="mt-4">
-                <PercentileBar
-                  percentile={c.percentile}
-                  p50={bench.p50}
-                  p75={bench.p75 ?? undefined}
-                  p90={bench.p90 ?? undefined}
-                  studentValue={c.value}
-                  unit={c.activity.unit}
-                />
-              </div>
-            )}
-          </Card>
-        ))}
-      </div>
+      <p className="text-muted">Grade {currentGrade}</p>
+
+      <section className="mt-6">
+        <h2 className="text-lg font-semibold">Latest results</h2>
+        <p className="mt-1 text-sm text-muted">
+          One entry per event this year — running, jumping, and everything else — with improvement
+          since your last attempt.
+        </p>
+        <div className="mt-4">
+          <LatestResultsGrouped grouped={latestGrouped} />
+        </div>
+      </section>
+
+      <section className="mt-10">
+        <h2 className="text-lg font-semibold">Attempt log by school year</h2>
+        <p className="mt-1 text-sm text-muted">
+          Full history for each scholastic year. Each time you test, it appears here with all tries
+          and your best mark.
+        </p>
+        <div className="mt-4">
+          <AttemptSchedule years={attemptLog} />
+        </div>
+      </section>
     </AppShell>
   );
 }

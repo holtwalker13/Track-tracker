@@ -5,9 +5,10 @@ import { COACH_NAV } from "@/lib/navigation";
 import { requireSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { getCategoryRadar } from "@/lib/queries/student";
+import { getLatestResultsGrouped, getScholasticAttemptLog } from "@/lib/queries/attempt-log";
 import { RadarProfile } from "@/components/charts/radar-profile";
-import { percentileForResult } from "@/lib/queries/benchmarks";
-import type { ScoringDirection } from "@/lib/constants";
+import { LatestResultsGrouped } from "@/components/performance/latest-results-grouped";
+import { AttemptSchedule } from "@/components/performance/attempt-schedule";
 
 export default async function StudentProfilePage({
   params,
@@ -23,61 +24,49 @@ export default async function StudentProfilePage({
     include: {
       enrollments: {
         where: { schoolYear: { isCurrent: true } },
+        include: { schoolYear: true },
       },
     },
   });
   if (!student || student.schoolId !== session.schoolId) notFound();
 
-  const grade = student.enrollments[0]?.gradeLevel ?? 8;
-  const radar = await getCategoryRadar(id, grade);
+  const enrollment = student.enrollments[0];
+  const grade = enrollment?.gradeLevel ?? 8;
+  const schoolYearId = enrollment?.schoolYearId;
 
-  const results = await prisma.performanceResult.findMany({
-    where: { studentId: id, status: "COMPLETED", isBestAttempt: true },
-    include: { activity: true },
-    orderBy: { testingDate: "desc" },
-    take: 12,
-  });
-
-  const resultRows = await Promise.all(
-    results.map(async (r) => {
-      const pct =
-        r.resultValue != null
-          ? await percentileForResult(
-              r.activityId,
-              r.gradeLevel,
-              r.resultValue,
-              r.activity.scoringDirection as ScoringDirection
-            )
-          : null;
-      return { r, pct };
-    })
-  );
+  const [radar, latestGrouped, attemptLog] = await Promise.all([
+    getCategoryRadar(id, grade),
+    getLatestResultsGrouped(id, schoolYearId),
+    getScholasticAttemptLog(id),
+  ]);
 
   return (
     <AppShell title={`${student.firstName} ${student.lastName}`} nav={COACH_NAV}>
-      <p className="text-muted">Grade {grade} · {student.studentNumber}</p>
+      <p className="text-muted">
+        Grade {grade} · {student.studentNumber}
+        {enrollment?.schoolYear && ` · ${enrollment.schoolYear.label}`}
+      </p>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-2">
         <Card>
           <CardTitle>Athletic profile</CardTitle>
           <RadarProfile data={radar} />
         </Card>
-        <Card>
-          <CardTitle>Latest results</CardTitle>
-          <ul className="mt-4 space-y-4">
-            {resultRows.map(({ r, pct }) => (
-              <li key={r.id} className="flex justify-between border-b border-card-border/40 pb-2">
-                <span>{r.activity.name}</span>
-                <span>
-                  <span className="font-bold">{r.displayValue ?? r.resultValue}</span>
-                  {pct != null && (
-                    <span className="ml-2 text-sm text-accent">{pct}th %ile</span>
-                  )}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </Card>
+        <div>
+          <p className="mb-3 text-sm text-muted">
+            Latest result per event this school year (one row each). Change vs your previous attempt.
+          </p>
+          <LatestResultsGrouped grouped={latestGrouped} />
+        </div>
+      </div>
+
+      <div className="mt-8">
+        <h2 className="mb-2 text-lg font-semibold">Scholastic attempt log</h2>
+        <p className="mb-4 text-sm text-muted">
+          Every testing day is listed like a schedule. Re-tests and new attempts add rows for that
+          school year.
+        </p>
+        <AttemptSchedule years={attemptLog} />
       </div>
     </AppShell>
   );

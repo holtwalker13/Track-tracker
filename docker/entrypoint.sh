@@ -4,6 +4,11 @@ set -e
 cd /app
 mkdir -p /data
 
+if [ ! -f prisma/schema.prisma ]; then
+  echo "ERROR: prisma/schema.prisma missing. If you mounted a volume on /app/prisma, remove it."
+  exit 1
+fi
+
 echo "==> Prisma: applying schema..."
 npx prisma db push
 

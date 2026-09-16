@@ -27,9 +27,9 @@ export function activityDisplayGroup(slug: string, categorySlug?: string): Activ
 }
 
 export const DISPLAY_GROUP_LABELS: Record<ActivityDisplayGroup, string> = {
-  running: "Running",
-  jumping: "Jumping",
-  other: "Strength & other",
+  running: "Speed",
+  jumping: "Power",
+  other: "Strength",
 };
 
 export const DISPLAY_GROUP_ORDER: ActivityDisplayGroup[] = ["running", "jumping", "other"];

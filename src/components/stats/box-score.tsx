@@ -19,26 +19,30 @@ export function BoxScoreBoard({
   }
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-12">
       {grades.map((grade) => (
         <section key={grade.grade}>
-          <h2 className="mb-4 text-center text-sm font-bold uppercase tracking-[0.2em]">
-            Grade {grade.grade}
-            <span className="mx-2 text-muted">·</span>
-            {side}
-          </h2>
+          {grades.length > 1 && (
+            <h2 className="mb-6 text-center text-xs font-bold uppercase tracking-[0.25em] text-muted">
+              Grade {grade.grade}
+              <span className="mx-2 text-card-border">·</span>
+              {side}
+            </h2>
+          )}
           {grade.groups.length === 0 ? (
-            <p className="text-sm text-muted">No scores yet for this group.</p>
+            <p className="text-center text-sm text-muted">No scores yet for this group.</p>
           ) : (
-            <div className="space-y-8">
+            <div className="space-y-10">
               {grade.groups.map((group) => (
                 <div key={group.group}>
-                  <div className="mb-1 flex items-end gap-3">
-                    <h3 className="w-28 shrink-0 text-lg font-bold sm:w-36">{group.label}</h3>
+                  <div className="mb-1 flex items-end gap-3 border-b border-transparent pb-1">
+                    <h3 className="w-32 shrink-0 text-xl font-bold tracking-tight sm:w-40">
+                      {group.label}
+                    </h3>
                     <div
-                      className="hidden min-w-0 flex-1 gap-2 text-right text-[11px] font-semibold uppercase tracking-wide text-muted sm:grid"
+                      className="hidden min-w-0 flex-1 gap-2 text-right text-[11px] font-bold uppercase tracking-wider text-muted sm:grid"
                       style={{
-                        gridTemplateColumns: `repeat(${group.activities.length}, minmax(3rem, 1fr))`,
+                        gridTemplateColumns: `repeat(${group.activities.length}, minmax(3.25rem, 1fr))`,
                       }}
                     >
                       {group.activities.map((act) => (
@@ -51,20 +55,20 @@ export function BoxScoreBoard({
                   </div>
                   <ul>
                     {group.rows.map((row) => {
-                      const inner = (
-                        <div className="flex items-center gap-3 border-b border-card-border/60 py-2.5">
-                          <span className="w-28 shrink-0 truncate font-medium sm:w-36">
+                      const cells = (
+                        <>
+                          <span className="w-32 shrink-0 truncate font-medium sm:w-40">
                             {row.name}
                           </span>
                           <div
                             className="grid min-w-0 flex-1 gap-2 text-right font-mono text-sm tabular-nums"
                             style={{
-                              gridTemplateColumns: `repeat(${group.activities.length}, minmax(3rem, 1fr))`,
+                              gridTemplateColumns: `repeat(${group.activities.length}, minmax(3.25rem, 1fr))`,
                             }}
                           >
                             {group.activities.map((act) => (
-                              <span key={act.slug} className="text-muted sm:text-foreground">
-                                <span className="mr-1 text-[10px] uppercase text-muted sm:hidden">
+                              <span key={act.slug}>
+                                <span className="mr-1 text-[10px] font-sans uppercase text-muted sm:hidden">
                                   {act.abbr}
                                 </span>
                                 {row.marks[act.slug]?.display ?? "—"}
@@ -74,30 +78,33 @@ export function BoxScoreBoard({
                           {hrefForStudent && (
                             <ChevronRight className="h-4 w-4 shrink-0 text-muted" aria-hidden />
                           )}
-                        </div>
+                        </>
                       );
+
                       return (
                         <li key={row.studentId}>
                           {hrefForStudent ? (
                             <Link
                               href={hrefForStudent(row.studentId)}
-                              className="block hover:bg-card/60"
+                              className="flex items-center gap-3 border-b border-card-border/50 py-2.5 hover:bg-white/[0.03]"
                               title={row.fullName}
                             >
-                              {inner}
+                              {cells}
                             </Link>
                           ) : (
-                            inner
+                            <div className="flex items-center gap-3 border-b border-card-border/50 py-2.5">
+                              {cells}
+                            </div>
                           )}
                         </li>
                       );
                     })}
-                    <li className="flex items-center gap-3 py-2.5">
-                      <span className="w-28 shrink-0 font-bold sm:w-36">Total</span>
+                    <li className="flex items-center gap-3 border-t border-card-border pt-3">
+                      <span className="w-32 shrink-0 font-bold sm:w-40">Avg</span>
                       <div
                         className="grid min-w-0 flex-1 gap-2 text-right font-mono text-sm font-bold tabular-nums"
                         style={{
-                          gridTemplateColumns: `repeat(${group.activities.length}, minmax(3rem, 1fr))`,
+                          gridTemplateColumns: `repeat(${group.activities.length}, minmax(3.25rem, 1fr))`,
                         }}
                       >
                         {group.activities.map((act) => (

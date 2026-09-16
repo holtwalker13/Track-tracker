@@ -8,7 +8,7 @@ import { calculateCategoryScores } from "@/lib/services/category-score";
 import type { ScoringDirection } from "@/lib/constants";
 import { GradePills } from "@/components/ui/filter-pills";
 import { GenderToggle } from "@/components/ui/gender-toggle";
-import { gradesFromSearch, gradesLabel, isAllGrades } from "@/lib/grades";
+import { singleGradeFromSearch } from "@/lib/grades";
 import { parseGenderParam, genderFullLabel } from "@/lib/gender";
 import { getGradeBoxScores } from "@/lib/queries/box-score";
 import { BoxScoreBoard } from "@/components/stats/box-score";
@@ -28,9 +28,9 @@ export default async function AnalyticsPage({
   const session = await requireSession(["COACH", "ADMIN"]);
   if (!session?.schoolId) redirect("/login");
   const sp = await searchParams;
-  const grades = gradesFromSearch(sp);
+  const grade = singleGradeFromSearch(sp);
+  const grades = [grade];
   const gender = parseGenderParam(sp.gender);
-  const gradeFilter = isAllGrades(grades) ? undefined : { in: grades };
   const genderFilter = { gender };
 
   const currentYear = await prisma.schoolYear.findFirst({
@@ -42,7 +42,7 @@ export default async function AnalyticsPage({
         where: {
           schoolId: session.schoolId,
           schoolYearId: currentYear.id,
-          ...(gradeFilter ? { gradeLevel: gradeFilter } : {}),
+          gradeLevel: grade,
           status: "COMPLETED",
           isBestAttempt: true,
           student: genderFilter,
@@ -88,7 +88,7 @@ export default async function AnalyticsPage({
           const enrolled = await prisma.studentEnrollment.count({
             where: {
               schoolYearId: currentYear.id,
-              ...(gradeFilter ? { gradeLevel: gradeFilter } : {}),
+              gradeLevel: grade,
               student: genderFilter,
             },
           });
@@ -97,7 +97,7 @@ export default async function AnalyticsPage({
             where: {
               activityId: act.id,
               schoolYearId: currentYear.id,
-              ...(gradeFilter ? { gradeLevel: gradeFilter } : {}),
+              gradeLevel: grade,
               status: "COMPLETED",
               isBestAttempt: true,
               student: genderFilter,
@@ -113,25 +113,33 @@ export default async function AnalyticsPage({
 
   return (
     <AppShell title="Analytics" nav={COACH_NAV}>
-      <div className="mb-6 space-y-4">
-        <GradePills />
+      <div className="mb-8 space-y-5">
+        <div>
+          <p className="mb-2 text-center text-[11px] font-semibold uppercase tracking-[0.2em] text-muted">
+            Grade
+          </p>
+          <div className="flex justify-center">
+            <GradePills mode="single" />
+          </div>
+        </div>
         <GenderToggle />
+        <p className="text-center text-sm text-muted">
+          Grade {grade} · {genderFullLabel(gender)} · current year box score
+        </p>
       </div>
 
-      <div className="mb-8 grid gap-6 lg:grid-cols-2">
+      <div className="mb-10 grid gap-4 sm:grid-cols-2">
         <Card>
-          <CardTitle>
-            {gradesLabel(grades)} {genderFullLabel(gender).toLowerCase()} profile
-          </CardTitle>
-          <ul className="mt-4 space-y-3">
+          <CardTitle>Athletic profile</CardTitle>
+          <ul className="mt-4 space-y-2.5">
             {categories.map((c) => (
-              <li key={c.categorySlug} className="flex justify-between">
+              <li key={c.categorySlug} className="flex justify-between text-sm">
                 <span>{c.categoryName}</span>
-                <span className="font-bold tabular-nums">{c.score}th percentile</span>
+                <span className="font-bold tabular-nums">{c.score}th</span>
               </li>
             ))}
             {categories.length === 0 && (
-              <li className="text-sm text-muted">No completed tests for this filter.</li>
+              <li className="text-sm text-muted">No completed tests for this group.</li>
             )}
           </ul>
         </Card>
@@ -142,13 +150,13 @@ export default async function AnalyticsPage({
               <li key={c.name}>
                 <div className="flex justify-between text-sm">
                   <span>{c.name}</span>
-                  <span>{c.pct}% complete</span>
+                  <span className="tabular-nums">{c.pct}%</span>
                 </div>
-                <div className="mt-1 h-2 rounded-full bg-card-border">
-                  <div className="h-2 rounded-full bg-foreground/80" style={{ width: `${c.pct}%` }} />
+                <div className="mt-1 h-1.5 rounded-full bg-card-border">
+                  <div className="h-1.5 rounded-full bg-sky-500" style={{ width: `${c.pct}%` }} />
                 </div>
                 {c.missing > 0 && (
-                  <p className="mt-1 text-xs text-muted">{c.missing} students missing</p>
+                  <p className="mt-1 text-xs text-muted">{c.missing} missing</p>
                 )}
               </li>
             ))}
@@ -156,9 +164,6 @@ export default async function AnalyticsPage({
         </Card>
       </div>
 
-      <h2 className="mb-4 text-sm font-semibold uppercase tracking-widest text-muted">
-        Top athlete scores
-      </h2>
       <BoxScoreBoard
         grades={boxScores}
         gender={gender}

@@ -5,7 +5,7 @@ import { Suspense } from "react";
 import { cn } from "@/lib/utils";
 import { parseGenderParam } from "@/lib/gender";
 
-function GenderToggleInner() {
+function GenderToggleInner({ className }: { className?: string }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -21,7 +21,7 @@ function GenderToggleInner() {
 
   return (
     <div
-      className="grid w-full max-w-sm grid-cols-2 rounded-lg bg-card p-1"
+      className={cn("mx-auto grid w-full max-w-xs grid-cols-2 rounded-xl bg-[#1a1f28] p-1", className)}
       role="group"
       aria-label="Boys or girls"
     >
@@ -37,8 +37,8 @@ function GenderToggleInner() {
             aria-pressed={active}
             onClick={() => select(opt.id)}
             className={cn(
-              "rounded-md px-4 py-2 text-sm font-semibold transition",
-              active ? "bg-sky-500 text-white" : "text-muted hover:text-foreground"
+              "rounded-lg px-4 py-2.5 text-sm font-bold tracking-wide transition",
+              active ? "bg-sky-500 text-white shadow-lg shadow-sky-500/20" : "text-muted hover:text-foreground"
             )}
           >
             {opt.label}
@@ -49,19 +49,19 @@ function GenderToggleInner() {
   );
 }
 
-export function GenderToggle() {
+export function GenderToggle({ className }: { className?: string }) {
   return (
     <Suspense
       fallback={
-        <div className="grid w-full max-w-sm grid-cols-2 rounded-lg bg-card p-1">
-          <span className="rounded-md bg-sky-500 px-4 py-2 text-center text-sm font-semibold text-white">
+        <div className={cn("mx-auto grid w-full max-w-xs grid-cols-2 rounded-xl bg-[#1a1f28] p-1", className)}>
+          <span className="rounded-lg bg-sky-500 px-4 py-2.5 text-center text-sm font-bold text-white">
             Boys
           </span>
-          <span className="px-4 py-2 text-center text-sm font-semibold text-muted">Girls</span>
+          <span className="px-4 py-2.5 text-center text-sm font-bold text-muted">Girls</span>
         </div>
       }
     >
-      <GenderToggleInner />
+      <GenderToggleInner className={className} />
     </Suspense>
   );
 }

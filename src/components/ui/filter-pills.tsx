@@ -35,16 +35,27 @@ function PillButton({
 
 function GradePillsInner({
   param = "grades",
+  mode = "multi",
 }: {
   param?: string;
+  mode?: "multi" | "single";
 }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const selected = parseGradesParam(searchParams.get(param));
-  const allOn = selected.length === GRADE_LEVELS.length;
 
-  function push(next: number[]) {
+  const selected =
+    mode === "single"
+      ? (() => {
+          const raw = searchParams.get("grade") ?? searchParams.get(param);
+          if (!raw) return [7];
+          const n = parseInt(raw.split(",")[0]!, 10);
+          return (GRADE_LEVELS as readonly number[]).includes(n) ? [n] : [7];
+        })()
+      : parseGradesParam(searchParams.get(param));
+  const allOn = mode === "multi" && selected.length === GRADE_LEVELS.length;
+
+  function pushMulti(next: number[]) {
     const params = new URLSearchParams(searchParams.toString());
     params.delete("grade");
     if (next.length === 0 || next.length === GRADE_LEVELS.length) {
@@ -56,43 +67,60 @@ function GradePillsInner({
     router.push(qs ? `${pathname}?${qs}` : pathname);
   }
 
+  function pushSingle(grade: number) {
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete(param);
+    params.set("grade", String(grade));
+    const qs = params.toString();
+    router.push(`${pathname}?${qs}`);
+  }
+
   function onAll() {
-    push([...GRADE_LEVELS]);
+    pushMulti([...GRADE_LEVELS]);
   }
 
   function onGrade(grade: number) {
+    if (mode === "single") {
+      pushSingle(grade);
+      return;
+    }
     if (allOn) {
-      push([grade]);
+      pushMulti([grade]);
       return;
     }
     const has = selected.includes(grade);
     const next = has ? selected.filter((g) => g !== grade) : [...selected, grade];
-    push(next.length === 0 ? [...GRADE_LEVELS] : next);
+    pushMulti(next.length === 0 ? [...GRADE_LEVELS] : next);
   }
 
   return (
     <div className="flex flex-wrap gap-2" role="group" aria-label="Filter by grade">
-      <PillButton active={allOn} onClick={onAll}>
-        All
-      </PillButton>
+      {mode === "multi" && (
+        <PillButton active={allOn} onClick={onAll}>
+          All
+        </PillButton>
+      )}
       {GRADE_LEVELS.map((g) => (
         <PillButton key={g} active={selected.includes(g)} onClick={() => onGrade(g)}>
-          {g}
+          {mode === "single" ? `G${g}` : g}
         </PillButton>
       ))}
     </div>
   );
 }
 
-export function GradePills(props: { param?: string }) {
+export function GradePills(props: { param?: string; mode?: "multi" | "single" }) {
   return (
     <Suspense
       fallback={
         <div className="flex flex-wrap gap-2">
-          {["All", ...GRADE_LEVELS.map(String)].map((label) => (
+          {(props.mode === "single"
+            ? GRADE_LEVELS.map((g) => `G${g}`)
+            : ["All", ...GRADE_LEVELS.map(String)]
+          ).map((label) => (
             <span
               key={label}
-              className="rounded-full bg-foreground px-3 py-1.5 text-sm font-medium text-background"
+              className="rounded-full border border-card-border px-3 py-1.5 text-sm font-medium text-muted"
             >
               {label}
             </span>

@@ -17,6 +17,22 @@ export function gradesFromSearch(sp: { grade?: string; grades?: string }): numbe
   return [...GRADE_LEVELS];
 }
 
+/** Single-grade pages (roster / analytics). Defaults to grade 7. */
+export function singleGradeFromSearch(
+  sp: { grade?: string; grades?: string },
+  fallback = 7
+): number {
+  if (sp.grade) {
+    const n = parseInt(sp.grade, 10);
+    if ((GRADE_LEVELS as readonly number[]).includes(n)) return n;
+  }
+  if (sp.grades) {
+    const list = parseGradesParam(sp.grades);
+    if (list.length === 1) return list[0]!;
+  }
+  return fallback;
+}
+
 export function isAllGrades(grades: number[]): boolean {
   return grades.length === GRADE_LEVELS.length;
 }

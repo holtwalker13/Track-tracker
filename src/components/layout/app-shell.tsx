@@ -15,7 +15,7 @@ export function AppShell({
       <header className="sticky top-0 z-40 border-b border-card-border bg-background/90 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3">
           <div>
-            <p className="text-xs uppercase tracking-widest text-accent">Athletic Performance</p>
+            <p className="text-xs uppercase tracking-widest text-sport-gold">Athletic Performance</p>
             <h1 className="text-lg font-semibold">{title}</h1>
           </div>
           <nav className="flex flex-wrap gap-1">

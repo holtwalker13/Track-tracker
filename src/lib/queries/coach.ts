@@ -186,6 +186,7 @@ export async function getLeaderboard(
       return {
         rank: e.rank,
         value: e.value,
+        studentId: st.id,
         displayName: anonymize
           ? `Student ${st.anonymousId}`
           : `${st.firstName} ${st.lastName}`,

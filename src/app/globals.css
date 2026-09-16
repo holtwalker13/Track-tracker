@@ -10,6 +10,12 @@
   --success: #34d399;
   --warning: #fbbf24;
   --muted: #94a3b8;
+  --sport-gold: #facc15;
+  --sport-yellow: #fde047;
+  --sport-green: #4ade80;
+  --sport-red: #f87171;
+  --sport-bronze: #fb923c;
+  --sport-silver: #cbd5e1;
 }
 
 @theme inline {
@@ -22,6 +28,12 @@
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-muted: var(--muted);
+  --color-sport-gold: var(--sport-gold);
+  --color-sport-yellow: var(--sport-yellow);
+  --color-sport-green: var(--sport-green);
+  --color-sport-red: var(--sport-red);
+  --color-sport-bronze: var(--sport-bronze);
+  --color-sport-silver: var(--sport-silver);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }

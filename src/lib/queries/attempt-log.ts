@@ -166,6 +166,9 @@ export type LatestResultItem = {
   deltaDisplay: string | null;
   isPr: boolean;
   group: ActivityDisplayGroup;
+  previousPercentile: number | null;
+  percentileDelta: number | null;
+  percentileTrend: { label: string; percentile: number }[];
 };
 
 export async function getLatestResultsGrouped(
@@ -242,6 +245,48 @@ export async function getLatestResultsGrouped(
         ? await percentileForResult(r.activityId, gradeLevel, r.resultValue, direction)
         : null;
 
+    let previousPercentile: number | null = null;
+    if (previous?.resultValue != null) {
+      previousPercentile = await percentileForResult(
+        r.activityId,
+        gradeLevel,
+        previous.resultValue,
+        direction
+      );
+    }
+    const percentileDelta =
+      percentile != null && previousPercentile != null
+        ? percentile - previousPercentile
+        : null;
+
+    const yearAttempts = await prisma.performanceResult.findMany({
+      where: {
+        studentId,
+        activityId: r.activityId,
+        schoolYearId: yearFilter,
+        status: "COMPLETED",
+        isBestAttempt: true,
+        resultValue: { not: null },
+      },
+      orderBy: { testingDate: "asc" },
+    });
+    const percentileTrend: { label: string; percentile: number }[] = [];
+    for (const att of yearAttempts) {
+      if (att.resultValue == null) continue;
+      const p = await percentileForResult(
+        r.activityId,
+        gradeLevel,
+        att.resultValue,
+        direction
+      );
+      if (p != null) {
+        percentileTrend.push({
+          label: att.testingDate.toLocaleDateString(undefined, { month: "short", day: "numeric" }),
+          percentile: p,
+        });
+      }
+    }
+
     const group = activityDisplayGroup(r.activity.slug, r.activity.category.slug);
 
     grouped[group].push({
@@ -258,6 +303,9 @@ export async function getLatestResultsGrouped(
       deltaDisplay,
       isPr: r.isPersonalRecord,
       group,
+      previousPercentile,
+      percentileDelta,
+      percentileTrend,
     });
   }
 

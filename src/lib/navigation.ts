@@ -1,6 +1,6 @@
 export const COACH_NAV = [
   { href: "/coach", label: "Dashboard" },
-  { href: "/coach/students", label: "Students" },
+  { href: "/coach/students", label: "Roster" },
   { href: "/coach/testing", label: "Testing" },
   { href: "/coach/leaderboards", label: "Leaderboards" },
   { href: "/coach/analytics", label: "Analytics" },

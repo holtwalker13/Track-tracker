@@ -1,6 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 type ScoringDirection = "HIGHER_BETTER" | "LOWER_BETTER";
 import bcrypt from "bcryptjs";
+import { genderFromFirstName } from "../src/lib/gender";
 
 const prisma = new PrismaClient();
 
@@ -250,6 +251,7 @@ async function main() {
           firstName: fn,
           lastName: ln,
           dateOfBirth: dob,
+          gender: genderFromFirstName(fn, studentIndex),
           anonymousId: String(1000 + studentIndex),
         },
       });

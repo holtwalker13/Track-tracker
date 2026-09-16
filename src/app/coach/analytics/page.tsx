@@ -6,16 +6,32 @@ import { requireSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { calculateCategoryScores } from "@/lib/services/category-score";
 import type { ScoringDirection } from "@/lib/constants";
+import { GradePills } from "@/components/ui/filter-pills";
+import { GenderToggle } from "@/components/ui/gender-toggle";
+import { gradesFromSearch, gradesLabel, isAllGrades } from "@/lib/grades";
+import { parseGenderParam, genderFullLabel } from "@/lib/gender";
+import { getGradeBoxScores } from "@/lib/queries/box-score";
+import { BoxScoreBoard } from "@/components/stats/box-score";
+
+const COVERAGE_SLUGS = [
+  "vertical-jump",
+  "standing-broad-jump",
+  "pull-ups",
+  "100-meter-dash",
+];
 
 export default async function AnalyticsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ grade?: string }>;
+  searchParams: Promise<{ grade?: string; grades?: string; gender?: string }>;
 }) {
   const session = await requireSession(["COACH", "ADMIN"]);
   if (!session?.schoolId) redirect("/login");
   const sp = await searchParams;
-  const gradeLevel = sp.grade ? parseInt(sp.grade, 10) : 7;
+  const grades = gradesFromSearch(sp);
+  const gender = parseGenderParam(sp.gender);
+  const gradeFilter = isAllGrades(grades) ? undefined : { in: grades };
+  const genderFilter = { gender };
 
   const currentYear = await prisma.schoolYear.findFirst({
     where: { schoolId: session.schoolId, isCurrent: true },
@@ -26,9 +42,10 @@ export default async function AnalyticsPage({
         where: {
           schoolId: session.schoolId,
           schoolYearId: currentYear.id,
-          gradeLevel,
+          ...(gradeFilter ? { gradeLevel: gradeFilter } : {}),
           status: "COMPLETED",
           isBestAttempt: true,
+          student: genderFilter,
         },
         include: { activity: { include: { category: true } } },
       })
@@ -47,7 +64,7 @@ export default async function AnalyticsPage({
     const sample = results.find((r) => r.activityId === activityId)!;
     const avg = values.reduce((a, b) => a + b, 0) / values.length;
     const bench = await prisma.benchmarkValue.findFirst({
-      where: { activityId, gradeLevel },
+      where: { activityId, gradeLevel: sample.gradeLevel },
     });
     if (!bench) continue;
     items.push({
@@ -62,52 +79,60 @@ export default async function AnalyticsPage({
   const categories = calculateCategoryScores(items);
 
   const activities = await prisma.activity.findMany({
-    where: {
-      slug: { in: ["vertical-jump", "standing-broad-jump", "pull-ups", "100-meter-dash"] },
-    },
+    where: { slug: { in: COVERAGE_SLUGS } },
   });
 
-  const coverage = await Promise.all(
-    activities.map(async (act) => {
-      const enrolled = await prisma.studentEnrollment.count({
-        where: { schoolYearId: currentYear!.id, gradeLevel },
-      });
-      const tested = await prisma.performanceResult.groupBy({
-        by: ["studentId"],
-        where: {
-          activityId: act.id,
-          schoolYearId: currentYear!.id,
-          gradeLevel,
-          status: "COMPLETED",
-          isBestAttempt: true,
-        },
-      });
-      const pct = enrolled ? Math.round((tested.length / enrolled) * 100) : 0;
-      return { name: act.name, pct, missing: enrolled - tested.length };
-    })
-  );
+  const coverage = currentYear
+    ? await Promise.all(
+        activities.map(async (act) => {
+          const enrolled = await prisma.studentEnrollment.count({
+            where: {
+              schoolYearId: currentYear.id,
+              ...(gradeFilter ? { gradeLevel: gradeFilter } : {}),
+              student: genderFilter,
+            },
+          });
+          const tested = await prisma.performanceResult.groupBy({
+            by: ["studentId"],
+            where: {
+              activityId: act.id,
+              schoolYearId: currentYear.id,
+              ...(gradeFilter ? { gradeLevel: gradeFilter } : {}),
+              status: "COMPLETED",
+              isBestAttempt: true,
+              student: genderFilter,
+            },
+          });
+          const pct = enrolled ? Math.round((tested.length / enrolled) * 100) : 0;
+          return { name: act.name, slug: act.slug, pct, missing: enrolled - tested.length };
+        })
+      )
+    : [];
+
+  const boxScores = await getGradeBoxScores(session.schoolId, grades, gender);
 
   return (
     <AppShell title="Analytics" nav={COACH_NAV}>
-      <form className="mb-4">
-        <select name="grade" defaultValue={String(gradeLevel)} className="rounded-lg border border-card-border bg-background px-3 py-2">
-          {[6, 7, 8, 9, 10, 11, 12].map((g) => (
-            <option key={g} value={g}>Grade {g}</option>
-          ))}
-        </select>
-        <button type="submit" className="ml-2 rounded-lg bg-accent px-4 py-2 text-background">View</button>
-      </form>
+      <div className="mb-6 space-y-4">
+        <GradePills />
+        <GenderToggle />
+      </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="mb-8 grid gap-6 lg:grid-cols-2">
         <Card>
-          <CardTitle>Grade {gradeLevel} athletic profile (avg vs benchmark)</CardTitle>
+          <CardTitle>
+            {gradesLabel(grades)} {genderFullLabel(gender).toLowerCase()} profile
+          </CardTitle>
           <ul className="mt-4 space-y-3">
             {categories.map((c) => (
               <li key={c.categorySlug} className="flex justify-between">
                 <span>{c.categoryName}</span>
-                <span className="font-bold text-accent">{c.score}th percentile</span>
+                <span className="font-bold tabular-nums">{c.score}th percentile</span>
               </li>
             ))}
+            {categories.length === 0 && (
+              <li className="text-sm text-muted">No completed tests for this filter.</li>
+            )}
           </ul>
         </Card>
         <Card>
@@ -120,7 +145,7 @@ export default async function AnalyticsPage({
                   <span>{c.pct}% complete</span>
                 </div>
                 <div className="mt-1 h-2 rounded-full bg-card-border">
-                  <div className="h-2 rounded-full bg-accent" style={{ width: `${c.pct}%` }} />
+                  <div className="h-2 rounded-full bg-foreground/80" style={{ width: `${c.pct}%` }} />
                 </div>
                 {c.missing > 0 && (
                   <p className="mt-1 text-xs text-muted">{c.missing} students missing</p>
@@ -130,6 +155,15 @@ export default async function AnalyticsPage({
           </ul>
         </Card>
       </div>
+
+      <h2 className="mb-4 text-sm font-semibold uppercase tracking-widest text-muted">
+        Top athlete scores
+      </h2>
+      <BoxScoreBoard
+        grades={boxScores}
+        gender={gender}
+        hrefForStudent={(id) => `/coach/students/${id}`}
+      />
     </AppShell>
   );
 }

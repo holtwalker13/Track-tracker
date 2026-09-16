@@ -33,3 +33,26 @@ export const DISPLAY_GROUP_LABELS: Record<ActivityDisplayGroup, string> = {
 };
 
 export const DISPLAY_GROUP_ORDER: ActivityDisplayGroup[] = ["running", "jumping", "other"];
+
+export const ACTIVITY_ABBR: Record<string, string> = {
+  "40-yard-dash": "40YD",
+  "50-yard-dash": "50YD",
+  "100-meter-dash": "100M",
+  "shuttle-run": "SHUT",
+  "pro-agility": "5-10-5",
+  "standing-broad-jump": "SBJ",
+  "vertical-jump": "VJ",
+  "bench-press": "BNCH",
+  "push-ups": "PUSH",
+  "pull-ups": "PULL",
+  "squat": "SQT",
+  "sit-ups": "SU",
+  "plank": "PLK",
+  "sit-and-reach": "S&R",
+  "mile-run": "MILE",
+  "800-meter-run": "800M",
+};
+
+export function activityAbbr(slug: string, fallback: string) {
+  return ACTIVITY_ABBR[slug] ?? fallback.slice(0, 4).toUpperCase();
+}

@@ -11,6 +11,8 @@ import {
 import { RadarProfile } from "@/components/charts/radar-profile";
 import { prisma } from "@/lib/db";
 import { getStudentLeaderboard } from "@/lib/queries/leaderboard-student";
+import { PlayerAvatar } from "@/components/athletes/player-avatar";
+import { genderFullLabel } from "@/lib/gender";
 
 export default async function StudentDashboardPage() {
   const session = await requireSession(["STUDENT"]);
@@ -56,8 +58,15 @@ export default async function StudentDashboardPage() {
       title={`${student.firstName} ${student.lastName}`}
       nav={STUDENT_NAV}
     >
-      <p className="text-muted">Grade {currentGrade}</p>
-      <h2 className="mt-4 text-2xl font-bold">Your athletic performance</h2>
+      <div className="mt-2 flex items-center gap-4">
+        <PlayerAvatar name={`${student.firstName} ${student.lastName}`} size="lg" />
+        <div>
+          <h2 className="text-2xl font-bold">Your athletic performance</h2>
+          <p className="text-muted">
+            Grade {currentGrade} · {genderFullLabel(student.gender)}
+          </p>
+        </div>
+      </div>
 
       <Card className="mt-6">
         <CardTitle>Category strengths</CardTitle>

@@ -11,12 +11,14 @@ export function AppShell({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-40 border-b border-card-border bg-background/90 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3">
           <div>
-            <p className="text-xs uppercase tracking-widest text-sport-gold">Athletic Performance</p>
-            <h1 className="text-lg font-semibold">{title}</h1>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted">
+              Track Tracker
+            </p>
+            <h1 className="text-lg font-bold tracking-tight">{title}</h1>
           </div>
           <nav className="flex flex-wrap gap-1">
             {nav.map((item) => (
@@ -24,7 +26,7 @@ export function AppShell({
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "rounded-lg px-3 py-2 text-sm font-medium text-muted transition hover:bg-card hover:text-foreground"
+                  "rounded-full px-3 py-1.5 text-sm font-medium text-muted transition hover:bg-card hover:text-foreground"
                 )}
               >
                 {item.label}
@@ -32,7 +34,7 @@ export function AppShell({
             ))}
             <Link
               href="/api/auth/logout"
-              className="rounded-lg px-3 py-2 text-sm text-muted hover:text-foreground"
+              className="rounded-full px-3 py-1.5 text-sm text-muted hover:text-foreground"
             >
               Sign out
             </Link>

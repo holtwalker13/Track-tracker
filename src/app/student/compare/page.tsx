@@ -1,63 +1,48 @@
 import { redirect } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
-import { Card, CardTitle } from "@/components/ui/card";
 import { STUDENT_NAV } from "@/lib/navigation";
 import { requireSession } from "@/lib/auth/session";
-import { getStudentContext, getStudentScorecard } from "@/lib/queries/student";
-import { prisma } from "@/lib/db";
+import { getStudentContext } from "@/lib/queries/student";
+import { getAthleteCompare } from "@/lib/queries/compare";
+import { AthleteDuel } from "@/components/compare/athlete-duel";
+import { CompareModeToggle, type CompareMode } from "@/components/compare/compare-mode-toggle";
+import { genderFullLabel } from "@/lib/gender";
 
-export default async function StudentComparePage() {
+export default async function StudentComparePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ vs?: string }>;
+}) {
   const session = await requireSession(["STUDENT"]);
   if (!session?.studentId) redirect("/login");
+  const sp = await searchParams;
+  const mode: CompareMode = sp.vs === "peer" ? "peer" : "benchmark";
 
-  const { currentGrade, student } = await getStudentContext(session.studentId);
-  const scorecard = await getStudentScorecard(session.studentId, currentGrade);
-  const vj = scorecard.find((c) => c.activity.slug === "vertical-jump");
+  const { student, currentGrade } = await getStudentContext(session.studentId);
+  const compare = await getAthleteCompare(session.studentId, student.schoolId);
 
-  const bench = vj
-    ? await prisma.benchmarkValue.findFirst({
-        where: { activityId: vj.activity.id, gradeLevel: currentGrade },
-      })
-    : null;
-
-  const gradeAvg = vj
-    ? await prisma.performanceResult.aggregate({
-        where: {
-          schoolId: student.schoolId,
-          activityId: vj.activity.id,
-          gradeLevel: currentGrade,
-          status: "COMPLETED",
-          isBestAttempt: true,
-        },
-        _avg: { resultValue: true },
-      })
-    : null;
+  const right =
+    mode === "peer"
+      ? { name: compare.peerLabel, meta: "Same grade & gender", isBenchmark: true as const }
+      : { name: "Benchmark", meta: "National P50 · synthetic", isBenchmark: true as const };
 
   return (
     <AppShell title="Compare" nav={STUDENT_NAV}>
-      <Card>
-        <CardTitle>Vertical jump — you vs peers & benchmark</CardTitle>
-        <div className="mt-4 grid gap-4 sm:grid-cols-3">
-          <div className="rounded-lg bg-background/40 p-4 text-center">
-            <p className="text-xs text-muted">You</p>
-            <p className="text-3xl font-bold">{vj?.display ?? "—"}</p>
-            {vj?.percentile != null && (
-              <p className="text-sm text-accent">{vj.percentile}th percentile</p>
-            )}
-          </div>
-          <div className="rounded-lg bg-background/40 p-4 text-center">
-            <p className="text-xs text-muted">Grade average</p>
-            <p className="text-3xl font-bold">
-              {gradeAvg?._avg.resultValue?.toFixed(1) ?? "—"}
-            </p>
-          </div>
-          <div className="rounded-lg bg-background/40 p-4 text-center">
-            <p className="text-xs text-muted">National benchmark (P50)</p>
-            <p className="text-3xl font-bold">{bench?.p50?.toFixed(1) ?? "—"}</p>
-            <p className="text-xs text-warning">Synthetic dev data</p>
-          </div>
-        </div>
-      </Card>
+      <p className="mb-4 text-sm text-muted">
+        Your marks vs the benchmark — or switch to your grade and gender average.
+      </p>
+      <div className="mb-6">
+        <CompareModeToggle allowAthlete={false} />
+      </div>
+      <AthleteDuel
+        left={{
+          name: compare.student.name,
+          meta: `Grade ${currentGrade} · ${genderFullLabel(student.gender)}`,
+        }}
+        right={right}
+        events={compare.events}
+        rightSource={mode === "peer" ? "peer" : "benchmark"}
+      />
     </AppShell>
   );
 }

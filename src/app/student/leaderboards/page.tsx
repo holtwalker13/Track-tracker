@@ -15,8 +15,9 @@ export default async function StudentLeaderboardsPage() {
   const { boards } = await getLeaderboardGrid(
     student.schoolId,
     true,
-    currentGrade,
-    session.studentId
+    [currentGrade],
+    session.studentId,
+    student.gender ?? undefined
   );
 
   return (

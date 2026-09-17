@@ -2,14 +2,12 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { decodeJwt } from "jose";
 import { SESSION_COOKIE } from "@/lib/auth/cookie";
+import { publicUrl } from "@/lib/auth/public-url";
 
 /**
  * Middleware only checks that a session cookie exists and carries a role.
  * Full JWT verification happens in server pages (requireSession) where
  * SESSION_SECRET is always available at runtime.
- *
- * Do NOT jwtVerify here: Next Edge middleware inlines env at Docker build time,
- * when SESSION_SECRET is usually empty on Railway — that made every click look logged out.
  */
 function getRole(request: NextRequest): string | null {
   const token = request.cookies.get(SESSION_COOKIE)?.value;
@@ -35,16 +33,16 @@ export async function middleware(request: NextRequest) {
     if (pathname.startsWith("/api/")) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    const login = new URL("/login", request.url);
+    const login = publicUrl(request, "/login");
     login.searchParams.set("next", pathname);
     return NextResponse.redirect(login);
   }
 
   if (pathname.startsWith("/coach") && role !== "COACH" && role !== "ADMIN") {
-    return NextResponse.redirect(new URL("/student", request.url));
+    return NextResponse.redirect(publicUrl(request, "/student"));
   }
   if (pathname.startsWith("/student") && role !== "STUDENT") {
-    return NextResponse.redirect(new URL("/coach", request.url));
+    return NextResponse.redirect(publicUrl(request, "/coach"));
   }
 
   return NextResponse.next();

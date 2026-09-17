@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/db";
 import { SESSION_COOKIE, sessionCookieOptions } from "@/lib/auth/cookie";
 import { signSessionToken } from "@/lib/auth/session";
+import { publicUrl } from "@/lib/auth/public-url";
 
 async function readCredentials(request: Request): Promise<{
   email: string;
@@ -46,7 +47,7 @@ export async function POST(request: Request) {
     if (wantsJson) {
       return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
     }
-    const url = new URL("/login", request.url);
+    const url = publicUrl(request, "/login");
     url.searchParams.set("error", "1");
     return NextResponse.redirect(url);
   }
@@ -61,7 +62,7 @@ export async function POST(request: Request) {
   const destination = safeNext(next, user.role);
   const res = wantsJson
     ? NextResponse.json({ ok: true, redirect: destination })
-    : NextResponse.redirect(new URL(destination, request.url), 303);
+    : NextResponse.redirect(publicUrl(request, destination), 303);
 
   res.cookies.set(SESSION_COOKIE, token, sessionCookieOptions(undefined, request));
   return res;

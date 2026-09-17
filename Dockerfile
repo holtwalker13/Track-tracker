@@ -12,7 +12,8 @@ FROM base AS runner
 ARG APP_MODE=production
 ENV APP_MODE=$APP_MODE
 ENV NEXT_TELEMETRY_DISABLED=1
-ENV HOSTNAME=0.0.0.0
+# Do NOT set HOSTNAME=0.0.0.0 — Next uses that for redirects and browsers end up on 0.0.0.0.
+# Bind address is passed only via `next start -H 0.0.0.0` in entrypoint.
 ENV PORT=3000
 # Placeholder only so `prisma generate` / `next build` can parse a Postgres URL.
 # Runtime DATABASE_URL comes from Compose or Railway.

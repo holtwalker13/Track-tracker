@@ -5,6 +5,7 @@ import { Card, CardTitle } from "@/components/ui/card";
 import { COACH_NAV } from "@/lib/navigation";
 import { requireSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
+import { ActivityIcon } from "@/lib/activity-icons";
 import { classYearLabel } from "@/lib/grades";
 
 export default async function TestingSessionsPage() {

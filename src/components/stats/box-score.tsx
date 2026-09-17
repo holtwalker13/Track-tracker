@@ -59,7 +59,7 @@ export function BoxScoreBoard({
                       const cells = (
                         <>
                           <span className="w-32 shrink-0 truncate font-medium sm:w-40">
-                            {row.name}
+                            {row.fullName}
                           </span>
                           <div
                             className="grid min-w-0 flex-1 gap-2 text-right font-mono text-sm tabular-nums"

@@ -34,5 +34,5 @@ export function genderFullLabel(gender?: string | null): string {
 }
 
 export function parseGenderParam(value?: string | null): "M" | "F" {
-  return value === "F" ? "F" : "M";
+  return value === "M" ? "M" : "F";
 }

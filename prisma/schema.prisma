@@ -1,0 +1,333 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Organization {
+  id                      String   @id @default(cuid())
+  name                    String
+  slug                    String   @unique
+  benchmarkSharingEnabled Boolean  @default(false)
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  districts District[]
+  schools   School[]
+  settings  OrganizationSettings?
+}
+
+model OrganizationSettings {
+  id             String       @id @default(cuid())
+  organizationId String       @unique
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  logoUrl        String?
+  primaryColor   String?
+  showNamesOnLeaderboardsForStudents Boolean @default(false)
+}
+
+model District {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name           String
+  region         String?
+  schools        School[]
+
+  @@index([organizationId])
+}
+
+model School {
+  id             String   @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  districtId     String?
+  district       District? @relation(fields: [districtId], references: [id])
+  name           String
+  createdAt      DateTime @default(now())
+
+  schoolYears    SchoolYear[]
+  classes        Class[]
+  coachProfiles  CoachProfile[]
+  studentProfiles StudentProfile[]
+  testingSessions TestingSession[]
+  performanceResults PerformanceResult[]
+
+  @@index([organizationId])
+  @@index([districtId])
+}
+
+model SchoolYear {
+  id        String   @id @default(cuid())
+  schoolId  String
+  school    School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  label     String
+  startDate DateTime
+  endDate   DateTime
+  isCurrent Boolean  @default(false)
+
+  enrollments       StudentEnrollment[]
+  testingSessions   TestingSession[]
+  performanceResults PerformanceResult[]
+
+  @@unique([schoolId, label])
+  @@index([schoolId])
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  role         String
+  firstName    String
+  lastName     String
+  createdAt    DateTime @default(now())
+
+  coachProfile   CoachProfile?
+  studentProfile StudentProfile?
+  enteredResults PerformanceResult[] @relation("EnteredBy")
+}
+
+model CoachProfile {
+  id       String @id @default(cuid())
+  userId   String @unique
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  schoolId String
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  classes Class[]
+}
+
+model StudentProfile {
+  id            String   @id @default(cuid())
+  userId        String?  @unique
+  user          User?    @relation(fields: [userId], references: [id])
+  schoolId      String
+  school        School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  studentNumber String
+  firstName     String
+  lastName      String
+  dateOfBirth   DateTime
+  gender        String?
+  anonymousId   String
+  createdAt     DateTime @default(now())
+
+  enrollments        StudentEnrollment[]
+  classEnrollments   ClassEnrollment[]
+  sessionStudents    TestingSessionStudent[]
+  performanceResults PerformanceResult[]
+  achievements       StudentAchievement[]
+
+  @@unique([schoolId, studentNumber])
+  @@index([schoolId])
+  @@index([anonymousId])
+}
+
+model StudentEnrollment {
+  id           String       @id @default(cuid())
+  studentId    String
+  student      StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  schoolYearId String
+  schoolYear   SchoolYear   @relation(fields: [schoolYearId], references: [id], onDelete: Cascade)
+  gradeLevel   Int
+
+  @@unique([studentId, schoolYearId])
+  @@index([schoolYearId, gradeLevel])
+}
+
+model Class {
+  id        String @id @default(cuid())
+  schoolId  String
+  school    School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  coachId   String?
+  coach     CoachProfile? @relation(fields: [coachId], references: [id])
+  name      String
+  period    String?
+  gradeLevel Int?
+
+  enrollments ClassEnrollment[]
+  sessions    TestingSession[]
+}
+
+model ClassEnrollment {
+  id        String @id @default(cuid())
+  classId   String
+  class     Class  @relation(fields: [classId], references: [id], onDelete: Cascade)
+  studentId String
+  student   StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([classId, studentId])
+  @@index([studentId])
+}
+
+model ActivityCategory {
+  id          String @id @default(cuid())
+  slug        String @unique
+  name        String
+  description String?
+  sortOrder   Int    @default(0)
+
+  activities Activity[]
+}
+
+model Activity {
+  id                    String           @id @default(cuid())
+  slug                  String           @unique
+  name                  String
+  categoryId            String
+  category              ActivityCategory @relation(fields: [categoryId], references: [id])
+  description           String?
+  unit                  String
+  scoringDirection      String
+  acceptsDecimals       Boolean          @default(true)
+  minRealistic          Float?
+  maxRealistic          Float?
+  bodyweightInfluenced  Boolean          @default(false)
+  ageInfluenced         Boolean          @default(true)
+  genderInfluenced      Boolean          @default(false)
+
+  sessionActivities TestingSessionActivity[]
+  results           PerformanceResult[]
+  benchmarkValues   BenchmarkValue[]
+}
+
+model TestingSession {
+  id           String               @id @default(cuid())
+  schoolId     String
+  school       School               @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  schoolYearId String
+  schoolYear   SchoolYear           @relation(fields: [schoolYearId], references: [id])
+  classId      String?
+  class        Class?               @relation(fields: [classId], references: [id])
+  name         String
+  testingDate  DateTime
+  gradeLevel   Int?
+  status       String @default("DRAFT")
+  createdById  String?
+  createdAt    DateTime             @default(now())
+
+  activities TestingSessionActivity[]
+  students   TestingSessionStudent[]
+  results    PerformanceResult[]
+
+  @@index([schoolId, schoolYearId])
+  @@index([testingDate])
+}
+
+model TestingSessionActivity {
+  id        String @id @default(cuid())
+  sessionId String
+  session   TestingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  activityId String
+  activity  Activity @relation(fields: [activityId], references: [id])
+  sortOrder Int    @default(0)
+
+  @@unique([sessionId, activityId])
+}
+
+model TestingSessionStudent {
+  id        String @id @default(cuid())
+  sessionId String
+  session   TestingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  studentId String
+  student   StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, studentId])
+}
+
+model PerformanceResult {
+  id                String       @id @default(cuid())
+  studentId         String
+  student           StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  activityId        String
+  activity          Activity     @relation(fields: [activityId], references: [id])
+  testingSessionId  String?
+  testingSession    TestingSession? @relation(fields: [testingSessionId], references: [id])
+  schoolId          String
+  school            School       @relation(fields: [schoolId], references: [id])
+  schoolYearId      String
+  schoolYear        SchoolYear   @relation(fields: [schoolYearId], references: [id])
+  organizationId    String
+  gradeLevel        Int
+  resultValue       Float?
+  displayValue      String?
+  attemptNumber     Int          @default(1)
+  isBestAttempt     Boolean      @default(false)
+  isPersonalRecord  Boolean      @default(false)
+  testingDate       DateTime
+  ageAtTest         Float?
+  weightAtTest      Float?
+  heightAtTest      Float?
+  enteredById       String?
+  enteredBy         User?        @relation("EnteredBy", fields: [enteredById], references: [id])
+  entryMethod       String  @default("MANUAL")
+  notes             String?
+  status            String @default("COMPLETED")
+  supersedesId      String?
+  relativeStrength  Float?
+  createdAt         DateTime     @default(now())
+
+  @@index([studentId, activityId])
+  @@index([schoolId, schoolYearId, gradeLevel])
+  @@index([activityId, schoolId, testingDate])
+  @@index([testingSessionId])
+  @@index([studentId, activityId, isBestAttempt])
+}
+
+model BenchmarkDataset {
+  id              String              @id @default(cuid())
+  name            String
+  sourceName      String
+  datasetYear     Int
+  population      String
+  populationSize  Int?
+  geographicRegion String?
+  methodologyNotes String?
+  isSynthetic     Boolean             @default(false)
+  organizationId  String?
+
+  values BenchmarkValue[]
+}
+
+model BenchmarkValue {
+  id          String           @id @default(cuid())
+  datasetId   String
+  dataset     BenchmarkDataset @relation(fields: [datasetId], references: [id], onDelete: Cascade)
+  activityId  String
+  activity    Activity         @relation(fields: [activityId], references: [id])
+  age         Float?
+  gradeLevel  Int?
+  gender      String?
+  p25         Float?
+  p50         Float
+  p75         Float?
+  p90         Float?
+
+  @@index([activityId, gradeLevel])
+  @@index([activityId, age])
+}
+
+model Achievement {
+  id          String @id @default(cuid())
+  slug        String @unique
+  name        String
+  description String
+  sortOrder   Int    @default(0)
+
+  studentAchievements StudentAchievement[]
+}
+
+model StudentAchievement {
+  id            String   @id @default(cuid())
+  studentId     String
+  student       StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  achievementId String
+  achievement   Achievement @relation(fields: [achievementId], references: [id])
+  earnedAt      DateTime @default(now())
+  metadata      String?
+
+  @@unique([studentId, achievementId])
+}

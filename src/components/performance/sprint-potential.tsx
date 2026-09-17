@@ -16,7 +16,6 @@ function KpiScoreMeter({
 }) {
   const total = Math.max(tested, 1);
   const filled = Math.min(hits, total);
-  const pct = Math.round((filled / total) * 100);
   const fillClass =
     tone === "gold"
       ? "bg-sport-gold"
@@ -48,9 +47,6 @@ function KpiScoreMeter({
             )}
           />
         ))}
-      </div>
-      <div className="h-1.5 overflow-hidden rounded-full bg-background">
-        <div className={cn("h-full rounded-full transition-all", fillClass)} style={{ width: `${pct}%` }} />
       </div>
     </div>
   );

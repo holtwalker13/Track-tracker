@@ -8,16 +8,18 @@ import { calculateCategoryScores } from "@/lib/services/category-score";
 import type { ScoringDirection } from "@/lib/constants";
 import { GradePills } from "@/components/ui/filter-pills";
 import { GenderToggle } from "@/components/ui/gender-toggle";
-import { singleGradeFromSearch } from "@/lib/grades";
+import { classYearLabel, singleGradeFromSearch } from "@/lib/grades";
 import { parseGenderParam, genderFullLabel } from "@/lib/gender";
 import { getGradeBoxScores } from "@/lib/queries/box-score";
 import { BoxScoreBoard } from "@/components/stats/box-score";
+import { getPeerBenchmark } from "@/lib/queries/benchmarks";
 
 const COVERAGE_SLUGS = [
-  "vertical-jump",
+  "flying-10-meter",
   "standing-broad-jump",
-  "pull-ups",
-  "100-meter-dash",
+  "vertical-jump",
+  "squat",
+  "40-yard-dash",
 ];
 
 export default async function AnalyticsPage({
@@ -63,9 +65,11 @@ export default async function AnalyticsPage({
   for (const [activityId, values] of byActivity) {
     const sample = results.find((r) => r.activityId === activityId)!;
     const avg = values.reduce((a, b) => a + b, 0) / values.length;
-    const bench = await prisma.benchmarkValue.findFirst({
-      where: { activityId, gradeLevel: sample.gradeLevel },
-    });
+    const bench = await getPeerBenchmark(
+      activityId,
+      sample.gradeLevel,
+      sample.activity.scoringDirection as ScoringDirection
+    );
     if (!bench) continue;
     items.push({
       categorySlug: sample.activity.category.slug,
@@ -116,7 +120,7 @@ export default async function AnalyticsPage({
       <div className="mb-8 space-y-5">
         <div>
           <p className="mb-2 text-center text-[11px] font-semibold uppercase tracking-[0.2em] text-muted">
-            Grade
+            Class
           </p>
           <div className="flex justify-center">
             <GradePills mode="single" />
@@ -124,7 +128,7 @@ export default async function AnalyticsPage({
         </div>
         <GenderToggle />
         <p className="text-center text-sm text-muted">
-          Grade {grade} · {genderFullLabel(gender)} · current year box score
+          {classYearLabel(grade)} · {genderFullLabel(gender)} · current year box score
         </p>
       </div>
 

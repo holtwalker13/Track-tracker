@@ -3,7 +3,7 @@ import { getLeaderboard } from "./coach";
 import { percentileForResult } from "./benchmarks";
 import type { ScoringDirection } from "@/lib/constants";
 import { activityDisplayGroup, type ActivityDisplayGroup } from "@/lib/activity-groups";
-import { isAllGrades } from "@/lib/grades";
+import { DEFAULT_CLASS_YEAR, isAllGrades } from "@/lib/grades";
 import type { Activity, ActivityCategory } from "@prisma/client";
 
 export const LEADERBOARD_TOP_N = 10;
@@ -39,7 +39,7 @@ export async function getLeaderboardGrid(
 ) {
   const activities = await getLeaderboardActivities();
   const grades = gradeLevels && gradeLevels.length > 0 ? gradeLevels : undefined;
-  const percentileGrade = grades && !isAllGrades(grades) ? grades[0] : 8;
+  const percentileGrade = grades && !isAllGrades(grades) ? grades[0] : DEFAULT_CLASS_YEAR;
 
   const boards: LeaderboardBoard[] = [];
 

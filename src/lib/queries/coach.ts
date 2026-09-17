@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { rankResults } from "@/lib/services/leaderboard";
 import type { ScoringDirection } from "@/lib/constants";
+import { GRADE_LEVELS } from "@/lib/grades";
 
 export async function getCoachDashboard(schoolId: string) {
   const currentYear = await prisma.schoolYear.findFirst({
@@ -107,7 +108,7 @@ export async function listStudents(
     where: { schoolId, isCurrent: true },
   });
   const gradeFilter =
-    filters.grades && filters.grades.length > 0 && filters.grades.length < 7
+    filters.grades && filters.grades.length > 0 && filters.grades.length < GRADE_LEVELS.length
       ? { in: filters.grades }
       : undefined;
 
@@ -143,7 +144,7 @@ export async function listStudents(
       },
     },
     orderBy: { lastName: "asc" },
-    take: 200,
+    take: 500,
   });
 
   return students.map((s) => ({
@@ -172,7 +173,7 @@ export async function getLeaderboard(
   if (!currentYear) return { activity, entries: [] };
 
   const gradeFilter =
-    gradeLevels && gradeLevels.length > 0 && gradeLevels.length < 7
+    gradeLevels && gradeLevels.length > 0 && gradeLevels.length < GRADE_LEVELS.length
       ? { in: gradeLevels }
       : undefined;
 

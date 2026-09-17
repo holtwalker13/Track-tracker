@@ -4,7 +4,7 @@ import { COACH_NAV } from "@/lib/navigation";
 import { requireSession } from "@/lib/auth/session";
 import { GradePills } from "@/components/ui/filter-pills";
 import { GenderToggle } from "@/components/ui/gender-toggle";
-import { singleGradeFromSearch } from "@/lib/grades";
+import { classYearLabel, singleGradeFromSearch } from "@/lib/grades";
 import { parseGenderParam, genderFullLabel } from "@/lib/gender";
 import { getGradeBoxScores } from "@/lib/queries/box-score";
 import { BoxScoreBoard } from "@/components/stats/box-score";
@@ -51,7 +51,7 @@ export default async function StudentsPage({
       <div className="mb-8 space-y-5">
         <div>
           <p className="mb-2 text-center text-[11px] font-semibold uppercase tracking-[0.2em] text-muted">
-            Grade
+            Class
           </p>
           <div className="flex justify-center">
             <GradePills mode="single" />
@@ -59,7 +59,7 @@ export default async function StudentsPage({
         </div>
         <GenderToggle />
         <p className="text-center text-sm text-muted">
-          Grade {grade} · {genderFullLabel(gender)}
+          {classYearLabel(grade)} · {genderFullLabel(gender)}
         </p>
       </div>
 

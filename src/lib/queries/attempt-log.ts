@@ -7,7 +7,7 @@ import {
   type ActivityDisplayGroup,
 } from "@/lib/activity-groups";
 import { formatActivityValue } from "@/lib/format";
-import type { ScoringDirection } from "@/lib/constants";
+import { DEFAULT_CLASS_YEAR } from "@/lib/grades";
 
 export type AttemptEventRow = {
   id: string;
@@ -213,7 +213,7 @@ export async function getLatestResultsGrouped(
         where: { studentId, schoolYearId: yearFilter },
       })
     : null;
-  const gradeLevel = enrollment?.gradeLevel ?? 8;
+  const gradeLevel = enrollment?.gradeLevel ?? DEFAULT_CLASS_YEAR;
 
   for (const r of latestByActivity.values()) {
     const direction = r.activity.scoringDirection as ScoringDirection;

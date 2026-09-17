@@ -1,5 +1,6 @@
 import type { SchoolYearAttemptLog } from "@/lib/queries/attempt-log";
 import { Card, CardTitle } from "@/components/ui/card";
+import { classYearLabel } from "@/lib/grades";
 
 export function AttemptSchedule({ years }: { years: SchoolYearAttemptLog[] }) {
   if (years.length === 0) {
@@ -24,8 +25,8 @@ export function AttemptSchedule({ years }: { years: SchoolYearAttemptLog[] }) {
                 </span>
               )}
             </CardTitle>
-            {year.gradeLevel != null && (
-              <p className="mt-1 text-sm text-muted">Grade {year.gradeLevel}</p>
+              {year.gradeLevel != null && (
+              <p className="mt-1 text-sm text-muted">{classYearLabel(year.gradeLevel)}</p>
             )}
           </div>
           <div className="overflow-x-auto">

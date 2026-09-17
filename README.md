@@ -1,50 +1,17 @@
-# Student Athletic Performance Platform
+# Track Tracker — JHS Athletics
 
-Web application for schools to **measure, compare, improve, compete, and project** student athletic performance across a continuous scholastic record.
+Web application for a school to **measure, compare, improve, compete, and project** athletic performance. Roster is grouped by **graduating class**, not grade 6–12.
 
 ## Stack
 
 - Next.js 15 (App Router), TypeScript, Tailwind CSS
 - Prisma 5 + SQLite (development)
-- Server-side services for percentiles, leaderboards, PRs, projections
+- Real female testing data from the JHS Athletics KPI database; boy data is a same-structure synthetic analog
 
 ## Documentation
 
 - [Architecture](./docs/ARCHITECTURE.md)
 - [Implementation plan](./docs/IMPLEMENTATION_PLAN.md)
-
-## Quick start (Docker — recommended on desktop)
-
-Requires [Docker Desktop](https://www.docker.com/products/docker-desktop/).
-
-```bash
-git checkout cursor/student-athletic-platform-601a
-docker compose up --build
-```
-
-First start runs migrations and seeds demo data (can take 1–2 minutes). Then open **http://localhost:3001** (Docker maps host `3001` → app `3000`).
-
-If you see “connection refused”, the container probably exited during startup. Run `docker compose logs -f app` and look for errors. After pulling the latest fix, reset volumes once:
-
-```bash
-docker compose down -v
-docker compose up --build
-```
-
-Re-seed from scratch:
-
-```bash
-docker compose down -v
-docker compose up --build
-```
-
-Or without wiping the volume:
-
-```bash
-FORCE_SEED=1 docker compose up --build
-```
-
-Stop: `Ctrl+C`, then `docker compose down`.
 
 ## Quick start (Node on host)
 
@@ -60,13 +27,18 @@ Open [http://localhost:3000](http://localhost:3000).
 
 | Role | Email | Password |
 |------|--------|----------|
-| Coach | `coach1@riverside.demo` | `password123` |
-| Student | `student29@riverside.demo` | `password123` |
+| Coach | `coach1@jhs.demo` | `password123` |
+| Student (Kendall Leland) | `student1@jhs.demo` | `password123` |
 
-Benchmark data in seed is **SYNTHETIC_DEV** — not real-world norms.
+## Data
+
+- **Girls**: imported from `prisma/data/jhs-female-athletes.csv` (class years 2026–2031).
+- **Boys**: generated with the same class years, sparsity, and events, scaled to typical male HS marks. There is no boy KPI sheet.
+- **KPI key**: flying 10m, broad jump, vertical, squat/BW, hang clean/BW, 20m start, and 40yd map to a likely **100m / 40-yard** time. Female 12.5 / 13.0 / 13.5s bands come from the JHS key. The 13.0s flying-10m target is **1.188s** (the source cell listed 1.879s, which was slower than the 13.5s target and treated as a typo).
+- One school year of results (2025–2026), not a multi-year history.
 
 ## MVP screens
 
-**Coach**: Dashboard, Students, Testing (live grid + station), Leaderboards, Analytics, Benchmarks, Compare.
+**Coach**: Dashboard, Roster (class + Boys/Girls box scores), Testing, Leaderboards, Analytics, KPI targets, Compare.
 
-**Student**: Dashboard, My Performance, Progress, Leaderboards, Compare, Projection.
+**Student**: Dashboard (sprint potential), My Performance, Progress, Leaderboards, Compare, Projection.

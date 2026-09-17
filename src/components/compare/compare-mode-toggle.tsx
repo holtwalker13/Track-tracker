@@ -15,8 +15,8 @@ function CompareModeInner({ allowAthlete }: { allowAthlete: boolean }) {
     raw === "peer" || (allowAthlete && raw === "athlete") ? raw : "benchmark";
 
   const options: { id: CompareMode; label: string }[] = [
-    { id: "benchmark", label: "Benchmark" },
-    { id: "peer", label: "Grade avg" },
+    { id: "benchmark", label: "KPI target" },
+    { id: "peer", label: "Class avg" },
     ...(allowAthlete ? [{ id: "athlete" as const, label: "Athlete" }] : []),
   ];
 

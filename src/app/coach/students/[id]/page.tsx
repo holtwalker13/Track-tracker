@@ -6,9 +6,12 @@ import { requireSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { getCategoryRadar } from "@/lib/queries/student";
 import { getLatestResultsGrouped, getScholasticAttemptLog } from "@/lib/queries/attempt-log";
+import { getStudentSprintPotential } from "@/lib/queries/kpi";
 import { RadarProfile } from "@/components/charts/radar-profile";
 import { LatestResultsGrouped } from "@/components/performance/latest-results-grouped";
 import { AttemptSchedule } from "@/components/performance/attempt-schedule";
+import { SprintPotentialCard } from "@/components/performance/sprint-potential";
+import { classYearLabel, DEFAULT_CLASS_YEAR } from "@/lib/grades";
 
 export default async function StudentProfilePage({
   params,
@@ -31,33 +34,37 @@ export default async function StudentProfilePage({
   if (!student || student.schoolId !== session.schoolId) notFound();
 
   const enrollment = student.enrollments[0];
-  const grade = enrollment?.gradeLevel ?? 8;
+  const grade = enrollment?.gradeLevel ?? DEFAULT_CLASS_YEAR;
   const schoolYearId = enrollment?.schoolYearId;
 
-  const [radar, latestGrouped, attemptLog] = await Promise.all([
+  const [radar, latestGrouped, attemptLog, sprint] = await Promise.all([
     getCategoryRadar(id, grade),
     getLatestResultsGrouped(id, schoolYearId),
     getScholasticAttemptLog(id),
+    getStudentSprintPotential(id),
   ]);
 
   return (
     <AppShell title={`${student.firstName} ${student.lastName}`} nav={COACH_NAV}>
       <p className="text-muted">
-        Grade {grade} · {student.studentNumber}
+        {classYearLabel(grade)} · {student.studentNumber}
+        {student.sports ? ` · ${student.sports}` : ""}
         {enrollment?.schoolYear && ` · ${enrollment.schoolYear.label}`}
       </p>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-2">
+        <SprintPotentialCard potential={sprint} />
         <Card>
           <CardTitle>Athletic profile</CardTitle>
           <RadarProfile data={radar} />
         </Card>
-        <div>
-          <p className="mb-3 text-sm text-muted">
-            Latest result per event this school year (one row each). Change vs your previous attempt.
-          </p>
-          <LatestResultsGrouped grouped={latestGrouped} />
-        </div>
+      </div>
+
+      <div className="mt-8">
+        <p className="mb-3 text-sm text-muted">
+          Latest result per event this school year (one row each). Change vs your previous attempt.
+        </p>
+        <LatestResultsGrouped grouped={latestGrouped} />
       </div>
 
       <div className="mt-8">

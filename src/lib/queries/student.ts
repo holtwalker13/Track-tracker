@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
-import { percentileForResult } from "./benchmarks";
+import { classYearLabel, DEFAULT_CLASS_YEAR } from "@/lib/grades";
+import { getPeerBenchmark, percentileForResult } from "./benchmarks";
 import { calculateImprovement } from "@/lib/services/performance";
 import { calculateCategoryScores } from "@/lib/services/category-score";
 import type { ScoringDirection } from "@/lib/constants";
@@ -16,7 +17,7 @@ export async function getStudentContext(studentId: string) {
     },
   });
   const currentEnrollment = student.enrollments[0];
-  return { student, currentGrade: currentEnrollment?.gradeLevel ?? 8 };
+  return { student, currentGrade: currentEnrollment?.gradeLevel ?? DEFAULT_CLASS_YEAR };
 }
 
 export async function getStudentScorecard(studentId: string, gradeLevel: number) {
@@ -26,8 +27,8 @@ export async function getStudentScorecard(studentId: string, gradeLevel: number)
         in: [
           "vertical-jump",
           "standing-broad-jump",
-          "100-meter-dash",
-          "pull-ups",
+          "40-yard-dash",
+          "flying-10-meter",
         ],
       },
     },
@@ -107,9 +108,11 @@ export async function getCategoryRadar(studentId: string, gradeLevel: number) {
       r.activity.scoringDirection as ScoringDirection
     );
     if (b == null) continue;
-    const bench = await prisma.benchmarkValue.findFirst({
-      where: { activityId: r.activityId, gradeLevel },
-    });
+    const bench = await getPeerBenchmark(
+      r.activityId,
+      gradeLevel,
+      r.activity.scoringDirection as ScoringDirection
+    );
     if (!bench) continue;
     items.push({
       categorySlug: r.activity.category.slug,
@@ -149,7 +152,7 @@ export async function getProgressSeries(studentId: string, activitySlug: string)
   const benchByGrade = new Map(benchRows.map((b) => [b.gradeLevel!, b.p50]));
 
   const data = Array.from(byGrade.entries()).map(([grade, value]) => ({
-    label: `Grade ${grade}`,
+    label: classYearLabel(grade),
     value,
     benchmark: benchByGrade.get(grade),
   }));

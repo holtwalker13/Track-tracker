@@ -4,8 +4,8 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      # Host 3001 → container 3000 (change left side if 3001 is taken)
-      - "3001:3000"
+      # App + SQLite DB run inside this container. Open http://localhost:3000
+      - "3000:3000"
     environment:
       DATABASE_URL: "file:/data/dev.db"
       SESSION_SECRET: "local-docker-dev-session-secret-min-32-chars"

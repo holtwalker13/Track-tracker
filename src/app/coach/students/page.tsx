@@ -60,6 +60,17 @@ export default async function StudentsPage({
       </div>
 
       <RosterTable athletes={athletes} showClass={!isAllGrades(grades) ? grades.length > 1 : true} />
+      {athletes.length === 0 && (
+        <p className="mt-4 max-w-xl text-sm text-muted">
+          The roster is empty in the database this app is connected to. Git does not include SQLite
+          files. If you expected JHS athletes, stop any <code>npm run dev</code> on port 3000 and
+          start Docker so it can seed <code>/data/dev.db</code>:
+          <br />
+          <code className="mt-2 block rounded-md bg-card px-3 py-2 text-foreground">
+            docker compose up --build
+          </code>
+        </p>
+      )}
     </AppShell>
   );
 }

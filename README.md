@@ -5,30 +5,44 @@ Web application for a school to **measure, compare, improve, compete, and projec
 ## Stack
 
 - Next.js 15 (App Router), TypeScript, Tailwind CSS
-- Prisma 5 + SQLite (development)
+- Prisma 5 + **SQLite inside Docker** (`sap-db` volume → `/data/dev.db`)
 - Real female testing data from the JHS Athletics KPI database; boy data is a same-structure synthetic analog
 
-## Documentation
+Git does **not** contain the database. Pulling code never copies students onto localhost. Docker creates and seeds the DB on startup.
 
-- [Architecture](./docs/ARCHITECTURE.md)
-- [Implementation plan](./docs/IMPLEMENTATION_PLAN.md)
+## Quick start (Docker)
 
-## Quick start (Node on host)
+Stop anything already bound to port 3000 (`npm run dev`), then from the repo root:
 
 ```bash
-npm install
-cp .env.example .env
-npx prisma db push
-npm run db:seed
-npm run dev
+git checkout cursor/jhs-kpi-class-data-efe1
+git pull
+docker compose up --build
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+Wait until logs show seed complete / Ready, then open **http://localhost:3000**.
+
+The first start (or a seed-version bump) loads the JHS CSV into the Docker volume. Later starts reuse that volume. To reload athlete data after a CSV/seed change:
+
+```bash
+FORCE_SEED=1 docker compose up --build
+```
+
+To wipe the volume and start clean:
+
+```bash
+docker compose down -v
+docker compose up --build
+```
 
 | Role | Email | Password |
 |------|--------|----------|
 | Coach | `coach1@jhs.demo` | `password123` |
 | Student (Kendall Leland) | `student1@jhs.demo` | `password123` |
+
+## Why refresh showed 0 athletes
+
+`http://localhost:3000` from `npm run dev` uses a **different** SQLite file (`prisma/dev.db` on your machine) than Docker (`/data/dev.db` in the `sap-db` volume). Docker used to publish **:3001**. If the UI updated but the table was empty, the app was running on the host without a seed.
 
 ## Data
 
@@ -39,6 +53,6 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ## MVP screens
 
-**Coach**: Dashboard, Roster (class + Boys/Girls box scores), Testing, Leaderboards, Analytics, KPI targets, Compare.
+**Coach**: Dashboard, Roster, Testing, Leaderboards, Analytics, KPI targets, Compare.
 
 **Student**: Dashboard (sprint potential), My Performance, Progress, Leaderboards, Compare, Projection.

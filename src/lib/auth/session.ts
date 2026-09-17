@@ -13,17 +13,25 @@ export type SessionPayload = {
   studentId?: string;
 };
 
-function secret() {
-  const s = process.env.SESSION_SECRET;
-  if (!s || s.length < 16) throw new Error("SESSION_SECRET must be set");
+function secretKey() {
+  const s = process.env.SESSION_SECRET?.trim();
+  if (!s || s.length < 16) {
+    throw new Error("SESSION_SECRET must be set (16+ chars)");
+  }
   return new TextEncoder().encode(s);
 }
 
 export async function signSessionToken(payload: SessionPayload): Promise<string> {
-  return new SignJWT(payload as Record<string, unknown>)
+  return new SignJWT({
+    userId: payload.userId,
+    role: payload.role,
+    schoolId: payload.schoolId,
+    studentId: payload.studentId,
+  })
     .setProtectedHeader({ alg: "HS256" })
+    .setIssuedAt()
     .setExpirationTime("7d")
-    .sign(secret());
+    .sign(secretKey());
 }
 
 export async function createSession(payload: SessionPayload): Promise<string> {
@@ -43,9 +51,18 @@ export async function getSession(): Promise<SessionPayload | null> {
   const token = jar.get(SESSION_COOKIE)?.value;
   if (!token) return null;
   try {
-    const { payload } = await jwtVerify(token, secret());
-    return payload as unknown as SessionPayload;
-  } catch {
+    const { payload } = await jwtVerify(token, secretKey());
+    const role = payload.role;
+    const userId = payload.userId;
+    if (typeof role !== "string" || typeof userId !== "string") return null;
+    return {
+      userId,
+      role: role as UserRole,
+      schoolId: typeof payload.schoolId === "string" ? payload.schoolId : undefined,
+      studentId: typeof payload.studentId === "string" ? payload.studentId : undefined,
+    };
+  } catch (err) {
+    console.error("[auth] session verify failed:", err instanceof Error ? err.message : err);
     return null;
   }
 }
@@ -59,7 +76,10 @@ export async function requireSession(roles?: UserRole[]) {
     where: { id: session.userId },
     include: { coachProfile: true, studentProfile: true },
   });
-  if (!user) return null;
+  if (!user) {
+    console.error("[auth] session user missing from DB:", session.userId);
+    return null;
+  }
 
   return {
     userId: user.id,

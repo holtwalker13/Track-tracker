@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
+import { cookies } from "next/headers";
 import { prisma } from "@/lib/db";
-import { SESSION_COOKIE, sessionCookieOptions } from "@/lib/auth/cookie";
+import { SESSION_COOKIE, sessionCookieOptions, relativeRedirect } from "@/lib/auth/cookie";
 import { signSessionToken } from "@/lib/auth/session";
-import { publicUrl } from "@/lib/auth/public-url";
 
 async function readCredentials(request: Request): Promise<{
   email: string;
@@ -47,23 +47,30 @@ export async function POST(request: Request) {
     if (wantsJson) {
       return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
     }
-    const url = publicUrl(request, "/login");
-    url.searchParams.set("error", "1");
-    return NextResponse.redirect(url);
+    return relativeRedirect("/login?error=1");
   }
 
+  const schoolId = user.coachProfile?.schoolId ?? user.studentProfile?.schoolId;
   const token = await signSessionToken({
     userId: user.id,
     role: user.role as "ADMIN" | "COACH" | "STUDENT",
-    schoolId: user.coachProfile?.schoolId ?? user.studentProfile?.schoolId,
+    schoolId,
     studentId: user.studentProfile?.id,
   });
 
-  const destination = safeNext(next, user.role);
-  const res = wantsJson
-    ? NextResponse.json({ ok: true, redirect: destination })
-    : NextResponse.redirect(publicUrl(request, destination), 303);
+  const opts = sessionCookieOptions();
+  // Set on the cookie store AND the response so the browser always receives Set-Cookie.
+  const jar = await cookies();
+  jar.set(SESSION_COOKIE, token, opts);
 
-  res.cookies.set(SESSION_COOKIE, token, sessionCookieOptions(undefined, request));
+  const destination = safeNext(next, user.role);
+  if (wantsJson) {
+    const res = NextResponse.json({ ok: true, redirect: destination });
+    res.cookies.set(SESSION_COOKIE, token, opts);
+    return res;
+  }
+
+  const res = relativeRedirect(destination, 303);
+  res.cookies.set(SESSION_COOKIE, token, opts);
   return res;
 }

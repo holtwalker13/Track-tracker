@@ -1,12 +1,11 @@
-import { NextResponse } from "next/server";
-import { SESSION_COOKIE, sessionCookieOptions } from "@/lib/auth/cookie";
-import { publicUrl } from "@/lib/auth/public-url";
+import { cookies } from "next/headers";
+import { SESSION_COOKIE, sessionCookieOptions, relativeRedirect } from "@/lib/auth/cookie";
 
-export async function GET(request: Request) {
-  const res = NextResponse.redirect(publicUrl(request, "/login"));
-  res.cookies.set(SESSION_COOKIE, "", {
-    ...sessionCookieOptions(0, request),
-    maxAge: 0,
-  });
+export async function GET() {
+  const opts = { ...sessionCookieOptions(), maxAge: 0 };
+  const jar = await cookies();
+  jar.set(SESSION_COOKIE, "", opts);
+  const res = relativeRedirect("/login", 303);
+  res.cookies.set(SESSION_COOKIE, "", opts);
   return res;
 }

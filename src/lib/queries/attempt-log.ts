@@ -153,6 +153,11 @@ export async function getScholasticAttemptLog(studentId: string): Promise<School
   });
 }
 
+export type LatestResultHistory = {
+  display: string;
+  testingDate: Date;
+};
+
 export type LatestResultItem = {
   activityId: string;
   activityName: string;
@@ -170,6 +175,7 @@ export type LatestResultItem = {
   previousPercentile: number | null;
   percentileDelta: number | null;
   percentileTrend: { label: string; percentile: number }[];
+  history: LatestResultHistory[];
 };
 
 export async function getLatestResultsGrouped(
@@ -288,6 +294,25 @@ export async function getLatestResultsGrouped(
       }
     }
 
+    const priorAttempts = await prisma.performanceResult.findMany({
+      where: {
+        studentId,
+        activityId: r.activityId,
+        status: "COMPLETED",
+        isBestAttempt: true,
+        resultValue: { not: null },
+        testingDate: { lt: r.testingDate },
+      },
+      orderBy: { testingDate: "desc" },
+      take: 3,
+    });
+    const history: LatestResultHistory[] = priorAttempts.map((att) => ({
+      display:
+        att.displayValue ??
+        formatActivityValue(att.resultValue!, r.activity.unit, r.activity.slug),
+      testingDate: att.testingDate,
+    }));
+
     const group = activityDisplayGroup(r.activity.slug, r.activity.category.slug);
 
     grouped[group].push({
@@ -307,6 +332,7 @@ export async function getLatestResultsGrouped(
       previousPercentile,
       percentileDelta,
       percentileTrend,
+      history,
     });
   }
 

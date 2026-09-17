@@ -580,9 +580,49 @@ async function main() {
     }
 
     const ageAtTest = 14 + (12 - Math.min(12, 6 + ageOffset)) + ((studentIndex % 8) - 4) * 0.1;
+    const historyDates = [
+      new Date("2025-09-01"),
+      new Date("2025-12-04"),
+      new Date("2026-03-01"),
+    ];
+    const dirBySlug = new Map(ACTIVITIES.map((a) => [a.slug, a.dir]));
+
     for (const [slug, value] of Object.entries(athlete.marks)) {
       const act = actBySlug.get(slug);
       if (!act) continue;
+      const dir = dirBySlug.get(slug) ?? "HIGHER_BETTER";
+
+      for (const [hi, histDate] of historyDates.entries()) {
+        // Older tests are worse: times slower, jumps/lifts shorter/lighter.
+        const stepsBack = historyDates.length - hi;
+        const histValue =
+          dir === "LOWER_BETTER"
+            ? Number((value * (1 + stepsBack * 0.035)).toFixed(3))
+            : Number((value * (1 - stepsBack * 0.035)).toFixed(2));
+        await prisma.performanceResult.create({
+          data: {
+            studentId: profile.id,
+            activityId: act.id,
+            schoolId: school.id,
+            schoolYearId: schoolYear.id,
+            organizationId: org.id,
+            gradeLevel: athlete.classYear,
+            resultValue: histValue,
+            displayValue: displayFor(slug, act.unit, histValue),
+            attemptNumber: 1,
+            isBestAttempt: true,
+            isPersonalRecord: false,
+            testingDate: histDate,
+            ageAtTest: ageAtTest - (stepsBack * 0.15),
+            weightAtTest: athlete.bodyWeight,
+            enteredById: coachUser?.id,
+            entryMethod: "IMPORT",
+            status: "COMPLETED",
+            notes: "Prior season / mid-year check",
+          },
+        });
+      }
+
       await prisma.performanceResult.create({
         data: {
           studentId: profile.id,

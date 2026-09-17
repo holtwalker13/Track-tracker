@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Card } from "@/components/ui/card";
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("coach1@riverside.demo");
+  const [email, setEmail] = useState("coach1@jhs.demo");
   const [password, setPassword] = useState("password123");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -63,7 +63,7 @@ export default function LoginPage() {
           </button>
         </form>
         <p className="mt-4 text-xs text-muted">
-          Demo: coach1@riverside.demo or any student email from seed (e.g. student29@riverside.demo) — password123
+          Demo: coach1@jhs.demo or student1@jhs.demo — password123
         </p>
       </Card>
     </div>

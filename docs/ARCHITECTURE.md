@@ -2,7 +2,7 @@
 
 ## Overview
 
-Full-stack web application: **Next.js 15 (App Router)** + **TypeScript** + **Prisma** + **SQLite** (development; schema is PostgreSQL-compatible for production).
+Full-stack web application: **Next.js 15 (App Router)** + **TypeScript** + **Prisma** + **PostgreSQL** (Docker Compose locally; Railway Postgres in production).
 
 Product flow: **Measure → Compare → Improve → Compete → Project**.
 

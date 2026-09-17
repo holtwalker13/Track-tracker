@@ -113,8 +113,8 @@ export function AthleteDuel({
         {rightSource === "athlete"
           ? "Athlete comparison"
           : rightSource === "peer"
-            ? "Vs grade average"
-            : "Vs benchmark"}
+            ? "Vs class average"
+            : "Vs KPI target"}
         <span className="mt-1 block font-normal normal-case tracking-normal">Season stats</span>
       </p>
       <div className="mb-6 grid grid-cols-[1fr_1fr] items-start gap-4">

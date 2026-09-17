@@ -7,6 +7,7 @@ import { prisma } from "@/lib/db";
 import { getPreviousBest } from "@/lib/services/results";
 import { LiveTestingGrid } from "@/components/testing/live-grid";
 import { ActivityIcon } from "@/lib/activity-icons";
+import { classYearLabel } from "@/lib/grades";
 import { cn } from "@/lib/utils";
 
 export default async function LiveTestingPage({
@@ -38,7 +39,7 @@ export default async function LiveTestingPage({
   if (!sessionActivity) notFound();
 
   const activity = sessionActivity.activity;
-  const subtitle = `Grade ${testingSession.gradeLevel ?? "—"} · ${testingSession.schoolYear.label}`;
+  const subtitle = `${testingSession.gradeLevel ? classYearLabel(testingSession.gradeLevel) : "All classes"} · ${testingSession.schoolYear.label}`;
 
   const rows = await Promise.all(
     testingSession.students.map(async (ss) => {

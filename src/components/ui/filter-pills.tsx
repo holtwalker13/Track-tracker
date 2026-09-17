@@ -3,7 +3,7 @@
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import { cn } from "@/lib/utils";
-import { GRADE_LEVELS, parseGradesParam } from "@/lib/grades";
+import { DEFAULT_CLASS_YEAR, GRADE_LEVELS, classYearShort, parseGradesParam } from "@/lib/grades";
 
 type Pill = { id: string; label: string };
 
@@ -48,9 +48,9 @@ function GradePillsInner({
     mode === "single"
       ? (() => {
           const raw = searchParams.get("grade") ?? searchParams.get(param);
-          if (!raw) return [7];
+          if (!raw) return [DEFAULT_CLASS_YEAR];
           const n = parseInt(raw.split(",")[0]!, 10);
-          return (GRADE_LEVELS as readonly number[]).includes(n) ? [n] : [7];
+          return (GRADE_LEVELS as readonly number[]).includes(n) ? [n] : [DEFAULT_CLASS_YEAR];
         })()
       : parseGradesParam(searchParams.get(param));
   const allOn = mode === "multi" && selected.length === GRADE_LEVELS.length;
@@ -94,7 +94,7 @@ function GradePillsInner({
   }
 
   return (
-    <div className="flex flex-wrap gap-2" role="group" aria-label="Filter by grade">
+    <div className="flex flex-wrap gap-2" role="group" aria-label="Filter by graduating class">
       {mode === "multi" && (
         <PillButton active={allOn} onClick={onAll}>
           All
@@ -102,7 +102,7 @@ function GradePillsInner({
       )}
       {GRADE_LEVELS.map((g) => (
         <PillButton key={g} active={selected.includes(g)} onClick={() => onGrade(g)}>
-          {mode === "single" ? `G${g}` : g}
+          {classYearShort(g)}
         </PillButton>
       ))}
     </div>
@@ -115,8 +115,8 @@ export function GradePills(props: { param?: string; mode?: "multi" | "single" })
       fallback={
         <div className="flex flex-wrap gap-2">
           {(props.mode === "single"
-            ? GRADE_LEVELS.map((g) => `G${g}`)
-            : ["All", ...GRADE_LEVELS.map(String)]
+            ? GRADE_LEVELS.map((g) => classYearShort(g))
+            : ["All", ...GRADE_LEVELS.map((g) => classYearShort(g))]
           ).map((label) => (
             <span
               key={label}

@@ -1,6 +1,7 @@
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import type { UserRole } from "@/lib/constants";
+import { prisma } from "@/lib/db";
 
 const COOKIE_NAME = "sap_session";
 
@@ -53,5 +54,19 @@ export async function requireSession(roles?: UserRole[]) {
   const session = await getSession();
   if (!session) return null;
   if (roles && !roles.includes(session.role)) return null;
-  return session;
+
+  // Resolve school/student from the live DB so a leftover cookie after a reseed
+  // cannot point at a school that no longer exists (empty roster).
+  const user = await prisma.user.findUnique({
+    where: { id: session.userId },
+    include: { coachProfile: true, studentProfile: true },
+  });
+  if (!user) return null;
+
+  return {
+    userId: user.id,
+    role: user.role as UserRole,
+    schoolId: user.coachProfile?.schoolId ?? user.studentProfile?.schoolId,
+    studentId: user.studentProfile?.id,
+  };
 }

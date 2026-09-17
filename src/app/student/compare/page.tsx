@@ -7,6 +7,7 @@ import { getAthleteCompare } from "@/lib/queries/compare";
 import { AthleteDuel } from "@/components/compare/athlete-duel";
 import { CompareModeToggle, type CompareMode } from "@/components/compare/compare-mode-toggle";
 import { genderFullLabel } from "@/lib/gender";
+import { classYearLabel } from "@/lib/grades";
 
 export default async function StudentComparePage({
   searchParams,
@@ -23,13 +24,13 @@ export default async function StudentComparePage({
 
   const right =
     mode === "peer"
-      ? { name: compare.peerLabel, meta: "Same grade & gender", isBenchmark: true as const }
-      : { name: "Benchmark", meta: "National P50 · synthetic", isBenchmark: true as const };
+      ? { name: compare.peerLabel, meta: "Same class & gender", isBenchmark: true as const }
+      : { name: "KPI target", meta: "100m / 40yd potential band", isBenchmark: true as const };
 
   return (
     <AppShell title="Compare" nav={STUDENT_NAV}>
       <p className="mb-4 text-sm text-muted">
-        Your marks vs the benchmark — or switch to your grade and gender average.
+        Your marks vs the KPI target — or switch to your class and gender average.
       </p>
       <div className="mb-6">
         <CompareModeToggle allowAthlete={false} />
@@ -37,7 +38,7 @@ export default async function StudentComparePage({
       <AthleteDuel
         left={{
           name: compare.student.name,
-          meta: `Grade ${currentGrade} · ${genderFullLabel(student.gender)}`,
+          meta: `${classYearLabel(currentGrade)} · ${genderFullLabel(student.gender)}`,
         }}
         right={right}
         events={compare.events}

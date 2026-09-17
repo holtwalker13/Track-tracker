@@ -13,7 +13,7 @@ function GenderToggleInner({ className }: { className?: string }) {
 
   function select(next: "M" | "F") {
     const params = new URLSearchParams(searchParams.toString());
-    if (next === "M") params.delete("gender");
+    if (next === "F") params.delete("gender");
     else params.set("gender", next);
     const qs = params.toString();
     router.push(qs ? `${pathname}?${qs}` : pathname);
@@ -54,10 +54,10 @@ export function GenderToggle({ className }: { className?: string }) {
     <Suspense
       fallback={
         <div className={cn("mx-auto grid w-full max-w-xs grid-cols-2 rounded-xl bg-[#1a1f28] p-1", className)}>
+          <span className="px-4 py-2.5 text-center text-sm font-bold text-muted">Boys</span>
           <span className="rounded-lg bg-sky-500 px-4 py-2.5 text-center text-sm font-bold text-white">
-            Boys
+            Girls
           </span>
-          <span className="px-4 py-2.5 text-center text-sm font-bold text-muted">Girls</span>
         </div>
       }
     >

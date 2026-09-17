@@ -6,6 +6,7 @@ import { COACH_NAV } from "@/lib/navigation";
 import { requireSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { ActivityIcon } from "@/lib/activity-icons";
+import { classYearLabel } from "@/lib/grades";
 
 export default async function TestingSessionsPage() {
   const session = await requireSession(["COACH", "ADMIN"]);
@@ -28,7 +29,7 @@ export default async function TestingSessionsPage() {
                 <CardTitle>{s.name}</CardTitle>
                 <p className="mt-1 text-sm text-muted">
                   {new Date(s.testingDate).toLocaleDateString()} · {s.schoolYear.label}
-                  {s.gradeLevel ? ` · Grade ${s.gradeLevel}` : ""}
+                  {s.gradeLevel ? ` · ${classYearLabel(s.gradeLevel)}` : ""}
                 </p>
                 <div className="mt-3 flex flex-wrap gap-2">
                   {s.activities.map((a) => (

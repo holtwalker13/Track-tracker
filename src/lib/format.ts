@@ -6,14 +6,22 @@ export function formatActivityValue(
   activitySlug?: string
 ): string {
   if (unit === "inches" && (activitySlug === "standing-broad-jump" || activitySlug === "vertical-jump")) {
+    if (activitySlug === "vertical-jump") {
+      return Number.isInteger(value) ? `${value}"` : `${value.toFixed(1)}"`;
+    }
     const feet = Math.floor(value / 12);
     const inches = Math.round(value % 12);
     if (feet > 0) return `${feet}'${inches}"`;
     return `${Math.round(value)}"`;
   }
-  if (unit === "seconds") return `${value.toFixed(2)} sec`;
+  if (unit === "x BW") return `${value.toFixed(2)}×`;
+  if (unit === "seconds") {
+    const digits =
+      activitySlug?.startsWith("flying-10") || (value > 0 && value < 2) ? 3 : 2;
+    return `${value.toFixed(digits)} s`;
+  }
   if (unit === "reps" || unit === "count") return `${Math.round(value)}`;
-  if (unit === "lb") return `${value.toFixed(1)} lb`;
+  if (unit === "lb") return `${Math.round(value)} lb`;
   if (unit === "in") return `${value.toFixed(1)}"`;
   return `${value} ${unit}`;
 }

@@ -1,7 +1,8 @@
 import { prisma } from "@/lib/db";
 import { formatActivityValue } from "@/lib/format";
+import { classYearLabel } from "@/lib/grades";
 import { genderGroupLabel } from "@/lib/gender";
-import { percentileForResult } from "@/lib/queries/benchmarks";
+import { percentileForResult, getKpiBenchmark } from "@/lib/queries/benchmarks";
 import { activityDisplayGroup, DISPLAY_GROUP_ORDER, type ActivityDisplayGroup } from "@/lib/activity-groups";
 import type { ScoringDirection } from "@/lib/constants";
 import { getStudentContext } from "@/lib/queries/student";
@@ -126,9 +127,7 @@ export async function getAthleteCompare(
       _avg: { resultValue: true },
     });
 
-    const bench = await prisma.benchmarkValue.findFirst({
-      where: { activityId: act.id, gradeLevel: currentGrade, dataset: { isSynthetic: true } },
-    });
+    const bench = await getKpiBenchmark(act.id, gender);
 
     const athleteValue = best?.resultValue ?? null;
     const peerAvg = peerAgg._avg.resultValue ?? null;
@@ -202,7 +201,7 @@ export async function getAthleteCompare(
       studentNumber: student.studentNumber,
       schoolId: student.schoolId,
     },
-    peerLabel: `Grade ${currentGrade} ${genderGroupLabel(gender)} avg`,
+    peerLabel: `${classYearLabel(currentGrade)} ${genderGroupLabel(gender)} avg`,
     opponent: opponentCtx
       ? {
           id: opponentCtx.student.id,

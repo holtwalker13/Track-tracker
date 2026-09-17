@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ChevronDown, Search, X } from "lucide-react";
 import { PlayerAvatar } from "@/components/athletes/player-avatar";
-import { cn } from "@/lib/utils";
+import { classYearShort } from "@/lib/grades";
 
 export type PickerAthlete = {
   id: string;
@@ -25,7 +25,7 @@ function uniqueById(athletes: PickerAthlete[]): PickerAthlete[] {
 }
 
 function labelFor(a: PickerAthlete) {
-  const grade = a.grade != null ? `G${a.grade}` : null;
+  const grade = a.grade != null ? classYearShort(a.grade) : null;
   return [a.name, grade].filter(Boolean).join(" · ");
 }
 
@@ -60,7 +60,7 @@ function Chip({
             active ? "opacity-80" : "text-muted"
           )}
         >
-          {athlete.grade != null ? `G${athlete.grade}` : "—"} · {athlete.studentNumber}
+          {athlete.grade != null ? classYearShort(athlete.grade) : "—"} · {athlete.studentNumber}
         </span>
       </span>
     </button>
@@ -215,7 +215,7 @@ export function AthletePicker({
                   autoFocus
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Search name, grade, or ID"
+                  placeholder="Search name, class, or ID"
                   className="w-full bg-transparent text-sm outline-none"
                 />
               </label>

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import type { GradeBoxScore } from "@/lib/queries/box-score";
 import { genderFullLabel, type AthleteGender } from "@/lib/gender";
+import { classYearLabel } from "@/lib/grades";
 
 export function BoxScoreBoard({
   grades,
@@ -24,7 +25,7 @@ export function BoxScoreBoard({
         <section key={grade.grade}>
           {grades.length > 1 && (
             <h2 className="mb-6 text-center text-xs font-bold uppercase tracking-[0.25em] text-muted">
-              Grade {grade.grade}
+              {classYearLabel(grade.grade)}
               <span className="mx-2 text-card-border">·</span>
               {side}
             </h2>
@@ -58,7 +59,7 @@ export function BoxScoreBoard({
                       const cells = (
                         <>
                           <span className="w-32 shrink-0 truncate font-medium sm:w-40">
-                            {row.name}
+                            {row.fullName}
                           </span>
                           <div
                             className="grid min-w-0 flex-1 gap-2 text-right font-mono text-sm tabular-nums"

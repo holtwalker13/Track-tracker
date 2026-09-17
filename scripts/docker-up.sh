@@ -2,8 +2,6 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-echo "Stopping old stack and removing volumes (fixes broken prisma mount from earlier images)..."
-docker compose down -v 2>/dev/null || true
-
-echo "Building and starting (logs will stream below)..."
+echo "Building and starting Track Tracker (SQLite lives in the sap-db Docker volume)..."
+echo "Open http://localhost:3000 when Ready. Stop any npm run dev on port 3000 first."
 docker compose up --build

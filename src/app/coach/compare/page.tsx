@@ -9,7 +9,7 @@ import { AthletePicker } from "@/components/compare/athlete-picker";
 import { CompareModeToggle, type CompareMode } from "@/components/compare/compare-mode-toggle";
 import { GradePills } from "@/components/ui/filter-pills";
 import { GenderToggle } from "@/components/ui/gender-toggle";
-import { gradesFromSearch } from "@/lib/grades";
+import { classYearLabel, gradesFromSearch } from "@/lib/grades";
 import { parseGenderParam, genderFullLabel } from "@/lib/gender";
 import { listStudents } from "@/lib/queries/coach";
 
@@ -76,24 +76,24 @@ export default async function ComparePage({
     mode === "athlete" && compare?.opponent
       ? {
           name: compare.opponent.name,
-          meta: `Grade ${compare.opponent.grade} · ${genderFullLabel(compare.opponent.gender)}`,
+          meta: `${classYearLabel(compare.opponent.grade)} · ${genderFullLabel(compare.opponent.gender)}`,
         }
       : mode === "peer"
         ? {
-            name: compare?.peerLabel ?? "Grade avg",
-            meta: "Same grade & gender",
+            name: compare?.peerLabel ?? "Class avg",
+            meta: "Same class & gender",
             isBenchmark: true,
           }
         : {
-            name: "Benchmark",
-            meta: "National P50 · synthetic",
+            name: "KPI target",
+            meta: "100m / 40yd potential band",
             isBenchmark: true,
           };
 
   return (
     <AppShell title="Compare" nav={COACH_NAV}>
       <p className="mb-4 text-sm text-muted">
-        One athlete vs benchmark by default — or flip to grade average or another athlete.
+        One athlete vs the mid KPI band by default — or flip to class average or another athlete.
       </p>
 
       <div className="mb-6 space-y-4">
@@ -126,7 +126,7 @@ export default async function ComparePage({
         <AthleteDuel
           left={{
             name: compare.student.name,
-            meta: `Grade ${compare.student.grade} · ${genderFullLabel(compare.student.gender)}`,
+            meta: `${classYearLabel(compare.student.grade)} · ${genderFullLabel(compare.student.gender)}`,
           }}
           right={right}
           events={compare.events}

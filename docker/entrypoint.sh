@@ -9,17 +9,29 @@ if [ ! -f prisma/schema.prisma ]; then
   exit 1
 fi
 
-echo "==> Prisma: applying schema..."
+# SQLite lives on the Docker volume at /data/dev.db (see docker-compose DATABASE_URL).
+echo "==> Prisma: applying schema to /data/dev.db ..."
 npx prisma db push
 
-if [ ! -f /data/.seeded ] || [ "${FORCE_SEED}" = "1" ]; then
-  echo "==> Seeding database (first run can take 1–2 minutes)..."
-  npm run db:seed
-  touch /data/.seeded
-  echo "==> Seed complete."
+SEED_VERSION="jhs-kpi-1"
+if [ -f prisma/seed-version.txt ]; then
+  SEED_VERSION=$(tr -d '[:space:]' < prisma/seed-version.txt)
+fi
+CURRENT_VERSION=""
+if [ -f /data/.seed-version ]; then
+  CURRENT_VERSION=$(tr -d '[:space:]' < /data/.seed-version)
 fi
 
-echo "==> Starting app on http://0.0.0.0:3000 (open http://localhost:3001 on your machine)..."
+if [ "${FORCE_SEED}" = "1" ] || [ "$CURRENT_VERSION" != "$SEED_VERSION" ]; then
+  echo "==> Seeding JHS roster (version $SEED_VERSION; was '${CURRENT_VERSION:-none}')..."
+  npm run db:seed
+  echo "$SEED_VERSION" > /data/.seed-version
+  echo "==> Seed complete."
+else
+  echo "==> Database already seeded ($SEED_VERSION). Set FORCE_SEED=1 to reload CSV data."
+fi
+
+echo "==> Starting app on http://0.0.0.0:3000 (open http://localhost:3000 on your machine)..."
 
 if [ "${APP_MODE}" = "production" ]; then
   npm run build

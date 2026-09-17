@@ -1,52 +1,37 @@
 # Docker troubleshooting
 
-## Symptom: `127.0.0.1:3001 refused to connect`
+The database is **SQLite inside the app container**, stored on the Docker volume `sap-db` at `/data/dev.db`. It is not in git.
 
-Nothing is listening on port 3001. Almost always the **container is not running**.
+Open **http://localhost:3000** (the compose file maps container 3000 → host 3000).
 
-### 1. Start the app (keep this terminal open)
-
-From the repo root (folder with `docker-compose.yml`):
+## Start
 
 ```bash
-git pull origin cursor/student-athletic-platform-601a
-docker compose down -v
 docker compose up --build
 ```
 
-Wait until logs show **Ready** or `Starting app on http://0.0.0.0:3000`.  
-First seed can take **1–2 minutes**.
+Wait for `Seed complete` / `Ready`. First seed can take a minute.
 
-Open: **http://localhost:3001**
+## Roster shows 0 athletes
 
-### 2. Check container state
+Usually one of:
 
-In a **second** terminal:
+1. **Host Next.js on :3000, not Docker.** Stop `npm run dev`, then `docker compose up --build`.
+2. **Old volume** from before the JHS seed. Either:
+   ```bash
+   FORCE_SEED=1 docker compose up --build
+   ```
+   or wipe it:
+   ```bash
+   docker compose down -v
+   docker compose up --build
+   ```
+3. **Stale login cookie** from a previous seed. Sign out and log in as `coach1@jhs.demo` / `password123`.
 
-```bash
-docker compose ps -a
-```
+## Port already allocated
 
-| STATE | Meaning |
-|--------|---------|
-| `Up` | Good — if browser still fails, try `curl http://localhost:3001/login` |
-| `Exited (1)` | App crashed — run `docker compose logs --tail 100 app` |
+Something else (often `npm run dev`) is using 3000. Stop it, or change the left side of `"3000:3000"` in `docker-compose.yml`.
 
-### 3. Common failures
+## `schema.prisma` not found
 
-| Log message | Fix |
-|-------------|-----|
-| `schema.prisma` not found | Old volume mounted on `/app/prisma` — `docker compose down -v` and pull latest |
-| `Cannot find module` / build errors | Pull latest (needs `tsconfig.json`, `next.config.ts`) |
-| Port already allocated | Change `3001:3000` to `3002:3000` in `docker-compose.yml` |
-
-### 4. Without Docker (fallback)
-
-```bash
-npm install
-cp .env.example .env
-npx prisma db push && npm run db:seed
-npm run dev
-```
-
-Then open **http://localhost:3000**.
+An old volume was mounted over `/app/prisma`. `docker compose down -v` and start again.

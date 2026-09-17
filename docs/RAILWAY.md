@@ -1,55 +1,51 @@
-# Deploy Track Tracker on Railway
+# Deploy Track Tracker on Railway (Postgres)
 
-This VM cannot log into your Railway account. After the GitHub branch is pushed, you connect the repo in the Railway dashboard (about 5 minutes).
+This environment cannot log into your Railway account. After the GitHub branch is pushed, add **Railway PostgreSQL** in the dashboard and point the app at it.
 
 **Do not deploy `main`.** That branch is still a README-only placeholder. Deploy branch **`cursor/railway-deploy-efe1`**.
 
-The app keeps **SQLite** (same as local Docker). Add a Railway volume so the database survives redeploys. Do not add a Postgres plugin unless you also change Prisma.
+Prisma is **PostgreSQL**. Railway’s Postgres plugin is the database — you do **not** need a volume or a `file:` SQLite URL.
 
 ## 1. New project from GitHub
 
 1. Open [railway.app](https://railway.app) and sign in.
 2. **New Project** → **Deploy from GitHub repo**.
 3. Authorize GitHub if prompted, then select **`holtwalker13/Track-tracker`**.
-4. Open the new service → **Settings** → **Source**.
+4. Open the app service → **Settings** → **Source**.
 5. Set **Branch** to `cursor/railway-deploy-efe1` (not `main`).
-6. Trigger a deploy if it started from `main` first.
 
-## 2. Persistent volume (required)
+## 2. Add PostgreSQL (manual, required)
 
-SQLite is a file. Without a volume, every deploy wipes the roster.
+On the same project canvas:
 
-1. In the service, click **New** / **Volume** (or Settings → Volumes).
-2. **Mount path:** `/data`
-3. Keep the volume in the **same region** as the service.
+1. **+ New** → **Database** → **PostgreSQL**.
+2. Wait until the database is **Running**.
+3. Open the **app** service → **Variables**.
+4. **Add a variable reference** (or “Shared variable”) from the Postgres service:
+   - Name on the app: `DATABASE_URL`
+   - Value: the Postgres plugin’s `DATABASE_URL` (not `DATABASE_PUBLIC_URL` unless private networking fails)
+5. Confirm the app `DATABASE_URL` starts with `postgresql://` or `postgres://`.
 
-`DATABASE_URL` must be `file:/data/dev.db` so Prisma writes onto that volume.
+If a previous attempt set `DATABASE_URL=file:/data/dev.db`, delete that variable. Remove any **Volume** on the app; Postgres does not use `/data`.
 
-## 3. Variables
-
-Service → **Variables**. Add:
+## 3. Other app variables
 
 | Name | Value |
 |------|--------|
-| `DATABASE_URL` | `file:/data/dev.db` |
 | `SESSION_SECRET` | a long random string (16+ chars) |
 | `APP_MODE` | `production` |
-
-Generate a secret:
 
 ```bash
 openssl rand -base64 32
 ```
 
-Optional: `FORCE_SEED=1` for one deploy if you need to reload CSV data (this **wipes** existing results, then unset it).
-
-Do **not** create a Railway Postgres plugin and copy its `DATABASE_URL` — Prisma is still SQLite.
+Optional: `FORCE_SEED=1` for **one** deploy to wipe and reload CSV data, then unset it. First boot seeds automatically when the database has no users.
 
 ## 4. Public URL
 
 Settings → **Networking** → **Generate domain**.
 
-First boot runs `prisma db push` and seeds ~336 athletes. Wait until the deploy is **Active** and the healthcheck on `/login` passes (up to a few minutes).
+Redeploy the app after Postgres and variables are attached. First boot runs `prisma db push` and seeds ~336 athletes (up to a few minutes).
 
 ## 5. Log in
 
@@ -61,9 +57,19 @@ First boot runs `prisma db push` and seeds ~336 athletes. Wait until the deploy 
 ## If deploy fails
 
 - **Wrong branch / empty site:** source branch is `main`. Switch to `cursor/railway-deploy-efe1`.
-- **Crashes on start / SESSION_SECRET:** variable missing or shorter than 16 characters.
-- **Empty roster after redeploy:** volume is not mounted at `/data`, or `DATABASE_URL` is not `file:/data/dev.db`.
-- **Build timeout:** the Dockerfile builds Next.js at image build time; wait for that step. Seed happens at **start**, not build.
-- **Healthcheck failed:** first seed can take a minute. `railway.toml` allows 300s. Check **Deploy Logs** for seed output.
+- **P1001 / can’t reach database:** Postgres is not running, or `DATABASE_URL` is missing / still a `file:` SQLite path. Use a variable **reference** from the Postgres service.
+- **IPv6 / private URL errors:** switch the reference to `DATABASE_PUBLIC_URL` (or the public `DATABASE_URL`) and redeploy.
+- **Crashes on SESSION_SECRET:** variable missing or shorter than 16 characters.
+- **Empty roster after a wipe:** `FORCE_SEED=1` was left on, or seed failed — check **Deploy Logs**.
+- **Healthcheck failed:** first seed can take a minute. `railway.toml` allows 300s.
 
-Local Docker is unchanged: `docker compose up --build` still serves http://localhost:3000 with the `sap-db` volume.
+## Local Docker
+
+Local compose now runs **Postgres + the app** (not SQLite):
+
+```bash
+docker compose down -v
+docker compose up --build
+```
+
+Open http://localhost:3000. Host `npm run dev` should use `DATABASE_URL=postgresql://sap:sap@localhost:5432/sap` from `.env.example` so it hits the same Compose Postgres.

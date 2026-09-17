@@ -2,10 +2,8 @@
 set -e
 
 cd /app
-mkdir -p /data
 
 PORT="${PORT:-3000}"
-export DATABASE_URL="${DATABASE_URL:-file:/data/dev.db}"
 
 if [ ! -f prisma/schema.prisma ]; then
   echo "ERROR: prisma/schema.prisma missing. If you mounted a volume on /app/prisma, remove it."
@@ -18,28 +16,27 @@ if [ -z "$SESSION_SECRET" ] || [ "${#SESSION_SECRET}" -lt 16 ]; then
   exit 1
 fi
 
-# SQLite lives on the volume at /data/dev.db (Docker compose and Railway both mount /data).
-# Do this at start, not pre-deploy — Railway volumes are not mounted during pre-deploy.
-echo "==> Prisma: applying schema (${DATABASE_URL}) ..."
-npx prisma db push
-
-SEED_VERSION="jhs-kpi-1"
-if [ -f prisma/seed-version.txt ]; then
-  SEED_VERSION=$(tr -d '[:space:]' < prisma/seed-version.txt)
-fi
-CURRENT_VERSION=""
-if [ -f /data/.seed-version ]; then
-  CURRENT_VERSION=$(tr -d '[:space:]' < /data/.seed-version)
+if [ -z "$DATABASE_URL" ]; then
+  echo "ERROR: DATABASE_URL is required (Postgres connection string)."
+  echo "Local Docker: docker compose sets it. Railway: add PostgreSQL and reference DATABASE_URL."
+  exit 1
 fi
 
-if [ "${FORCE_SEED}" = "1" ] || [ "$CURRENT_VERSION" != "$SEED_VERSION" ]; then
-  echo "==> Seeding JHS roster (version $SEED_VERSION; was '${CURRENT_VERSION:-none}')..."
-  npm run db:seed
-  echo "$SEED_VERSION" > /data/.seed-version
-  echo "==> Seed complete."
-else
-  echo "==> Database already seeded ($SEED_VERSION). Set FORCE_SEED=1 to reload CSV data."
-fi
+# Schema push + seed run at start (not Railway pre-deploy) so the database is reachable.
+echo "==> Prisma: applying schema ..."
+i=0
+until npx prisma db push --skip-generate; do
+  i=$((i + 1))
+  if [ "$i" -ge 30 ]; then
+    echo "ERROR: prisma db push failed after 30 attempts. Check DATABASE_URL and that Postgres is running."
+    exit 1
+  fi
+  echo "==> Waiting for Postgres ($i/30)..."
+  sleep 2
+done
+
+echo "==> Seeding if empty (FORCE_SEED=${FORCE_SEED:-0})..."
+npm run db:seed
 
 echo "==> Starting app on http://0.0.0.0:${PORT} ..."
 

@@ -5,10 +5,10 @@ Web application for a school to **measure, compare, improve, compete, and projec
 ## Stack
 
 - Next.js 15 (App Router), TypeScript, Tailwind CSS
-- Prisma 5 + **SQLite inside Docker** (`sap-db` volume → `/data/dev.db`)
+- Prisma 5 + **PostgreSQL** (Docker Compose `postgres` service locally; Railway Postgres in production)
 - Real female testing data from the JHS Athletics KPI database; boy data is a same-structure synthetic analog
 
-Git does **not** contain the database. Pulling code never copies students onto localhost. Docker creates and seeds the DB on startup.
+Git does **not** contain the database. Pulling code never copies students onto localhost. Docker creates Postgres and seeds it on startup.
 
 ## Quick start (Docker)
 
@@ -22,13 +22,13 @@ docker compose up --build
 
 Wait until logs show seed complete / Ready, then open **http://localhost:3000**.
 
-The first start (or a seed-version bump) loads the JHS CSV into the Docker volume. Later starts reuse that volume. To reload athlete data after a CSV/seed change:
+The first start loads the JHS CSV when the database has no users. Later starts reuse Postgres. To reload athlete data after a CSV/seed change:
 
 ```bash
 FORCE_SEED=1 docker compose up --build
 ```
 
-To wipe the volume and start clean:
+To wipe Postgres and start clean:
 
 ```bash
 docker compose down -v
@@ -42,7 +42,7 @@ docker compose up --build
 
 ## Why refresh showed 0 athletes
 
-`http://localhost:3000` from `npm run dev` uses a **different** SQLite file (`prisma/dev.db` on your machine) than Docker (`/data/dev.db` in the `sap-db` volume). Docker used to publish **:3001**. If the UI updated but the table was empty, the app was running on the host without a seed.
+`http://localhost:3000` from `npm run dev` is a different process than Docker. Point `.env` at Compose Postgres (`postgresql://sap:sap@localhost:5432/sap`) or stop the host app and use `docker compose up --build`. If you still have an old SQLite-only stack, run `docker compose down -v` once so Postgres can be created.
 
 ## Data
 
@@ -53,21 +53,19 @@ docker compose up --build
 
 ## Deploy on Railway
 
-This repo is set up for Railway (Dockerfile + volume-backed SQLite). Connect the GitHub repo from the Railway dashboard — a token is required to create the project, so the live deploy has to be started while you are signed in there.
+Railway provides a **PostgreSQL** plugin you add next to the app (a few extra clicks). This environment cannot sign into your Railway account, so those clicks happen in the dashboard.
 
 **Deploy branch `cursor/railway-deploy-efe1`, not `main`.** `main` is still an empty placeholder.
 
 1. [railway.app](https://railway.app) → **New Project** → **Deploy from GitHub repo** → `holtwalker13/Track-tracker`.
 2. Service **Settings → Source → Branch** = `cursor/railway-deploy-efe1`.
-3. Add a **Volume** with mount path **`/data`**.
-4. **Variables:**
-   - `DATABASE_URL` = `file:/data/dev.db`
-   - `SESSION_SECRET` = a long random string (`openssl rand -base64 32`)
-   - `APP_MODE` = `production`
-5. **Settings → Networking → Generate domain.**
-6. Wait for the first deploy to seed, then log in as `coach1@jhs.demo` / `password123`.
+3. **+ New → Database → PostgreSQL**. Wait until it is running.
+4. On the **app** service → **Variables** → add a **reference** to the Postgres `DATABASE_URL` (must start with `postgresql://` / `postgres://`, not `file:`).
+5. Also set `SESSION_SECRET` (`openssl rand -base64 32`) and `APP_MODE=production`.
+6. **Settings → Networking → Generate domain.**
+7. Wait for the first deploy to seed, then log in as `coach1@jhs.demo` / `password123`.
 
-Do not add Railway Postgres — Prisma is still SQLite. Full notes: [docs/RAILWAY.md](docs/RAILWAY.md).
+Skip the SQLite volume. If an earlier attempt set `DATABASE_URL=file:/data/dev.db`, delete it. Full notes: [docs/RAILWAY.md](docs/RAILWAY.md).
 
 ## MVP screens
 

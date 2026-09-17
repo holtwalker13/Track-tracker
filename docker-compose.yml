@@ -1,4 +1,22 @@
 services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: sap
+      POSTGRES_PASSWORD: sap
+      POSTGRES_DB: sap
+    ports:
+      # Host npm run dev can use postgresql://sap:sap@localhost:5432/sap
+      - "5432:5432"
+    volumes:
+      - sap-pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sap -d sap"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
   app:
     build:
       context: .
@@ -7,17 +25,16 @@ services:
         # Skip the production Next.js build locally (Railway uses the Dockerfile default).
         APP_MODE: ${APP_MODE:-development}
     ports:
-      # App + SQLite DB run inside this container. Open http://localhost:3000
       - "3000:3000"
     environment:
-      DATABASE_URL: "file:/data/dev.db"
+      DATABASE_URL: "postgresql://sap:sap@postgres:5432/sap"
       SESSION_SECRET: "local-docker-dev-session-secret-min-32-chars"
       FORCE_SEED: "${FORCE_SEED:-0}"
       APP_MODE: "${APP_MODE:-development}"
       PORT: "3000"
-    volumes:
-      # Only persist the SQLite file — do NOT mount over /app/prisma (that hides schema.prisma)
-      - sap-db:/data
+    depends_on:
+      postgres:
+        condition: service_healthy
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/login').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
@@ -27,4 +44,4 @@ services:
       start_period: 120s
 
 volumes:
-  sap-db:
+  sap-pg:

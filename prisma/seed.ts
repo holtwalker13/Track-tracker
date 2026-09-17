@@ -282,6 +282,17 @@ function makeMaleAthletes(females: AthleteRow[]): AthleteRow[] {
 }
 
 async function main() {
+  const existingUsers = await prisma.user.count();
+  if (existingUsers > 0 && process.env.FORCE_SEED !== "1") {
+    console.log(
+      `Skipping seed (${existingUsers} users already present). Set FORCE_SEED=1 to wipe and reload the JHS roster.`
+    );
+    return;
+  }
+  if (existingUsers > 0) {
+    console.log("FORCE_SEED=1: wiping database and reloading JHS roster...");
+  }
+
   await prisma.performanceResult.deleteMany();
   await prisma.studentAchievement.deleteMany();
   await prisma.testingSessionStudent.deleteMany();

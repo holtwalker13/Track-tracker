@@ -55,9 +55,23 @@ model School {
   studentProfiles StudentProfile[]
   testingSessions TestingSession[]
   performanceResults PerformanceResult[]
+  kpiTargets         SchoolKpiTarget[]
 
   @@index([organizationId])
   @@index([districtId])
+}
+
+model SchoolKpiTarget {
+  id         String @id @default(cuid())
+  schoolId   String
+  school     School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  gender     String
+  medal      String
+  metricSlug String
+  target     Float
+
+  @@unique([schoolId, gender, medal, metricSlug])
+  @@index([schoolId, gender])
 }
 
 model SchoolYear {

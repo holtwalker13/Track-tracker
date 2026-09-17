@@ -3,6 +3,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        # Skip the production Next.js build locally (Railway uses the Dockerfile default).
+        APP_MODE: ${APP_MODE:-development}
     ports:
       # App + SQLite DB run inside this container. Open http://localhost:3000
       - "3000:3000"
@@ -11,6 +14,7 @@ services:
       SESSION_SECRET: "local-docker-dev-session-secret-min-32-chars"
       FORCE_SEED: "${FORCE_SEED:-0}"
       APP_MODE: "${APP_MODE:-development}"
+      PORT: "3000"
     volumes:
       # Only persist the SQLite file — do NOT mount over /app/prisma (that hides schema.prisma)
       - sap-db:/data

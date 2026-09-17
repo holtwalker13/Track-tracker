@@ -8,7 +8,9 @@ COPY package.json package-lock.json ./
 RUN npm ci --ignore-scripts
 
 FROM base AS runner
-ENV NODE_ENV=development
+# Railway uses the default (production). Local compose passes development.
+ARG APP_MODE=production
+ENV APP_MODE=$APP_MODE
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV HOSTNAME=0.0.0.0
 ENV PORT=3000
@@ -17,6 +19,8 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 RUN npx prisma generate
+# Build Next.js in the image so Railway does not time out on first boot.
+RUN if [ "$APP_MODE" = "production" ]; then NODE_ENV=production npm run build; fi
 
 COPY docker/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh

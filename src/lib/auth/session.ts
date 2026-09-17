@@ -81,10 +81,23 @@ export async function requireSession(roles?: UserRole[]) {
     return null;
   }
 
+  let schoolId = user.coachProfile?.schoolId ?? user.studentProfile?.schoolId;
+  if (!schoolId && (user.role === "COACH" || user.role === "ADMIN")) {
+    const school = await prisma.school.findFirst({ orderBy: { createdAt: "asc" } });
+    if (school) {
+      await prisma.coachProfile.upsert({
+        where: { userId: user.id },
+        create: { userId: user.id, schoolId: school.id },
+        update: { schoolId: school.id },
+      });
+      schoolId = school.id;
+    }
+  }
+
   return {
     userId: user.id,
     role: user.role as UserRole,
-    schoolId: user.coachProfile?.schoolId ?? user.studentProfile?.schoolId,
+    schoolId,
     studentId: user.studentProfile?.id,
   };
 }

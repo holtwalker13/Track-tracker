@@ -1,31 +1,22 @@
-"use client";
-
-import { Suspense, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 import { Card } from "@/components/ui/card";
+import { loginAction } from "./actions";
 
-function LoginForm() {
-  const searchParams = useSearchParams();
-  const next = searchParams.get("next") ?? "";
-  const urlError = searchParams.get("error");
-  const [email, setEmail] = useState("coach1@jhs.demo");
-  const [password, setPassword] = useState("rekcart");
-
+function LoginForm({ error, next }: { error?: string; next?: string }) {
   return (
     <div className="flex min-h-screen items-center justify-center px-4">
       <Card className="w-full max-w-md">
         <p className="text-xs uppercase tracking-widest text-accent">Measure → Compare → Improve</p>
         <h1 className="mt-2 text-2xl font-bold">Athletic Performance Platform</h1>
         <p className="mt-1 text-sm text-muted">Sign in as coach or student</p>
-        <form method="POST" action="/api/auth/login" className="mt-6 space-y-4">
+        <form action={loginAction} className="mt-6 space-y-4">
           {next ? <input type="hidden" name="next" value={next} /> : null}
           <label className="block text-sm">
             Email
             <input
               name="email"
+              defaultValue="coach1@jhs.demo"
               className="mt-1 w-full rounded-lg border border-card-border bg-background px-3 py-3"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
               autoComplete="email"
             />
           </label>
@@ -34,13 +25,12 @@ function LoginForm() {
             <input
               name="password"
               type="password"
+              defaultValue="rekcart"
               className="mt-1 w-full rounded-lg border border-card-border bg-background px-3 py-3"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
               autoComplete="current-password"
             />
           </label>
-          {urlError && <p className="text-sm text-red-400">Invalid credentials</p>}
+          {error && <p className="text-sm text-red-400">Invalid credentials</p>}
           <button
             type="submit"
             className="w-full rounded-lg bg-accent py-3 font-semibold text-background"
@@ -56,14 +46,19 @@ function LoginForm() {
   );
 }
 
-export default function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string; next?: string }>;
+}) {
+  const sp = await searchParams;
   return (
     <Suspense
       fallback={
         <div className="flex min-h-screen items-center justify-center text-muted">Loading…</div>
       }
     >
-      <LoginForm />
+      <LoginForm error={sp.error} next={sp.next} />
     </Suspense>
   );
 }

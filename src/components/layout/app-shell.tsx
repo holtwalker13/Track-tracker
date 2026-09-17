@@ -35,12 +35,14 @@ export function AppShell({
                 {item.label}
               </Link>
             ))}
-            <Link
-              href="/api/auth/logout"
-              className="rounded-full px-3 py-1.5 text-sm text-muted hover:text-foreground"
-            >
-              Sign out
-            </Link>
+            <form action="/api/auth/logout" method="POST">
+              <button
+                type="submit"
+                className="rounded-full px-3 py-1.5 text-sm text-muted hover:text-foreground"
+              >
+                Sign out
+              </button>
+            </form>
           </nav>
         </div>
       </header>

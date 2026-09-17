@@ -25,13 +25,15 @@ export default async function ClassDetailPage({
   const athletes = await listStudents(session.schoolId, {});
 
   return (
-    <AppShell
-      title={cls.name}
-      subtitle={`${cls.period ? `${cls.period} · ` : ""}${
-        cls.gradeLevel ? classYearLabel(cls.gradeLevel) : "mixed classes"
-      } · athletes can also be in other classes`}
-      nav={COACH_NAV}
-    >
+    <AppShell title="Classes" nav={COACH_NAV}>
+      <div className="mb-6 border-b border-card-border pb-4">
+        <h1 className="text-2xl font-bold tracking-tight">{cls.name}</h1>
+        <p className="mt-1 text-sm text-muted">
+          {cls.period ? `${cls.period} · ` : ""}
+          {cls.gradeLevel ? classYearLabel(cls.gradeLevel) : "mixed classes"}
+          {" · "}athletes can also be in other classes
+        </p>
+      </div>
       <ClassRosterEditor
         classId={cls.id}
         enrolledIds={cls.enrollments.map((e) => e.studentId)}

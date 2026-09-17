@@ -29,12 +29,9 @@ export default async function StudentPerformancePage({
   ]);
 
   return (
-    <AppShell
-      title="My Performance"
-      subtitle={classYearLabel(currentGrade)}
-      nav={STUDENT_NAV}
-    >
-      <section className="mt-2">
+    <AppShell title="My Performance" nav={STUDENT_NAV}>
+      <p className="mb-6 text-sm text-muted">{classYearLabel(currentGrade)}</p>
+      <section>
         <MarksWindowCard window={marksWindow} />
       </section>
 

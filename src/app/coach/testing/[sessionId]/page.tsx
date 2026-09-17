@@ -60,7 +60,11 @@ export default async function LiveTestingPage({
   );
 
   return (
-    <AppShell title={testingSession.name} subtitle={subtitle} nav={COACH_NAV}>
+    <AppShell title="Live testing" nav={COACH_NAV}>
+      <div className="mb-6 border-b border-card-border pb-4">
+        <h1 className="text-2xl font-bold tracking-tight">{testingSession.name}</h1>
+        <p className="mt-1 text-sm text-muted">{subtitle}</p>
+      </div>
       <SessionDateEditor sessionId={sessionId} testingDate={testDay} />
       <div className="mb-4 flex flex-wrap gap-2">
         {testingSession.activities.map((a) => {

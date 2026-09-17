@@ -17,6 +17,8 @@ import { MarksWindowCard } from "@/components/performance/marks-window-card";
 import { ProgressLine } from "@/components/charts/progress-line";
 import { ActivityChartPicker } from "@/components/charts/activity-chart-picker";
 import { classYearLabel, DEFAULT_CLASS_YEAR } from "@/lib/grades";
+import { ProfileBanner } from "@/components/layout/profile-banner";
+import { genderFullLabel } from "@/lib/gender";
 
 export default async function StudentProfilePage({
   params,
@@ -65,14 +67,22 @@ export default async function StudentProfilePage({
   ]);
 
   const classNames = student.classEnrollments.map((e) => e.class.name).join(" · ");
+  const fullName = `${student.firstName} ${student.lastName}`;
+  const meta = [
+    classYearLabel(grade),
+    student.studentNumber,
+    student.gender ? genderFullLabel(student.gender) : null,
+    classNames || null,
+    enrollment?.schoolYear?.label ?? null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
   return (
-    <AppShell
-      title={`${student.firstName} ${student.lastName}`}
-      subtitle={`${classYearLabel(grade)} · ${student.studentNumber}${classNames ? ` · ${classNames}` : ""}`}
-      nav={COACH_NAV}
-    >
-      <div className="mt-6 grid gap-6 lg:grid-cols-2">
+    <AppShell title="Athlete" nav={COACH_NAV}>
+      <ProfileBanner name={fullName} meta={meta} seed={student.id} />
+
+      <div className="grid gap-6 lg:grid-cols-2">
         <SprintPotentialCard potential={sprint} />
         <Card>
           <CardTitle>Athletic profile</CardTitle>

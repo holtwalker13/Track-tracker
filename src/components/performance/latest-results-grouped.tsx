@@ -6,7 +6,6 @@ import {
 import type { LatestResultItem } from "@/lib/queries/attempt-log";
 import { Card, CardTitle } from "@/components/ui/card";
 import { ActivityIcon } from "@/lib/activity-icons";
-import { groupAccent } from "@/lib/sport-theme";
 import { PercentileTierBadge } from "@/components/performance/percentile-tier-badge";
 import { PercentileTicker } from "@/components/performance/percentile-ticker";
 import { PercentileTrendMini } from "@/components/charts/percentile-trend-mini";
@@ -33,7 +32,7 @@ export function LatestResultsGrouped({
         const items = grouped[groupKey];
         if (items.length === 0) return null;
         return (
-          <Card key={groupKey} className={`border-2 ${groupAccent(groupKey)}`}>
+          <Card key={groupKey}>
             <CardTitle>{DISPLAY_GROUP_LABELS[groupKey]}</CardTitle>
             <ul className="mt-4 space-y-4">
               {items.map((item) => (

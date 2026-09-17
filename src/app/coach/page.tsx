@@ -45,7 +45,7 @@ export default async function CoachDashboardPage() {
           </ul>
         </Card>
         <Card>
-          <CardTitle>Grade leaders — vertical jump</CardTitle>
+          <CardTitle>Class leaders — vertical jump</CardTitle>
           <ul className="mt-4 space-y-2">
             {data.topPerformers.map((p, i) => (
               <li key={i} className="flex justify-between">

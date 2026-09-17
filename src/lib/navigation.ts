@@ -27,11 +27,11 @@ export function isNavActive(pathname: string, href: string): boolean {
 
 export const COACH_NAV: NavItem[] = [
   { href: "/coach", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/coach/students", label: "Students", icon: Users },
+  { href: "/coach/students", label: "Roster", icon: Users },
   { href: "/coach/testing", label: "Testing", icon: ClipboardList },
   { href: "/coach/leaderboards", label: "Leaderboards", icon: Trophy },
   { href: "/coach/analytics", label: "Analytics", icon: BarChart3 },
-  { href: "/coach/benchmarks", label: "Benchmarks", icon: Target },
+  { href: "/coach/benchmarks", label: "KPI targets", icon: Target },
   { href: "/coach/compare", label: "Compare", icon: GitCompare },
 ];
 

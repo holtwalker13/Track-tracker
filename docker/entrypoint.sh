@@ -2,28 +2,52 @@
 set -e
 
 cd /app
-mkdir -p /data
+
+PORT="${PORT:-3000}"
 
 if [ ! -f prisma/schema.prisma ]; then
   echo "ERROR: prisma/schema.prisma missing. If you mounted a volume on /app/prisma, remove it."
   exit 1
 fi
 
-echo "==> Prisma: applying schema..."
-npx prisma db push
-
-if [ ! -f /data/.seeded ] || [ "${FORCE_SEED}" = "1" ]; then
-  echo "==> Seeding database (first run can take 1–2 minutes)..."
-  npm run db:seed
-  touch /data/.seeded
-  echo "==> Seed complete."
+if [ -z "$SESSION_SECRET" ] || [ "${#SESSION_SECRET}" -lt 16 ]; then
+  echo "ERROR: SESSION_SECRET must be set to a string of at least 16 characters."
+  echo "On Railway: service → Variables → SESSION_SECRET. Generate with: openssl rand -base64 32"
+  exit 1
 fi
 
-echo "==> Starting app on http://0.0.0.0:3000 (open http://localhost:3001 on your machine)..."
+if [ -z "$DATABASE_URL" ]; then
+  echo "ERROR: DATABASE_URL is required (Postgres connection string)."
+  echo "Local Docker: docker compose sets it. Railway: add PostgreSQL and reference DATABASE_URL."
+  exit 1
+fi
+
+# Schema push + seed run at start (not Railway pre-deploy) so the database is reachable.
+echo "==> Prisma: applying schema ..."
+i=0
+until npx prisma db push --skip-generate; do
+  i=$((i + 1))
+  if [ "$i" -ge 30 ]; then
+    echo "ERROR: prisma db push failed after 30 attempts. Check DATABASE_URL and that Postgres is running."
+    exit 1
+  fi
+  echo "==> Waiting for Postgres ($i/30)..."
+  sleep 2
+done
+
+echo "==> Seeding if empty (FORCE_SEED=${FORCE_SEED:-0})..."
+npm run db:seed
+
+echo "==> Starting app on http://0.0.0.0:${PORT} ..."
 
 if [ "${APP_MODE}" = "production" ]; then
-  npm run build
-  exec npx next start -H 0.0.0.0 -p 3000
+  export NODE_ENV=production
+  if [ ! -d .next ]; then
+    echo "==> No production build in image; running npm run build ..."
+    npm run build
+  fi
+  exec npx next start -H 0.0.0.0 -p "$PORT"
 fi
 
-exec npx next dev -H 0.0.0.0 -p 3000
+export NODE_ENV=development
+exec npx next dev -H 0.0.0.0 -p "$PORT"

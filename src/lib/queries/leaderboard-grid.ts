@@ -3,6 +3,7 @@ import { getLeaderboard } from "./coach";
 import { percentileForResult } from "./benchmarks";
 import type { ScoringDirection } from "@/lib/constants";
 import { activityDisplayGroup, type ActivityDisplayGroup } from "@/lib/activity-groups";
+import { DEFAULT_CLASS_YEAR, isAllGrades } from "@/lib/grades";
 import type { Activity, ActivityCategory } from "@prisma/client";
 
 export const LEADERBOARD_TOP_N = 10;
@@ -32,11 +33,13 @@ export type LeaderboardBoard = {
 export async function getLeaderboardGrid(
   schoolId: string,
   anonymize: boolean,
-  gradeLevel?: number,
-  viewerStudentId?: string
+  gradeLevels?: number[],
+  viewerStudentId?: string,
+  gender?: string
 ) {
   const activities = await getLeaderboardActivities();
-  const grade = gradeLevel ?? 8;
+  const grades = gradeLevels && gradeLevels.length > 0 ? gradeLevels : undefined;
+  const percentileGrade = grades && !isAllGrades(grades) ? grades[0] : DEFAULT_CLASS_YEAR;
 
   const boards: LeaderboardBoard[] = [];
 
@@ -45,7 +48,8 @@ export async function getLeaderboardGrid(
       schoolId,
       act.slug,
       anonymize,
-      gradeLevel
+      grades,
+      gender
     );
 
     const top = entries.slice(0, LEADERBOARD_TOP_N);
@@ -53,7 +57,7 @@ export async function getLeaderboardGrid(
       top.map(async (e) => {
         const pct = await percentileForResult(
           activity.id,
-          grade,
+          percentileGrade,
           e.value,
           activity.scoringDirection as ScoringDirection
         );
@@ -78,5 +82,5 @@ export async function getLeaderboardGrid(
     });
   }
 
-  return { boards, gradeLevel: gradeLevel ?? null };
+  return { boards, gradeLevels: grades ?? null };
 }

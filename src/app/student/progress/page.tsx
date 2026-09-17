@@ -5,7 +5,6 @@ import { STUDENT_NAV } from "@/lib/navigation";
 import { requireSession } from "@/lib/auth/session";
 import { getProgressSeries } from "@/lib/queries/student";
 import { ProgressLine } from "@/components/charts/progress-line";
-import { benchmarkComparisonLabel } from "@/lib/services/benchmarks";
 
 export default async function ProgressPage() {
   const session = await requireSession(["STUDENT"]);
@@ -44,9 +43,8 @@ export default async function ProgressPage() {
           <ProgressLine data={data} unit={activity.unit} />
         </div>
         <p className="mt-4 text-sm text-muted">
-          Dashed line: synthetic benchmark median — {benchmarkComparisonLabel(
-            summary?.percent != null && summary.percent > 15 ? 80 : 55
-          )}
+          Only the current testing cycle is loaded, so this is a snapshot rather than a multi-year
+          trend.
         </p>
       </Card>
     </AppShell>

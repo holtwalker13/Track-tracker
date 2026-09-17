@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { rankResults } from "@/lib/services/leaderboard";
 import type { ScoringDirection } from "@/lib/constants";
+import { GRADE_LEVELS } from "@/lib/grades";
 
 export async function getCoachDashboard(schoolId: string) {
   const currentYear = await prisma.schoolYear.findFirst({
@@ -99,14 +100,22 @@ export async function getCoachDashboard(schoolId: string) {
   };
 }
 
-export async function listStudents(schoolId: string, filters: { grade?: number; search?: string }) {
+export async function listStudents(
+  schoolId: string,
+  filters: { grades?: number[]; search?: string; gender?: string }
+) {
   const currentYear = await prisma.schoolYear.findFirst({
     where: { schoolId, isCurrent: true },
   });
+  const gradeFilter =
+    filters.grades && filters.grades.length > 0 && filters.grades.length < GRADE_LEVELS.length
+      ? { in: filters.grades }
+      : undefined;
 
   const students = await prisma.studentProfile.findMany({
     where: {
       schoolId,
+      ...(filters.gender ? { gender: filters.gender } : {}),
       ...(filters.search
         ? {
             OR: [
@@ -116,10 +125,10 @@ export async function listStudents(schoolId: string, filters: { grade?: number; 
             ],
           }
         : {}),
-      ...(filters.grade && currentYear
+      ...(gradeFilter && currentYear
         ? {
             enrollments: {
-              some: { schoolYearId: currentYear.id, gradeLevel: filters.grade },
+              some: { schoolYearId: currentYear.id, gradeLevel: gradeFilter },
             },
           }
         : {}),
@@ -135,7 +144,7 @@ export async function listStudents(schoolId: string, filters: { grade?: number; 
       },
     },
     orderBy: { lastName: "asc" },
-    take: 200,
+    take: 500,
   });
 
   return students.map((s) => ({
@@ -143,6 +152,7 @@ export async function listStudents(schoolId: string, filters: { grade?: number; 
     name: `${s.firstName} ${s.lastName}`,
     studentNumber: s.studentNumber,
     grade: s.enrollments[0]?.gradeLevel,
+    gender: s.gender,
     testsCompleted: s.performanceResults.length,
     latestTest: s.performanceResults[0]?.testingDate,
     prs: 0,
@@ -153,13 +163,19 @@ export async function getLeaderboard(
   schoolId: string,
   activitySlug: string,
   anonymize: boolean,
-  gradeLevel?: number
+  gradeLevels?: number[],
+  gender?: string
 ) {
   const activity = await prisma.activity.findUniqueOrThrow({ where: { slug: activitySlug } });
   const currentYear = await prisma.schoolYear.findFirst({
     where: { schoolId, isCurrent: true },
   });
   if (!currentYear) return { activity, entries: [] };
+
+  const gradeFilter =
+    gradeLevels && gradeLevels.length > 0 && gradeLevels.length < GRADE_LEVELS.length
+      ? { in: gradeLevels }
+      : undefined;
 
   const results = await prisma.performanceResult.findMany({
     where: {
@@ -169,7 +185,8 @@ export async function getLeaderboard(
       status: "COMPLETED",
       isBestAttempt: true,
       resultValue: { not: null },
-      ...(gradeLevel ? { gradeLevel } : {}),
+      ...(gradeFilter ? { gradeLevel: gradeFilter } : {}),
+      ...(gender ? { student: { gender } } : {}),
     },
     include: { student: true },
   });

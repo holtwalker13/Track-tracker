@@ -5,6 +5,8 @@ import { Card, CardTitle } from "@/components/ui/card";
 import { COACH_NAV } from "@/lib/navigation";
 import { requireSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
+import { ActivityIcon } from "@/lib/activity-icons";
+import { classYearLabel } from "@/lib/grades";
 
 export default async function TestingSessionsPage() {
   const session = await requireSession(["COACH", "ADMIN"]);
@@ -27,11 +29,19 @@ export default async function TestingSessionsPage() {
                 <CardTitle>{s.name}</CardTitle>
                 <p className="mt-1 text-sm text-muted">
                   {new Date(s.testingDate).toLocaleDateString()} · {s.schoolYear.label}
-                  {s.gradeLevel ? ` · Grade ${s.gradeLevel}` : ""}
+                  {s.gradeLevel ? ` · ${classYearLabel(s.gradeLevel)}` : ""}
                 </p>
-                <p className="mt-2 text-xs text-muted">
-                  {s.activities.map((a) => a.activity.name).join(" · ")}
-                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {s.activities.map((a) => (
+                    <span
+                      key={a.id}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-card-border px-2.5 py-1 text-xs"
+                    >
+                      <ActivityIcon slug={a.activity.slug} className="h-3.5 w-3.5" />
+                      {a.activity.name}
+                    </span>
+                  ))}
+                </div>
               </div>
               <div className="flex gap-2">
                 <Link

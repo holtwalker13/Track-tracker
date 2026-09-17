@@ -174,7 +174,7 @@ export type LatestResultItem = {
   group: ActivityDisplayGroup;
   previousPercentile: number | null;
   percentileDelta: number | null;
-  percentileTrend: { label: string; percentile: number }[];
+  percentileTrend: { label: string; percentile: number; display: string }[];
   history: LatestResultHistory[];
 };
 
@@ -277,7 +277,7 @@ export async function getLatestResultsGrouped(
       },
       orderBy: { testingDate: "asc" },
     });
-    const percentileTrend: { label: string; percentile: number }[] = [];
+    const percentileTrend: { label: string; percentile: number; display: string }[] = [];
     for (const att of yearAttempts) {
       if (att.resultValue == null) continue;
       const p = await percentileForResult(
@@ -290,6 +290,9 @@ export async function getLatestResultsGrouped(
         percentileTrend.push({
           label: att.testingDate.toLocaleDateString(undefined, { month: "short", day: "numeric" }),
           percentile: p,
+          display:
+            att.displayValue ??
+            formatActivityValue(att.resultValue, r.activity.unit, r.activity.slug),
         });
       }
     }

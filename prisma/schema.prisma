@@ -127,6 +127,8 @@ model StudentProfile {
   dateOfBirth   DateTime
   gender        String?
   sports        String?
+  // PE = basic tracking; ATHLETE = sports-oriented tracking. Null = unset.
+  participationType String?
   notes         String?
   anonymousId   String
   createdAt     DateTime @default(now())

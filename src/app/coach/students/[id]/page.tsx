@@ -18,6 +18,7 @@ import { ProgressLine } from "@/components/charts/progress-line";
 import { ActivityChartPicker } from "@/components/charts/activity-chart-picker";
 import { classYearLabel, DEFAULT_CLASS_YEAR } from "@/lib/grades";
 import { ProfileBanner } from "@/components/layout/profile-banner";
+import { EditStudentPanel } from "@/components/athletes/edit-student-panel";
 import { genderFullLabel } from "@/lib/gender";
 
 export default async function StudentProfilePage({
@@ -69,18 +70,47 @@ export default async function StudentProfilePage({
   const classNames = student.classEnrollments.map((e) => e.class.name).join(" · ");
   const fullName = `${student.firstName} ${student.lastName}`;
   const meta = [
-    classYearLabel(grade),
     student.studentNumber,
     student.gender ? genderFullLabel(student.gender) : null,
+    student.participationType === "ATHLETE"
+      ? "Student athlete"
+      : student.participationType === "PE"
+        ? "PE student"
+        : null,
     classNames || null,
     enrollment?.schoolYear?.label ?? null,
   ]
     .filter(Boolean)
     .join(" · ");
 
+  const schoolClasses = await prisma.class.findMany({
+    where: { schoolId: session.schoolId },
+    orderBy: [{ period: "asc" }, { name: "asc" }],
+    select: { id: true, name: true, period: true },
+  });
+
   return (
     <AppShell title="Athlete" nav={COACH_NAV}>
-      <ProfileBanner name={fullName} meta={meta} seed={student.id} />
+      <ProfileBanner
+        name={fullName}
+        meta={meta}
+        seed={student.id}
+        sports={student.sports}
+        classLabel={classYearLabel(grade)}
+      />
+
+      <div className="mb-8">
+        <EditStudentPanel
+          studentId={student.id}
+          firstName={student.firstName}
+          lastName={student.lastName}
+          sports={student.sports}
+          participationType={student.participationType}
+          classYear={grade}
+          classes={schoolClasses}
+          enrolledClassIds={student.classEnrollments.map((e) => e.classId)}
+        />
+      </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
         <SprintPotentialCard potential={sprint} />
@@ -110,8 +140,9 @@ export default async function StudentProfilePage({
       </div>
 
       <div className="mt-8">
+        <h2 className="mb-2 text-lg font-semibold">Latest results</h2>
         <p className="mb-3 text-sm text-muted">
-          Latest result per event this school year (one row each). Change vs your previous attempt.
+          Speed, power, and strength in a card grid. Gap callouts vs prior marks stay in Average vs PR above.
         </p>
         <LatestResultsGrouped grouped={latestGrouped} />
       </div>

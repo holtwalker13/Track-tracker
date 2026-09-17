@@ -31,7 +31,7 @@ function safeNext(next: string | undefined, role: string): string {
   if (next && next.startsWith("/") && !next.startsWith("//") && !next.startsWith("/login")) {
     return next;
   }
-  return role === "STUDENT" ? "/student" : "/coach";
+  return role === "STUDENT" ? "/student" : "/coach/leaderboards";
 }
 
 export async function POST(request: Request) {

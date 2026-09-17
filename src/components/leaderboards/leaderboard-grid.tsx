@@ -7,9 +7,11 @@ import type { LeaderboardBoard } from "@/lib/queries/leaderboard-grid";
 export function LeaderboardGrid({
   boards,
   subtitle,
+  athleteHref,
 }: {
   boards: LeaderboardBoard[];
   subtitle?: string;
+  athleteHref?: (studentId: string) => string;
 }) {
   return (
     <div>
@@ -41,6 +43,7 @@ export function LeaderboardGrid({
                       )}
                       percentile={e.percentile}
                       highlight={e.displayName === "You"}
+                      href={athleteHref ? athleteHref(e.studentId) : undefined}
                     />
                   </li>
                 ))}

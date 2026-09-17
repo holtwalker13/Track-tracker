@@ -463,12 +463,33 @@ async function main() {
         schoolId: school.id,
         coachId: coaches[year % coaches.length]!.id,
         name: `Class of ${year}`,
-        period: `Period ${(year % 4) + 1}`,
+        period: null,
         gradeLevel: year,
       },
     });
     classesByYear.set(year, rec.id);
   }
+
+  const hourDefs = [
+    { name: "1st Hour PE", period: "1st Hour" },
+    { name: "2nd Hour Weights", period: "2nd Hour" },
+    { name: "3rd Hour Athletics", period: "3rd Hour" },
+    { name: "4th Hour Speed", period: "4th Hour" },
+    { name: "Fall Semester PE", period: "Fall" },
+    { name: "Spring Semester Athletics", period: "Spring" },
+  ];
+  const hourClasses = await Promise.all(
+    hourDefs.map((def, i) =>
+      prisma.class.create({
+        data: {
+          schoolId: school.id,
+          coachId: coaches[i % coaches.length]!.id,
+          name: def.name,
+          period: def.period,
+        },
+      })
+    )
+  );
 
   const females = loadFemaleAthletes();
   const males = makeMaleAthletes(females);
@@ -514,6 +535,7 @@ async function main() {
       },
     });
 
+    const isAthlete = Boolean(athlete.sports && athlete.sports.trim() && !/^pe\b/i.test(athlete.sports));
     const profile = await prisma.studentProfile.create({
       data: {
         userId: user.id,
@@ -524,6 +546,7 @@ async function main() {
         dateOfBirth: dob,
         gender: athlete.gender,
         sports: athlete.sports,
+        participationType: isAthlete ? "ATHLETE" : studentIndex % 5 === 0 ? "PE" : athlete.sports ? "ATHLETE" : "PE",
         notes: athlete.comments,
         anonymousId: String(2000 + studentIndex),
       },
@@ -543,6 +566,11 @@ async function main() {
         data: { classId, studentId: profile.id },
       });
     }
+
+    const hourClass = hourClasses[studentIndex % hourClasses.length]!;
+    await prisma.classEnrollment.create({
+      data: { classId: hourClass.id, studentId: profile.id },
+    });
 
     const hasMarks = Object.keys(athlete.marks).length > 0;
     if (hasMarks) {

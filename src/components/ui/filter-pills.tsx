@@ -24,8 +24,8 @@ function PillButton({
       className={cn(
         "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium transition",
         active
-          ? "bg-foreground text-background"
-          : "border border-card-border text-muted hover:border-foreground/40 hover:text-foreground"
+          ? "bg-sky-400/20 text-sky-300 ring-1 ring-sky-400/55 shadow-[0_0_14px_rgba(56,189,248,0.45)]"
+          : "border border-card-border text-muted hover:border-sky-400/40 hover:text-sky-200"
       )}
     >
       {children}

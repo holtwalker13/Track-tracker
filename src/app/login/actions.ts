@@ -49,7 +49,7 @@ export async function loginAction(formData: FormData) {
       ? nextRaw
       : user.role === "STUDENT"
         ? "/student"
-        : "/coach";
+        : "/coach/leaderboards";
 
   redirect(next);
 }

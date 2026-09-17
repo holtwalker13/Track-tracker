@@ -12,6 +12,7 @@ ENV NODE_ENV=development
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV HOSTNAME=0.0.0.0
 ENV PORT=3000
+ENV DATABASE_URL="file:/data/dev.db"
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .

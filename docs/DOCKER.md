@@ -39,8 +39,17 @@ docker compose ps -a
 | `schema.prisma` not found | Old volume mounted on `/app/prisma` — `docker compose down -v` and pull latest |
 | `Cannot find module` / build errors | Pull latest (needs `tsconfig.json`, `next.config.ts`) |
 | Port already allocated | Change `3001:3000` to `3002:3000` in `docker-compose.yml` |
+| `URL must start with the protocol file:` | `DATABASE_URL` is not SQLite — set `DATABASE_URL=file:/data/dev.db`. Do not link Railway Postgres for this app. |
 
-### 4. Without Docker (fallback)
+### 4. Railway / hosted Docker
+
+This app uses **SQLite**, not Postgres.
+
+1. Set **`DATABASE_URL`** to `file:/data/dev.db` (or leave unset; the entrypoint defaults to this).
+2. Add a **volume** mounted at `/data` so the database survives redeploys.
+3. Do **not** attach Railway Postgres — it sets `postgres://…` and Prisma will reject it.
+
+### 5. Without Docker (fallback)
 
 ```bash
 npm install

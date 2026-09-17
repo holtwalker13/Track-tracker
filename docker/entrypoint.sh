@@ -22,21 +22,40 @@ if [ -z "$DATABASE_URL" ]; then
   exit 1
 fi
 
-# Schema push + seed run at start (not Railway pre-deploy) so the database is reachable.
-echo "==> Prisma: applying schema ..."
-i=0
-until npx prisma db push --skip-generate; do
-  i=$((i + 1))
-  if [ "$i" -ge 30 ]; then
-    echo "ERROR: prisma db push failed after 30 attempts. Check DATABASE_URL and that Postgres is running."
+case "$DATABASE_URL" in
+  postgres://*|postgresql://*) ;;
+  *)
+    echo "ERROR: DATABASE_URL must be a Postgres URL (postgresql://...)."
+    echo "Got a non-Postgres value. Link Railway PostgreSQL and reference its DATABASE_URL on the app service."
     exit 1
-  fi
-  echo "==> Waiting for Postgres ($i/30)..."
-  sleep 2
-done
+    ;;
+esac
 
-echo "==> Seeding if empty (FORCE_SEED=${FORCE_SEED:-0})..."
-npm run db:seed
+run_db_push() {
+  echo "==> Prisma db push (local/dev only) ..."
+  i=0
+  until npx prisma db push --skip-generate; do
+    i=$((i + 1))
+    if [ "$i" -ge 30 ]; then
+      echo "ERROR: prisma db push failed after 30 attempts. Check DATABASE_URL and that Postgres is running."
+      exit 1
+    fi
+    echo "==> Waiting for Postgres ($i/30)..."
+    sleep 2
+  done
+}
+
+if [ "${APP_MODE}" = "production" ]; then
+  echo "==> Production: connecting to Postgres (schema managed in Railway — no prisma db push)."
+  if [ "${FORCE_SEED}" = "1" ]; then
+    echo "==> FORCE_SEED=1: running seed..."
+    npm run db:seed
+  fi
+else
+  run_db_push
+  echo "==> Seeding if empty (FORCE_SEED=${FORCE_SEED:-0})..."
+  npm run db:seed
+fi
 
 echo "==> Starting app on http://0.0.0.0:${PORT} ..."
 

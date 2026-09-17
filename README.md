@@ -37,8 +37,8 @@ docker compose up --build
 
 | Role | Email | Password |
 |------|--------|----------|
-| Coach | `coach1@jhs.demo` | `password123` |
-| Student (Kendall Leland) | `student1@jhs.demo` | `password123` |
+| Coach | `coach1@jhs.demo` | `rekcart` |
+| Student (Kendall Leland) | `student1@jhs.demo` | `rekcart` |
 
 ## Why refresh showed 0 athletes
 
@@ -63,7 +63,7 @@ Railway provides a **PostgreSQL** plugin you add next to the app (a few extra cl
 4. On the **app** service → **Variables** → add a **reference** to the Postgres `DATABASE_URL` (must start with `postgresql://` / `postgres://`, not `file:`).
 5. Also set `SESSION_SECRET` (`openssl rand -base64 32`) and `APP_MODE=production`.
 6. **Settings → Networking → Generate domain.**
-7. Wait for the first deploy to seed, then log in as `coach1@jhs.demo` / `password123`.
+7. Wait for the first deploy to seed, then log in as `coach1@jhs.demo` / `rekcart`.
 
 Skip the SQLite volume. If an earlier attempt set `DATABASE_URL=file:/data/dev.db`, delete it. Full notes: [docs/RAILWAY.md](docs/RAILWAY.md).
 

@@ -282,10 +282,13 @@ function makeMaleAthletes(females: AthleteRow[]): AthleteRow[] {
 }
 
 async function main() {
+  const DEMO_PASSWORD = "rekcart";
   const existingUsers = await prisma.user.count();
   if (existingUsers > 0 && process.env.FORCE_SEED !== "1") {
+    const hash = await bcrypt.hash(DEMO_PASSWORD, 10);
+    await prisma.user.updateMany({ data: { passwordHash: hash } });
     console.log(
-      `Skipping seed (${existingUsers} users already present). Set FORCE_SEED=1 to wipe and reload the JHS roster.`
+      `Skipping full seed (${existingUsers} users). Demo passwords updated to "${DEMO_PASSWORD}". Set FORCE_SEED=1 to wipe and reload.`
     );
     return;
   }
@@ -316,7 +319,7 @@ async function main() {
   await prisma.organization.deleteMany();
   await prisma.achievement.deleteMany();
 
-  const hash = await bcrypt.hash("password123", 10);
+  const hash = await bcrypt.hash("rekcart", 10);
 
   const org = await prisma.organization.create({
     data: {
@@ -619,8 +622,8 @@ async function main() {
   console.log("School:", school.name);
   console.log("Female athletes:", females.length);
   console.log("Male athletes (synthetic, same structure):", males.length);
-  console.log("Coach login: coach1@jhs.demo / password123");
-  console.log("Sample student:", sampleFemaleEmail, "/ password123");
+  console.log("Coach login: coach1@jhs.demo / rekcart");
+  console.log("Sample student:", sampleFemaleEmail, "/ rekcart");
 }
 
 main()

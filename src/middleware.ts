@@ -1,20 +1,27 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { jwtVerify } from "jose";
+import { decodeJwt, jwtVerify } from "jose";
+import { SESSION_COOKIE } from "@/lib/auth/cookie";
 
-const COOKIE_NAME = "sap_session";
-
-async function getPayload(request: NextRequest) {
-  const token = request.cookies.get(COOKIE_NAME)?.value;
+async function getRole(request: NextRequest): Promise<string | null> {
+  const token = request.cookies.get(SESSION_COOKIE)?.value;
   if (!token) return null;
+
   const secret = process.env.SESSION_SECRET;
-  if (!secret) return null;
+  if (secret) {
+    try {
+      const { payload } = await jwtVerify(token, new TextEncoder().encode(secret));
+      return typeof payload.role === "string" ? payload.role : null;
+    } catch {
+      return null;
+    }
+  }
+
+  // Docker/Railway builds middleware without SESSION_SECRET, so Edge inlining
+  // leaves it empty. Decode for routing only; pages still verify the JWT.
   try {
-    const { payload } = await jwtVerify(
-      token,
-      new TextEncoder().encode(secret)
-    );
-    return payload as { role?: string };
+    const payload = decodeJwt(token);
+    return typeof payload.role === "string" ? payload.role : null;
   } catch {
     return null;
   }
@@ -27,18 +34,18 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const session = await getPayload(request);
-  if (!session?.role) {
+  const role = await getRole(request);
+  if (!role) {
     if (pathname.startsWith("/api/")) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  if (pathname.startsWith("/coach") && session.role !== "COACH" && session.role !== "ADMIN") {
+  if (pathname.startsWith("/coach") && role !== "COACH" && role !== "ADMIN") {
     return NextResponse.redirect(new URL("/student", request.url));
   }
-  if (pathname.startsWith("/student") && session.role !== "STUDENT") {
+  if (pathname.startsWith("/student") && role !== "STUDENT") {
     return NextResponse.redirect(new URL("/coach", request.url));
   }
 

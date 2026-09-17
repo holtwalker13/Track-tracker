@@ -2,8 +2,9 @@ import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import type { UserRole } from "@/lib/constants";
 import { prisma } from "@/lib/db";
+import { SESSION_COOKIE, sessionCookieOptions } from "@/lib/auth/cookie";
 
-const COOKIE_NAME = "sap_session";
+export { SESSION_COOKIE, sessionCookieOptions };
 
 export type SessionPayload = {
   userId: string;
@@ -18,29 +19,28 @@ function secret() {
   return new TextEncoder().encode(s);
 }
 
-export async function createSession(payload: SessionPayload) {
-  const token = await new SignJWT(payload as Record<string, unknown>)
+export async function signSessionToken(payload: SessionPayload): Promise<string> {
+  return new SignJWT(payload as Record<string, unknown>)
     .setProtectedHeader({ alg: "HS256" })
     .setExpirationTime("7d")
     .sign(secret());
+}
+
+export async function createSession(payload: SessionPayload): Promise<string> {
+  const token = await signSessionToken(payload);
   const jar = await cookies();
-  jar.set(COOKIE_NAME, token, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-    maxAge: 60 * 60 * 24 * 7,
-  });
+  jar.set(SESSION_COOKIE, token, sessionCookieOptions());
+  return token;
 }
 
 export async function destroySession() {
   const jar = await cookies();
-  jar.delete(COOKIE_NAME);
+  jar.set(SESSION_COOKIE, "", { ...sessionCookieOptions(), maxAge: 0 });
 }
 
 export async function getSession(): Promise<SessionPayload | null> {
   const jar = await cookies();
-  const token = jar.get(COOKIE_NAME)?.value;
+  const token = jar.get(SESSION_COOKIE)?.value;
   if (!token) return null;
   try {
     const { payload } = await jwtVerify(token, secret());
@@ -55,8 +55,6 @@ export async function requireSession(roles?: UserRole[]) {
   if (!session) return null;
   if (roles && !roles.includes(session.role)) return null;
 
-  // Resolve school/student from the live DB so a leftover cookie after a reseed
-  // cannot point at a school that no longer exists (empty roster).
   const user = await prisma.user.findUnique({
     where: { id: session.userId },
     include: { coachProfile: true, studentProfile: true },

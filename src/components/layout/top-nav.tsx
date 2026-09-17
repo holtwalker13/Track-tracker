@@ -37,7 +37,7 @@ export function TopNav({ items }: { items: NavItem[] }) {
             aria-current={active ? "page" : undefined}
             className={cn(
               linkClassName,
-              active && "bg-card text-foreground ring-1 ring-card-border"
+              active && "bg-accent/15 text-accent ring-1 ring-accent/40"
             )}
           >
             <Icon className="h-5 w-5 shrink-0" aria-hidden />

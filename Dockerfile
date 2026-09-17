@@ -12,11 +12,15 @@ FROM base AS runner
 ARG APP_MODE=production
 ENV APP_MODE=$APP_MODE
 ENV NEXT_TELEMETRY_DISABLED=1
-ENV HOSTNAME=0.0.0.0
+# Do NOT set HOSTNAME=0.0.0.0 — Next uses that for redirects and browsers end up on 0.0.0.0.
+# Bind address is passed only via `next start -H 0.0.0.0` in entrypoint.
 ENV PORT=3000
 # Placeholder only so `prisma generate` / `next build` can parse a Postgres URL.
 # Runtime DATABASE_URL comes from Compose or Railway.
 ENV DATABASE_URL="postgresql://sap:sap@127.0.0.1:5432/sap"
+# Next Edge middleware inlines env at build time. Railway injects build args from service variables.
+ARG SESSION_SECRET=build-time-placeholder-min-32-chars!!
+ENV SESSION_SECRET=$SESSION_SECRET
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .

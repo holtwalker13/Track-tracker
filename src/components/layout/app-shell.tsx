@@ -3,10 +3,12 @@ import { cn } from "@/lib/utils";
 
 export function AppShell({
   title,
+  subtitle,
   nav,
   children,
 }: {
   title: string;
+  subtitle?: string;
   nav: { href: string; label: string }[];
   children: React.ReactNode;
 }) {
@@ -19,6 +21,7 @@ export function AppShell({
               Track Tracker
             </p>
             <h1 className="text-lg font-bold tracking-tight">{title}</h1>
+            {subtitle && <p className="text-sm text-muted">{subtitle}</p>}
           </div>
           <nav className="flex flex-wrap gap-1">
             {nav.map((item) => (
@@ -32,12 +35,14 @@ export function AppShell({
                 {item.label}
               </Link>
             ))}
-            <Link
-              href="/api/auth/logout"
-              className="rounded-full px-3 py-1.5 text-sm text-muted hover:text-foreground"
-            >
-              Sign out
-            </Link>
+            <form action="/api/auth/logout" method="POST">
+              <button
+                type="submit"
+                className="rounded-full px-3 py-1.5 text-sm text-muted hover:text-foreground"
+              >
+                Sign out
+              </button>
+            </form>
           </nav>
         </div>
       </header>

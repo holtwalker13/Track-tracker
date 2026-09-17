@@ -51,8 +51,8 @@ Redeploy the app after Postgres and variables are attached. First boot runs `pri
 
 | Role | Email | Password |
 |------|--------|----------|
-| Coach | `coach1@jhs.demo` | `password123` |
-| Student | `student1@jhs.demo` | `password123` |
+| Coach | `coach1@jhs.demo` | `rekcart` |
+| Student | `student1@jhs.demo` | `rekcart` |
 
 ## If deploy fails
 

@@ -9,6 +9,7 @@ import { LiveTestingGrid } from "@/components/testing/live-grid";
 import { ActivityIcon } from "@/lib/activity-icons";
 import { classYearLabel } from "@/lib/grades";
 import { cn } from "@/lib/utils";
+import { SessionDateEditor } from "@/components/testing/session-date-editor";
 
 export default async function LiveTestingPage({
   params,
@@ -39,7 +40,10 @@ export default async function LiveTestingPage({
   if (!sessionActivity) notFound();
 
   const activity = sessionActivity.activity;
-  const subtitle = `${testingSession.gradeLevel ? classYearLabel(testingSession.gradeLevel) : "All classes"} · ${testingSession.schoolYear.label}`;
+  const testDay = testingSession.testingDate.toISOString().slice(0, 10);
+  const subtitle = `${new Date(testingSession.testingDate).toLocaleDateString()} · ${
+    testingSession.gradeLevel ? classYearLabel(testingSession.gradeLevel) : "All classes"
+  } · ${testingSession.schoolYear.label}`;
 
   const rows = await Promise.all(
     testingSession.students.map(async (ss) => {
@@ -56,7 +60,8 @@ export default async function LiveTestingPage({
   );
 
   return (
-    <AppShell title="Live Testing" nav={COACH_NAV}>
+    <AppShell title={testingSession.name} subtitle={subtitle} nav={COACH_NAV}>
+      <SessionDateEditor sessionId={sessionId} testingDate={testDay} />
       <div className="mb-4 flex flex-wrap gap-2">
         {testingSession.activities.map((a) => {
           const active = a.activity.slug === activitySlug;

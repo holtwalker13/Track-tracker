@@ -1,5 +1,5 @@
 import { formatActivityValue } from "@/lib/format";
-import { KPI_METRIC_META, type SprintPotential } from "@/lib/kpi-targets";
+import { KPI_METRIC_META, MEDAL_LABELS, type SprintPotential } from "@/lib/kpi-targets";
 import { Card, CardTitle } from "@/components/ui/card";
 
 export function SprintPotentialCard({ potential }: { potential: SprintPotential }) {
@@ -7,40 +7,43 @@ export function SprintPotentialCard({ potential }: { potential: SprintPotential 
   if (!matched && bands.every((b) => b.tested === 0)) {
     return (
       <Card>
-        <CardTitle>Sprint KPI potential</CardTitle>
+        <CardTitle>Medal standard</CardTitle>
         <p className="mt-3 text-sm text-muted">
-          No flying-10, jump, lift, or sprint KPIs recorded yet. When those hits are in, they map
-          to a likely 100m / 40-yard time.
+          No flying-10, jump, lift, or sprint KPIs recorded yet. When those are in, they map to
+          Gold / Silver / Bronze for this school.
         </p>
       </Card>
     );
   }
 
+  const medal = matched?.band.medal;
+  const medalClass =
+    medal === "gold"
+      ? "text-sport-gold"
+      : medal === "silver"
+        ? "text-sport-silver"
+        : "text-sport-bronze";
+
   return (
     <Card>
-      <CardTitle>Sprint KPI potential</CardTitle>
+      <CardTitle>Medal standard</CardTitle>
       <p className="mt-2 text-sm text-muted">
-        Hitting these targets is associated with a 100m and 40-yard time — not a guaranteed race
-        result.
+        School training bands — Gold is the top standard, Bronze is the entry standard. Coaches set
+        the numbers for this school.
       </p>
       {matched && (
-        <p className="mt-4 text-2xl font-bold tabular-nums">
-          {matched.band.hundredMeter.toFixed(1)}s{" "}
-          <span className="text-lg font-semibold text-muted">100m</span>
-          <span className="mx-2 text-card-border">·</span>
-          {matched.band.fortyYard.toFixed(2)}s{" "}
-          <span className="text-lg font-semibold text-muted">40yd</span>
+        <p className={`mt-4 text-3xl font-bold ${medalClass}`}>
+          {MEDAL_LABELS[matched.band.medal]}
         </p>
       )}
       {matched && (
         <p className="mt-1 text-sm text-muted">
-          {matched.hits}/{matched.tested} KPIs at the {matched.band.label} standard
+          {matched.hits}/{matched.tested} KPIs at {matched.band.label}
         </p>
       )}
       {next && (
         <p className="mt-1 text-sm text-accent">
-          Next band: {next.band.hundredMeter.toFixed(1)}s 100m / {next.band.fortyYard.toFixed(2)}s
-          40yd ({next.hits}/{next.tested} KPIs there)
+          Next: {next.band.label} ({next.hits}/{next.tested} KPIs there)
         </p>
       )}
 

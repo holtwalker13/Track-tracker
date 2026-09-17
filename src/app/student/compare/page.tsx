@@ -25,12 +25,12 @@ export default async function StudentComparePage({
   const right =
     mode === "peer"
       ? { name: compare.peerLabel, meta: "Same class & gender", isBenchmark: true as const }
-      : { name: "KPI target", meta: "100m / 40yd potential band", isBenchmark: true as const };
+      : { name: "Medal target", meta: "School Silver standard", isBenchmark: true as const };
 
   return (
     <AppShell title="Compare" nav={STUDENT_NAV}>
       <p className="mb-4 text-sm text-muted">
-        Your marks vs the KPI target — or switch to your class and gender average.
+        Your marks vs your school’s Silver medal target — or switch to class and gender average.
       </p>
       <div className="mb-6">
         <CompareModeToggle allowAthlete={false} />

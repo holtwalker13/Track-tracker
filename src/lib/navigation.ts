@@ -4,7 +4,8 @@ export const COACH_NAV = [
   { href: "/coach/testing", label: "Testing" },
   { href: "/coach/leaderboards", label: "Leaderboards" },
   { href: "/coach/analytics", label: "Analytics" },
-  { href: "/coach/benchmarks", label: "KPI targets" },
+  { href: "/coach/benchmarks", label: "Medal targets" },
+  { href: "/coach/classes", label: "Classes" },
   { href: "/coach/compare", label: "Compare" },
 ];
 

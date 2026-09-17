@@ -4,7 +4,9 @@ This environment cannot log into your Railway account. After the GitHub branch i
 
 **Do not deploy `main`.** That branch is still a README-only placeholder. Deploy branch **`cursor/railway-deploy-efe1`**.
 
-Prisma is **PostgreSQL**. Railway’s Postgres plugin is the database — you do **not** need a volume or a `file:` SQLite URL.
+The app uses **PostgreSQL** on Railway (your `DATABASE_URL` should start with `postgresql://`). **Prisma Client** is only the code layer that runs SQL against Postgres — it is not a separate database. You do **not** need SQLite, a `file:` URL, or a volume on the app service.
+
+**Production deploys do not run `prisma db push`.** Your Railway Postgres database is the source of truth; the app connects and reads/writes existing tables.
 
 ## 1. New project from GitHub
 
@@ -45,7 +47,7 @@ Optional: `FORCE_SEED=1` for **one** deploy to wipe and reload CSV data, then un
 
 Settings → **Networking** → **Generate domain**.
 
-Redeploy the app after Postgres and variables are attached. First boot runs `prisma db push` and seeds ~336 athletes (up to a few minutes).
+Redeploy the app after Postgres and variables are attached. First boot does **not** alter schema. Seed only runs if you set `FORCE_SEED=1` (one deploy), or use local Docker dev for initial `db push` + seed.
 
 ## 5. Log in
 

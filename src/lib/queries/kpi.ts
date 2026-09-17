@@ -1,5 +1,4 @@
 import { prisma } from "@/lib/db";
-import type { ScoringDirection } from "@/lib/constants";
 import {
   evaluateSprintPotential,
   type KpiMark,

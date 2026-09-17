@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import type { ScoringDirection } from "@/lib/constants";
 import { percentileForResult } from "./benchmarks";
 import { calculateImprovement } from "@/lib/services/performance";
 import {

@@ -53,7 +53,7 @@ docker compose up --build
 
 ## Deploy on Railway
 
-This repo is set up for Railway (Dockerfile + volume-backed SQLite). **I cannot log into your Railway account from here** — you connect GitHub once in the dashboard.
+This repo is set up for Railway (Dockerfile + volume-backed SQLite). Connect the GitHub repo from the Railway dashboard — a token is required to create the project, so the live deploy has to be started while you are signed in there.
 
 **Deploy branch `cursor/railway-deploy-efe1`, not `main`.** `main` is still an empty placeholder.
 

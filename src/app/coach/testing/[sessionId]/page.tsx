@@ -8,6 +8,7 @@ import { getPreviousBest } from "@/lib/services/results";
 import { LiveTestingGrid } from "@/components/testing/live-grid";
 import { ActivityIcon } from "@/lib/activity-icons";
 import { classYearLabel } from "@/lib/grades";
+import { cn } from "@/lib/utils";
 
 export default async function LiveTestingPage({
   params,

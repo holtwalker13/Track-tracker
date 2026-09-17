@@ -5,6 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ChevronDown, Search, X } from "lucide-react";
 import { PlayerAvatar } from "@/components/athletes/player-avatar";
 import { classYearShort } from "@/lib/grades";
+import { cn } from "@/lib/utils";
 
 export type PickerAthlete = {
   id: string;

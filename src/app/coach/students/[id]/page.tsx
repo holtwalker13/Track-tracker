@@ -17,8 +17,7 @@ import { MarksWindowCard } from "@/components/performance/marks-window-card";
 import { ProgressLine } from "@/components/charts/progress-line";
 import { ActivityChartPicker } from "@/components/charts/activity-chart-picker";
 import { classYearLabel, DEFAULT_CLASS_YEAR } from "@/lib/grades";
-import { ProfileBanner } from "@/components/layout/profile-banner";
-import { EditStudentPanel } from "@/components/athletes/edit-student-panel";
+import { AthleteProfileCard } from "@/components/athletes/athlete-profile-card";
 import { genderFullLabel } from "@/lib/gender";
 
 export default async function StudentProfilePage({
@@ -91,26 +90,23 @@ export default async function StudentProfilePage({
 
   return (
     <AppShell title="Athlete" nav={COACH_NAV}>
-      <ProfileBanner
+      <AthleteProfileCard
         name={fullName}
         meta={meta}
         seed={student.id}
         sports={student.sports}
         classLabel={classYearLabel(grade)}
+        edit={{
+          studentId: student.id,
+          firstName: student.firstName,
+          lastName: student.lastName,
+          sports: student.sports,
+          participationType: student.participationType,
+          classYear: grade,
+          classes: schoolClasses,
+          enrolledClassIds: student.classEnrollments.map((e) => e.classId),
+        }}
       />
-
-      <div className="mb-8">
-        <EditStudentPanel
-          studentId={student.id}
-          firstName={student.firstName}
-          lastName={student.lastName}
-          sports={student.sports}
-          participationType={student.participationType}
-          classYear={grade}
-          classes={schoolClasses}
-          enrolledClassIds={student.classEnrollments.map((e) => e.classId)}
-        />
-      </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
         <SprintPotentialCard potential={sprint} />

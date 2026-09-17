@@ -1,10 +1,36 @@
 "use client";
 
 import Link from "next/link";
-import { LogOut } from "lucide-react";
+import {
+  BarChart3,
+  ClipboardList,
+  GitCompare,
+  Gauge,
+  LayoutDashboard,
+  LineChart,
+  LogOut,
+  Target,
+  TrendingUp,
+  Trophy,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
 import { usePathname } from "next/navigation";
-import { isNavActive, type NavItem } from "@/lib/navigation";
+import { isNavActive, type NavIconKey, type NavItem } from "@/lib/navigation";
 import { cn } from "@/lib/utils";
+
+const NAV_ICONS: Record<NavIconKey, LucideIcon> = {
+  dashboard: LayoutDashboard,
+  users: Users,
+  clipboard: ClipboardList,
+  trophy: Trophy,
+  chart: BarChart3,
+  target: Target,
+  compare: GitCompare,
+  gauge: Gauge,
+  trending: TrendingUp,
+  projection: LineChart,
+};
 
 const linkClassName = cn(
   "flex shrink-0 snap-start flex-col items-center justify-center gap-0.5 rounded-lg px-2.5 py-2",
@@ -28,7 +54,7 @@ export function TopNav({ items }: { items: NavItem[] }) {
       )}
     >
       {items.map((item) => {
-        const Icon = item.icon;
+        const Icon = NAV_ICONS[item.icon];
         const active = isNavActive(pathname, item.href);
         return (
           <Link

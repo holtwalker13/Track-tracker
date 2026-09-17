@@ -3,6 +3,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { STUDENT_NAV } from "@/lib/navigation";
 import { requireSession } from "@/lib/auth/session";
 import { getStudentContext } from "@/lib/queries/student";
+import { classYearLabel } from "@/lib/grades";
 import { getLatestResultsGrouped, getScholasticAttemptLog } from "@/lib/queries/attempt-log";
 import { LatestResultsGrouped } from "@/components/performance/latest-results-grouped";
 import { AttemptSchedule } from "@/components/performance/attempt-schedule";
@@ -21,7 +22,7 @@ export default async function StudentPerformancePage() {
 
   return (
     <AppShell title="My Performance" nav={STUDENT_NAV}>
-      <p className="text-muted">Grade {currentGrade}</p>
+      <p className="text-muted">{classYearLabel(currentGrade)}</p>
 
       <section className="mt-6">
         <h2 className="text-lg font-semibold">Latest results</h2>

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { saveAttemptResults } from "@/lib/services/results";
+import { DEFAULT_CLASS_YEAR } from "@/lib/grades";
 
 export async function POST(request: Request) {
   const session = await getSession();
@@ -42,7 +43,7 @@ export async function POST(request: Request) {
     schoolId: sessionRec.schoolId,
     schoolYearId: sessionRec.schoolYearId,
     organizationId: sessionRec.school.organizationId,
-    gradeLevel: enrollment?.gradeLevel ?? sessionRec.gradeLevel ?? 7,
+    gradeLevel: enrollment?.gradeLevel ?? sessionRec.gradeLevel ?? DEFAULT_CLASS_YEAR,
     testingDate: sessionRec.testingDate,
     attempts: (attempts as (number | null)[]) ?? [],
     status,

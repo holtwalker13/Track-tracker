@@ -6,6 +6,9 @@ import { requireSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { getPreviousBest } from "@/lib/services/results";
 import { LiveTestingGrid } from "@/components/testing/live-grid";
+import { ActivityIcon } from "@/lib/activity-icons";
+import { classYearLabel } from "@/lib/grades";
+import { cn } from "@/lib/utils";
 
 export default async function LiveTestingPage({
   params,
@@ -22,7 +25,7 @@ export default async function LiveTestingPage({
   const testingSession = await prisma.testingSession.findUnique({
     where: { id: sessionId },
     include: {
-      activities: { include: { activity: true }, orderBy: { sortOrder: "asc" } },
+      activities: { include: { activity: { include: { category: true } } }, orderBy: { sortOrder: "asc" } },
       students: { include: { student: true } },
       schoolYear: true,
     },
@@ -36,7 +39,7 @@ export default async function LiveTestingPage({
   if (!sessionActivity) notFound();
 
   const activity = sessionActivity.activity;
-  const subtitle = `Grade ${testingSession.gradeLevel ?? "—"} · ${testingSession.schoolYear.label}`;
+  const subtitle = `${testingSession.gradeLevel ? classYearLabel(testingSession.gradeLevel) : "All classes"} · ${testingSession.schoolYear.label}`;
 
   const rows = await Promise.all(
     testingSession.students.map(async (ss) => {
@@ -55,19 +58,28 @@ export default async function LiveTestingPage({
   return (
     <AppShell title="Live Testing" nav={COACH_NAV}>
       <div className="mb-4 flex flex-wrap gap-2">
-        {testingSession.activities.map((a) => (
-          <Link
-            key={a.id}
-            href={`/coach/testing/${sessionId}?activity=${a.activity.slug}`}
-            className={`rounded-full px-3 py-1 text-sm ${
-              a.activity.slug === activitySlug
-                ? "bg-accent text-background"
-                : "border border-card-border"
-            }`}
-          >
-            {a.activity.name}
-          </Link>
-        ))}
+        {testingSession.activities.map((a) => {
+          const active = a.activity.slug === activitySlug;
+          return (
+            <Link
+              key={a.id}
+              href={`/coach/testing/${sessionId}?activity=${a.activity.slug}`}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium",
+                active
+                  ? "bg-foreground text-background"
+                  : "border border-card-border text-muted hover:text-foreground"
+              )}
+            >
+              <ActivityIcon
+                slug={a.activity.slug}
+                categorySlug={a.activity.category.slug}
+                className="h-4 w-4"
+              />
+              {a.activity.name}
+            </Link>
+          );
+        })}
       </div>
       <LiveTestingGrid
         sessionId={sessionId}

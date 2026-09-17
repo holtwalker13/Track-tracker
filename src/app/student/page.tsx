@@ -11,6 +11,11 @@ import {
 import { RadarProfile } from "@/components/charts/radar-profile";
 import { prisma } from "@/lib/db";
 import { getStudentLeaderboard } from "@/lib/queries/leaderboard-student";
+import { PlayerAvatar } from "@/components/athletes/player-avatar";
+import { genderFullLabel } from "@/lib/gender";
+import { classYearLabel } from "@/lib/grades";
+import { getStudentSprintPotential } from "@/lib/queries/kpi";
+import { SprintPotentialCard } from "@/components/performance/sprint-potential";
 
 export default async function StudentDashboardPage() {
   const session = await requireSession(["STUDENT"]);
@@ -35,7 +40,7 @@ export default async function StudentDashboardPage() {
 
   const schoolId = student.schoolId;
   const ranks = await Promise.all(
-    ["vertical-jump", "pull-ups", "100-meter-dash"].map(async (slug) => {
+    ["vertical-jump", "standing-broad-jump", "40-yard-dash"].map(async (slug) => {
       const lb = await getStudentLeaderboard(
         schoolId,
         slug,
@@ -51,13 +56,26 @@ export default async function StudentDashboardPage() {
     })
   );
 
+  const sprint = await getStudentSprintPotential(studentId);
+
   return (
     <AppShell
       title={`${student.firstName} ${student.lastName}`}
       nav={STUDENT_NAV}
     >
-      <p className="text-muted">Grade {currentGrade}</p>
-      <h2 className="mt-4 text-2xl font-bold">Your athletic performance</h2>
+      <div className="mt-2 flex items-center gap-4">
+        <PlayerAvatar name={`${student.firstName} ${student.lastName}`} size="lg" />
+        <div>
+          <h2 className="text-2xl font-bold">Your athletic performance</h2>
+          <p className="text-muted">
+            {classYearLabel(currentGrade)} · {genderFullLabel(student.gender)}
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-6">
+        <SprintPotentialCard potential={sprint} />
+      </div>
 
       <Card className="mt-6">
         <CardTitle>Category strengths</CardTitle>
@@ -90,7 +108,7 @@ export default async function StudentDashboardPage() {
       </Card>
 
       <Card className="mt-6">
-        <CardTitle>Grade {currentGrade} ranking (anonymous)</CardTitle>
+        <CardTitle>{classYearLabel(currentGrade)} ranking (anonymous)</CardTitle>
         <ul className="mt-4 space-y-2">
           {ranks.map((r) => (
             <li key={r.activity} className="flex justify-between text-sm">

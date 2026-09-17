@@ -22,7 +22,7 @@ export async function getStudentLeaderboard(
       status: "COMPLETED",
       isBestAttempt: true,
       resultValue: { not: null },
-      ...(gradeLevel ? { gradeLevel } : {}),
+      ...(gradeLevel ? { gradeLevel: { in: Array.isArray(gradeLevel) ? gradeLevel : [gradeLevel] } } : {}),
     },
     include: { student: true },
   });

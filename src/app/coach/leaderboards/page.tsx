@@ -4,47 +4,33 @@ import { COACH_NAV } from "@/lib/navigation";
 import { requireSession } from "@/lib/auth/session";
 import { getLeaderboardGrid } from "@/lib/queries/leaderboard-grid";
 import { LeaderboardGrid } from "@/components/leaderboards/leaderboard-grid";
+import { GradePills } from "@/components/ui/filter-pills";
+import { GenderToggle } from "@/components/ui/gender-toggle";
+import { gradesFromSearch, gradesLabel } from "@/lib/grades";
+import { parseGenderParam, genderFullLabel } from "@/lib/gender";
 
 export default async function CoachLeaderboardsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ grade?: string }>;
+  searchParams: Promise<{ grade?: string; grades?: string; gender?: string }>;
 }) {
   const session = await requireSession(["COACH", "ADMIN"]);
   if (!session?.schoolId) redirect("/login");
   const sp = await searchParams;
-  const grade = sp.grade ? parseInt(sp.grade, 10) : undefined;
+  const grades = gradesFromSearch(sp);
+  const gender = parseGenderParam(sp.gender);
 
-  const { boards, gradeLevel } = await getLeaderboardGrid(
-    session.schoolId,
-    false,
-    grade
-  );
+  const { boards } = await getLeaderboardGrid(session.schoolId, false, grades, undefined, gender);
 
   return (
     <AppShell title="Leaderboards" nav={COACH_NAV}>
-      <form className="mb-6 flex flex-wrap gap-3">
-        <select
-          name="grade"
-          defaultValue={sp.grade ?? ""}
-          className="rounded-lg border border-card-border bg-background px-3 py-2"
-        >
-          <option value="">All grades</option>
-          {[6, 7, 8, 9, 10, 11, 12].map((g) => (
-            <option key={g} value={g}>Grade {g}</option>
-          ))}
-        </select>
-        <button type="submit" className="rounded-lg bg-sport-gold px-4 py-2 font-semibold text-background">
-          Apply
-        </button>
-      </form>
+      <div className="mb-6 space-y-4">
+        <GradePills />
+        <GenderToggle />
+      </div>
       <LeaderboardGrid
         boards={boards}
-        subtitle={
-          gradeLevel
-            ? `Top 10 per event · Grade ${gradeLevel} · current school year`
-            : "Top 10 per event · all grades · current school year"
-        }
+        subtitle={`Top 10 per event · ${gradesLabel(grades)} · ${genderFullLabel(gender).toLowerCase()} · current school year`}
       />
     </AppShell>
   );

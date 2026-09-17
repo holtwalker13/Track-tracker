@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -112,6 +112,8 @@ model StudentProfile {
   lastName      String
   dateOfBirth   DateTime
   gender        String?
+  sports        String?
+  notes         String?
   anonymousId   String
   createdAt     DateTime @default(now())
 

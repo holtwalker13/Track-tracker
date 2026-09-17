@@ -38,6 +38,9 @@ done
 echo "==> Seeding if empty (FORCE_SEED=${FORCE_SEED:-0})..."
 npm run db:seed
 
+echo "==> Syncing demo passwords to rekcart (or DEMO_PASSWORD)..."
+npm run db:sync-password
+
 echo "==> Starting app on http://0.0.0.0:${PORT} ..."
 
 if [ "${APP_MODE}" = "production" ]; then

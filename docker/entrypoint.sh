@@ -32,7 +32,7 @@ case "$DATABASE_URL" in
 esac
 
 run_db_push() {
-  echo "==> Prisma db push (local/dev only) ..."
+  echo "==> Prisma db push (sync schema to Postgres) ..."
   i=0
   until npx prisma db push --skip-generate; do
     i=$((i + 1))
@@ -46,7 +46,8 @@ run_db_push() {
 }
 
 if [ "${APP_MODE}" = "production" ]; then
-  echo "==> Production: connecting to Postgres (schema managed in Railway — no prisma db push)."
+  # Keep Railway Postgres in sync with prisma/schema.prisma (additive columns like participationType).
+  run_db_push
   if [ "${FORCE_SEED}" = "1" ]; then
     echo "==> FORCE_SEED=1: running seed..."
     npm run db:seed

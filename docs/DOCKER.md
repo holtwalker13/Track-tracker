@@ -33,7 +33,7 @@ Usually one of:
    docker compose down -v
    docker compose up --build
    ```
-3. **Stale login cookie** from a previous seed. Sign out and log in as `coach1@jhs.demo` / `password123`.
+3. **Stale login cookie** from a previous seed. Sign out and log in as `coach1@jhs.demo` / `rekcart`.
 
 ## Port already allocated
 

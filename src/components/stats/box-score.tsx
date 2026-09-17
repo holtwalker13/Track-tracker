@@ -23,7 +23,7 @@ export function BoxScoreBoard({
     <div className="space-y-12">
       {grades.map((grade) => (
         <section key={grade.grade}>
-          {grades.length > 1 && (
+          {grades.length > 0 && (
             <h2 className="mb-6 text-center text-xs font-bold uppercase tracking-[0.25em] text-muted">
               {classYearLabel(grade.grade)}
               <span className="mx-2 text-card-border">·</span>
@@ -60,6 +60,9 @@ export function BoxScoreBoard({
                         <>
                           <span className="w-32 shrink-0 truncate font-medium sm:w-40">
                             {row.fullName}
+                            <span className="mt-0.5 block text-[11px] font-normal text-muted">
+                              {classYearLabel(grade.grade)}
+                            </span>
                           </span>
                           <div
                             className="grid min-w-0 flex-1 gap-2 text-right font-mono text-sm tabular-nums"

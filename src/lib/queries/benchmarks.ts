@@ -1,7 +1,8 @@
 import { prisma } from "@/lib/db";
 import { calculatePercentile } from "@/lib/services/benchmarks";
 import type { ScoringDirection } from "@/lib/constants";
-import { midKpiBand } from "@/lib/kpi-targets";
+import { getSchoolKpiBands } from "@/lib/queries/kpi";
+import type { KpiMetricSlug } from "@/lib/kpi-targets";
 
 function empiricalFromValues(values: number[], direction: ScoringDirection) {
   const sorted = [...values].sort((a, b) => a - b);
@@ -35,13 +36,24 @@ export async function getPeerBenchmark(
   return empiricalFromValues(values, direction);
 }
 
-export async function getKpiBenchmark(activityId: string, gender?: string | null) {
-  const band = midKpiBand(gender);
+export async function getKpiBenchmark(activityId: string, gender?: string | null, schoolId?: string) {
+  const activity = await prisma.activity.findUnique({
+    where: { id: activityId },
+    select: { slug: true },
+  });
+  if (!activity) return null;
+  const g: "F" | "M" = gender === "M" ? "M" : "F";
+  if (schoolId) {
+    const bands = await getSchoolKpiBands(schoolId, g);
+    const silver = bands.find((b) => b.medal === "silver");
+    const p50 = silver?.targets[activity.slug as KpiMetricSlug];
+    if (p50 != null) return { p50, p25: p50, p75: p50, p90: p50 };
+  }
   return prisma.benchmarkValue.findFirst({
     where: {
       activityId,
-      gender: gender === "M" ? "M" : "F",
-      dataset: { name: { contains: band.hundredMeter.toFixed(1) } },
+      gender: g,
+      dataset: { name: { contains: "Silver" } },
     },
     include: { dataset: true },
   });

@@ -171,3 +171,47 @@ export async function getProgressSeries(studentId: string, activitySlug: string)
 
   return { activity, data, summary };
 }
+
+export async function getProgressByTestDate(studentId: string, activitySlug: string) {
+  const activity = await prisma.activity.findUnique({ where: { slug: activitySlug } });
+  if (!activity) return null;
+
+  const results = await prisma.performanceResult.findMany({
+    where: {
+      studentId,
+      activityId: activity.id,
+      status: "COMPLETED",
+      isBestAttempt: true,
+      resultValue: { not: null },
+    },
+    orderBy: { testingDate: "asc" },
+  });
+
+  const byDay = new Map<string, number>();
+  for (const r of results) {
+    if (r.resultValue == null) continue;
+    byDay.set(r.testingDate.toISOString().slice(0, 10), r.resultValue);
+  }
+
+  const data = [...byDay.entries()].map(([day, value]) => ({
+    label: new Date(`${day}T12:00:00`).toLocaleDateString(undefined, {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    }),
+    value,
+  }));
+
+  const first = data[0]?.value;
+  const last = data[data.length - 1]?.value;
+  let summary = null;
+  if (first != null && last != null) {
+    summary = calculateImprovement(
+      last,
+      first,
+      activity.scoringDirection as ScoringDirection
+    );
+  }
+
+  return { activity, data, summary };
+}

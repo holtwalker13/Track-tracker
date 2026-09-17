@@ -15,7 +15,7 @@ function CompareModeInner({ allowAthlete }: { allowAthlete: boolean }) {
     raw === "peer" || (allowAthlete && raw === "athlete") ? raw : "benchmark";
 
   const options: { id: CompareMode; label: string }[] = [
-    { id: "benchmark", label: "KPI target" },
+    { id: "benchmark", label: "Medal target" },
     { id: "peer", label: "Class avg" },
     ...(allowAthlete ? [{ id: "athlete" as const, label: "Athlete" }] : []),
   ];
@@ -24,7 +24,10 @@ function CompareModeInner({ allowAthlete }: { allowAthlete: boolean }) {
     const params = new URLSearchParams(searchParams.toString());
     if (next === "benchmark") params.delete("vs");
     else params.set("vs", next);
-    if (next !== "athlete") params.delete("b");
+    if (next !== "athlete") {
+      params.delete("b");
+      params.delete("ids");
+    }
     const qs = params.toString();
     router.push(qs ? `${pathname}?${qs}` : pathname);
   }

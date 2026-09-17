@@ -9,7 +9,8 @@ export type NavIconKey =
   | "compare"
   | "gauge"
   | "trending"
-  | "projection";
+  | "projection"
+  | "classes";
 
 export type NavItem = {
   href: string;
@@ -25,13 +26,14 @@ export function isNavActive(pathname: string, href: string): boolean {
 }
 
 export const COACH_NAV: NavItem[] = [
-  { href: "/coach", label: "Dashboard", icon: "dashboard" },
+  { href: "/coach/leaderboards", label: "Leaderboards", icon: "trophy" },
   { href: "/coach/students", label: "Roster", icon: "users" },
   { href: "/coach/testing", label: "Testing", icon: "clipboard" },
-  { href: "/coach/leaderboards", label: "Leaderboards", icon: "trophy" },
+  { href: "/coach/classes", label: "Classes", icon: "classes" },
   { href: "/coach/analytics", label: "Analytics", icon: "chart" },
   { href: "/coach/benchmarks", label: "KPI targets", icon: "target" },
   { href: "/coach/compare", label: "Compare", icon: "compare" },
+  { href: "/coach", label: "Dashboard", icon: "dashboard" },
 ];
 
 export const STUDENT_NAV: NavItem[] = [

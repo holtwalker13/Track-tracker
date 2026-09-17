@@ -7,20 +7,30 @@ import { prisma } from "@/lib/db";
 import { getCategoryRadar } from "@/lib/queries/student";
 import { getLatestResultsGrouped, getScholasticAttemptLog } from "@/lib/queries/attempt-log";
 import { getStudentSprintPotential } from "@/lib/queries/kpi";
+import { getStudentMarksWindow } from "@/lib/queries/marks-window";
+import { getProgressByTestDate } from "@/lib/queries/student";
 import { RadarProfile } from "@/components/charts/radar-profile";
 import { LatestResultsGrouped } from "@/components/performance/latest-results-grouped";
 import { AttemptSchedule } from "@/components/performance/attempt-schedule";
 import { SprintPotentialCard } from "@/components/performance/sprint-potential";
+import { MarksWindowCard } from "@/components/performance/marks-window-card";
+import { ProgressLine } from "@/components/charts/progress-line";
+import { ActivityChartPicker } from "@/components/charts/activity-chart-picker";
 import { classYearLabel, DEFAULT_CLASS_YEAR } from "@/lib/grades";
+import { ProfileBanner } from "@/components/layout/profile-banner";
+import { genderFullLabel } from "@/lib/gender";
 
 export default async function StudentProfilePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ from?: string; to?: string; activity?: string }>;
 }) {
   const session = await requireSession(["COACH", "ADMIN"]);
   if (!session?.schoolId) redirect("/login");
   const { id } = await params;
+  const sp = await searchParams;
 
   const student = await prisma.studentProfile.findUnique({
     where: { id },
@@ -29,6 +39,7 @@ export default async function StudentProfilePage({
         where: { schoolYear: { isCurrent: true } },
         include: { schoolYear: true },
       },
+      classEnrollments: { include: { class: true } },
     },
   });
   if (!student || student.schoolId !== session.schoolId) notFound();
@@ -37,27 +48,65 @@ export default async function StudentProfilePage({
   const grade = enrollment?.gradeLevel ?? DEFAULT_CLASS_YEAR;
   const schoolYearId = enrollment?.schoolYearId;
 
-  const [radar, latestGrouped, attemptLog, sprint] = await Promise.all([
+  const catalog = await prisma.activity.findMany({
+    where: { slug: { notIn: ["height", "weight"] } },
+    orderBy: { name: "asc" },
+    select: { slug: true, name: true },
+  });
+  const activitySlug = catalog.some((a) => a.slug === sp.activity)
+    ? sp.activity!
+    : "vertical-jump";
+
+  const [radar, latestGrouped, attemptLog, sprint, marksWindow, progress] = await Promise.all([
     getCategoryRadar(id, grade),
     getLatestResultsGrouped(id, schoolYearId),
     getScholasticAttemptLog(id),
     getStudentSprintPotential(id),
+    getStudentMarksWindow(id, sp.from, sp.to),
+    getProgressByTestDate(id, activitySlug),
   ]);
 
-  return (
-    <AppShell title={`${student.firstName} ${student.lastName}`} nav={COACH_NAV}>
-      <p className="text-muted">
-        {classYearLabel(grade)} · {student.studentNumber}
-        {student.sports ? ` · ${student.sports}` : ""}
-        {enrollment?.schoolYear && ` · ${enrollment.schoolYear.label}`}
-      </p>
+  const classNames = student.classEnrollments.map((e) => e.class.name).join(" · ");
+  const fullName = `${student.firstName} ${student.lastName}`;
+  const meta = [
+    classYearLabel(grade),
+    student.studentNumber,
+    student.gender ? genderFullLabel(student.gender) : null,
+    classNames || null,
+    enrollment?.schoolYear?.label ?? null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-2">
+  return (
+    <AppShell title="Athlete" nav={COACH_NAV}>
+      <ProfileBanner name={fullName} meta={meta} seed={student.id} />
+
+      <div className="grid gap-6 lg:grid-cols-2">
         <SprintPotentialCard potential={sprint} />
         <Card>
           <CardTitle>Athletic profile</CardTitle>
           <RadarProfile data={radar} />
         </Card>
+      </div>
+
+      <div className="mt-8">
+        <MarksWindowCard window={marksWindow} />
+      </div>
+
+      <div className="mt-8">
+        <h2 className="mb-2 text-lg font-semibold">Progress by test date</h2>
+        <ActivityChartPicker activities={catalog} selected={activitySlug} />
+        {progress && progress.data.length > 0 ? (
+          <Card>
+            <CardTitle>{progress.activity.name}</CardTitle>
+            <div className="mt-4">
+              <ProgressLine data={progress.data} unit={progress.activity.unit} />
+            </div>
+          </Card>
+        ) : (
+          <p className="text-sm text-muted">No dated tests for this event yet.</p>
+        )}
       </div>
 
       <div className="mt-8">

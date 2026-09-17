@@ -57,6 +57,9 @@ else
   npm run db:seed
 fi
 
+echo "==> Syncing demo passwords to rekcart (or DEMO_PASSWORD)..."
+npm run db:sync-password
+
 echo "==> Starting app on http://0.0.0.0:${PORT} ..."
 
 if [ "${APP_MODE}" = "production" ]; then

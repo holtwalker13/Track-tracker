@@ -50,13 +50,15 @@ export async function POST(request: Request) {
     return relativeRedirect("/login?error=1");
   }
 
+  const schoolId = user.coachProfile?.schoolId ?? user.studentProfile?.schoolId;
   const token = await signSessionToken({
     userId: user.id,
     role: user.role as "ADMIN" | "COACH" | "STUDENT",
-    schoolId: user.coachProfile?.schoolId ?? user.studentProfile?.schoolId,
+    schoolId,
     studentId: user.studentProfile?.id,
   });
 
+  // Set on the cookie store AND the response so the browser always receives Set-Cookie.
   const opts = sessionCookieOptions();
   const jar = await cookies();
   jar.set(SESSION_COOKIE, token, opts);

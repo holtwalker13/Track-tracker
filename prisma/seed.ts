@@ -282,10 +282,13 @@ function makeMaleAthletes(females: AthleteRow[]): AthleteRow[] {
 }
 
 async function main() {
+  const DEMO_PASSWORD = "rekcart";
   const existingUsers = await prisma.user.count();
   if (existingUsers > 0 && process.env.FORCE_SEED !== "1") {
+    const hash = await bcrypt.hash(DEMO_PASSWORD, 10);
+    await prisma.user.updateMany({ data: { passwordHash: hash } });
     console.log(
-      `Skipping seed (${existingUsers} users already present). Set FORCE_SEED=1 to wipe and reload the JHS roster.`
+      `Skipping full seed (${existingUsers} users). Demo passwords updated to "${DEMO_PASSWORD}". Set FORCE_SEED=1 to wipe and reload.`
     );
     return;
   }
@@ -293,6 +296,7 @@ async function main() {
     console.log("FORCE_SEED=1: wiping database and reloading JHS roster...");
   }
 
+  await prisma.schoolKpiTarget.deleteMany();
   await prisma.performanceResult.deleteMany();
   await prisma.studentAchievement.deleteMany();
   await prisma.testingSessionStudent.deleteMany();
@@ -315,7 +319,7 @@ async function main() {
   await prisma.organization.deleteMany();
   await prisma.achievement.deleteMany();
 
-  const hash = await bcrypt.hash("password123", 10);
+  const hash = await bcrypt.hash("rekcart", 10);
 
   const org = await prisma.organization.create({
     data: {
@@ -336,6 +340,18 @@ async function main() {
       districtId: district.id,
       name: "Jackson High School",
     },
+  });
+
+  await prisma.schoolKpiTarget.createMany({
+    data: ALL_KPI_BANDS.flatMap((band) =>
+      KPI_METRIC_META.map((meta) => ({
+        schoolId: school.id,
+        gender: band.gender,
+        medal: band.medal,
+        metricSlug: meta.slug,
+        target: band.targets[meta.slug],
+      }))
+    ),
   });
 
   const schoolYear = await prisma.schoolYear.create({
@@ -378,7 +394,7 @@ async function main() {
   for (const band of ALL_KPI_BANDS) {
     const dataset = await prisma.benchmarkDataset.create({
       data: {
-        name: `${band.label} / ${band.fortyYard.toFixed(2)}s 40yd`,
+        name: band.label,
         sourceName:
           band.gender === "F"
             ? "JHS Athletics KPI Database — Female"
@@ -388,8 +404,8 @@ async function main() {
         geographicRegion: "JHS",
         methodologyNotes:
           band.gender === "F"
-            ? "If an athlete hits these KPIs they can likely run this 100m / 40-yard time. Flying 10m for the 13.0s band uses 1.188s (interpolated); the source sheet listed 1.879s, which was slower than the 13.5s target."
-            : "No boy KPI sheet was provided. Targets keep the same structure as the female key, scaled to typical high-school male sprint/power standards.",
+            ? "JHS default Gold/Silver/Bronze KPI marks. Schools can override these on the Medal targets page."
+            : "Synthetic male analog of the JHS female KPI key. Schools can override these on the Medal targets page.",
         isSynthetic: band.gender === "M",
       },
     });
@@ -571,12 +587,43 @@ async function main() {
     }
   }
 
+  const extraClasses = await Promise.all([
+    prisma.class.create({
+      data: {
+        schoolId: school.id,
+        coachId: coaches[0]!.id,
+        name: "Varsity Weights",
+        period: "Period 2",
+      },
+    }),
+    prisma.class.create({
+      data: {
+        schoolId: school.id,
+        coachId: coaches[1]!.id,
+        name: "Speed Development",
+        period: "Period 4",
+      },
+    }),
+  ]);
+  const allProfiles = await prisma.studentProfile.findMany({
+    where: { schoolId: school.id },
+    select: { id: true },
+    orderBy: { lastName: "asc" },
+  });
+  await prisma.classEnrollment.createMany({
+    data: [
+      ...allProfiles.slice(0, 80).map((p) => ({ classId: extraClasses[0]!.id, studentId: p.id })),
+      ...allProfiles.slice(40, 120).map((p) => ({ classId: extraClasses[1]!.id, studentId: p.id })),
+    ],
+    skipDuplicates: true,
+  });
+
   console.log("Seed complete.");
   console.log("School:", school.name);
   console.log("Female athletes:", females.length);
   console.log("Male athletes (synthetic, same structure):", males.length);
-  console.log("Coach login: coach1@jhs.demo / password123");
-  console.log("Sample student:", sampleFemaleEmail, "/ password123");
+  console.log("Coach login: coach1@jhs.demo / rekcart");
+  console.log("Sample student:", sampleFemaleEmail, "/ rekcart");
 }
 
 main()

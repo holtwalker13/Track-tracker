@@ -5,26 +5,37 @@ import { requireSession } from "@/lib/auth/session";
 import { getStudentContext } from "@/lib/queries/student";
 import { classYearLabel } from "@/lib/grades";
 import { getLatestResultsGrouped, getScholasticAttemptLog } from "@/lib/queries/attempt-log";
+import { getStudentMarksWindow } from "@/lib/queries/marks-window";
 import { LatestResultsGrouped } from "@/components/performance/latest-results-grouped";
 import { AttemptSchedule } from "@/components/performance/attempt-schedule";
+import { MarksWindowCard } from "@/components/performance/marks-window-card";
 
-export default async function StudentPerformancePage() {
+export default async function StudentPerformancePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ from?: string; to?: string; stat?: string }>;
+}) {
   const session = await requireSession(["STUDENT"]);
   if (!session?.studentId) redirect("/login");
+  const sp = await searchParams;
 
   const { student, currentGrade } = await getStudentContext(session.studentId);
   const enrollment = student.enrollments[0];
 
-  const [latestGrouped, attemptLog] = await Promise.all([
+  const [latestGrouped, attemptLog, marksWindow] = await Promise.all([
     getLatestResultsGrouped(session.studentId, enrollment?.schoolYearId),
     getScholasticAttemptLog(session.studentId),
+    getStudentMarksWindow(session.studentId, sp.from, sp.to),
   ]);
 
   return (
     <AppShell title="My Performance" nav={STUDENT_NAV}>
-      <p className="text-muted">{classYearLabel(currentGrade)}</p>
+      <p className="mb-6 text-sm text-muted">{classYearLabel(currentGrade)}</p>
+      <section>
+        <MarksWindowCard window={marksWindow} />
+      </section>
 
-      <section className="mt-6">
+      <section className="mt-10">
         <h2 className="text-lg font-semibold">Latest results</h2>
         <p className="mt-1 text-sm text-muted">
           One entry per event this year — running, jumping, and everything else — with improvement

@@ -62,7 +62,8 @@ export async function getSession(): Promise<SessionPayload | null> {
       schoolId: typeof payload.schoolId === "string" ? payload.schoolId : undefined,
       studentId: typeof payload.studentId === "string" ? payload.studentId : undefined,
     };
-  } catch {
+  } catch (err) {
+    console.error("[auth] session verify failed:", err instanceof Error ? err.message : err);
     return null;
   }
 }
@@ -76,7 +77,10 @@ export async function requireSession(roles?: UserRole[]) {
     where: { id: session.userId },
     include: { coachProfile: true, studentProfile: true },
   });
-  if (!user) return null;
+  if (!user) {
+    console.error("[auth] session user missing from DB:", session.userId);
+    return null;
+  }
 
   let schoolId =
     user.coachProfile?.schoolId ??

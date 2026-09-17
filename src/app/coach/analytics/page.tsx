@@ -171,7 +171,9 @@ export default async function AnalyticsPage({
       <BoxScoreBoard
         grades={boxScores}
         gender={gender}
-        hrefForStudent={(id) => `/coach/students/${id}`}
+        hrefForStudent={(id) =>
+          `/coach/students/${id}?from=analytics&grade=${grade}`
+        }
       />
     </AppShell>
   );

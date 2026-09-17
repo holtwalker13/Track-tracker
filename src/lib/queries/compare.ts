@@ -127,7 +127,7 @@ export async function getAthleteCompare(
       _avg: { resultValue: true },
     });
 
-    const bench = await getKpiBenchmark(act.id, gender);
+    const bench = await getKpiBenchmark(act.id, gender, schoolId);
 
     const athleteValue = best?.resultValue ?? null;
     const peerAvg = peerAgg._avg.resultValue ?? null;
@@ -215,3 +215,109 @@ export async function getAthleteCompare(
     events,
   };
 }
+
+export type LineupAthlete = {
+  id: string;
+  name: string;
+  grade: number;
+  gender: string | null;
+};
+
+export type LineupEvent = {
+  activityId: string;
+  activityName: string;
+  activitySlug: string;
+  categorySlug: string;
+  unit: string;
+  direction: ScoringDirection;
+  group: ActivityDisplayGroup;
+  marks: Record<string, { value: number | null; display: string }>;
+};
+
+export type AthleteLineupView = {
+  athletes: LineupAthlete[];
+  events: LineupEvent[];
+};
+
+const MAX_LINEUP = 5;
+
+export async function getAthleteLineup(
+  studentIds: string[],
+  schoolId: string
+): Promise<AthleteLineupView> {
+  const unique = [...new Set(studentIds)].slice(0, MAX_LINEUP);
+  const currentYear = await prisma.schoolYear.findFirst({
+    where: { schoolId, isCurrent: true },
+  });
+
+  const athletes: LineupAthlete[] = [];
+  for (const id of unique) {
+    const ctx = await getStudentContext(id);
+    if (ctx.student.schoolId !== schoolId) continue;
+    athletes.push({
+      id: ctx.student.id,
+      name: `${ctx.student.firstName} ${ctx.student.lastName}`,
+      grade: ctx.currentGrade,
+      gender: ctx.student.gender,
+    });
+  }
+
+  const activities = await prisma.activity.findMany({
+    where: { slug: { notIn: ["height", "weight"] } },
+    include: { category: true },
+    orderBy: { name: "asc" },
+  });
+
+  const results = await prisma.performanceResult.findMany({
+    where: {
+      studentId: { in: athletes.map((a) => a.id) },
+      status: "COMPLETED",
+      isBestAttempt: true,
+      resultValue: { not: null },
+      ...(currentYear ? { schoolYearId: currentYear.id } : {}),
+    },
+    orderBy: { testingDate: "desc" },
+  });
+
+  const best = new Map<string, { value: number; display: string }>();
+  for (const r of results) {
+    if (r.resultValue == null) continue;
+    const key = `${r.studentId}:${r.activityId}`;
+    if (best.has(key)) continue;
+    const act = activities.find((a) => a.id === r.activityId);
+    best.set(key, {
+      value: r.resultValue,
+      display: r.displayValue ?? (act ? formatActivityValue(r.resultValue, act.unit, act.slug) : String(r.resultValue)),
+    });
+  }
+
+  const events: LineupEvent[] = activities.map((act) => {
+    const marks: LineupEvent["marks"] = {};
+    for (const a of athletes) {
+      const hit = best.get(`${a.id}:${act.id}`);
+      marks[a.id] = hit
+        ? { value: hit.value, display: hit.display }
+        : { value: null, display: "—" };
+    }
+    return {
+      activityId: act.id,
+      activityName: act.name,
+      activitySlug: act.slug,
+      categorySlug: act.category.slug,
+      unit: act.unit,
+      direction: act.scoringDirection as ScoringDirection,
+      group: activityDisplayGroup(act.slug, act.category.slug),
+      marks,
+    };
+  });
+
+  events.sort((a, b) => {
+    const ai = DISPLAY_GROUP_ORDER.indexOf(a.group);
+    const bi = DISPLAY_GROUP_ORDER.indexOf(b.group);
+    if (ai !== bi) return ai - bi;
+    return a.activityName.localeCompare(b.activityName);
+  });
+
+  return { athletes, events };
+}
+

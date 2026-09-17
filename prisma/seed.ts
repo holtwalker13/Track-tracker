@@ -293,6 +293,7 @@ async function main() {
     console.log("FORCE_SEED=1: wiping database and reloading JHS roster...");
   }
 
+  await prisma.schoolKpiTarget.deleteMany();
   await prisma.performanceResult.deleteMany();
   await prisma.studentAchievement.deleteMany();
   await prisma.testingSessionStudent.deleteMany();
@@ -338,6 +339,18 @@ async function main() {
     },
   });
 
+  await prisma.schoolKpiTarget.createMany({
+    data: ALL_KPI_BANDS.flatMap((band) =>
+      KPI_METRIC_META.map((meta) => ({
+        schoolId: school.id,
+        gender: band.gender,
+        medal: band.medal,
+        metricSlug: meta.slug,
+        target: band.targets[meta.slug],
+      }))
+    ),
+  });
+
   const schoolYear = await prisma.schoolYear.create({
     data: {
       schoolId: school.id,
@@ -378,7 +391,7 @@ async function main() {
   for (const band of ALL_KPI_BANDS) {
     const dataset = await prisma.benchmarkDataset.create({
       data: {
-        name: `${band.label} / ${band.fortyYard.toFixed(2)}s 40yd`,
+        name: band.label,
         sourceName:
           band.gender === "F"
             ? "JHS Athletics KPI Database — Female"
@@ -388,8 +401,8 @@ async function main() {
         geographicRegion: "JHS",
         methodologyNotes:
           band.gender === "F"
-            ? "If an athlete hits these KPIs they can likely run this 100m / 40-yard time. Flying 10m for the 13.0s band uses 1.188s (interpolated); the source sheet listed 1.879s, which was slower than the 13.5s target."
-            : "No boy KPI sheet was provided. Targets keep the same structure as the female key, scaled to typical high-school male sprint/power standards.",
+            ? "JHS default Gold/Silver/Bronze KPI marks. Schools can override these on the Medal targets page."
+            : "Synthetic male analog of the JHS female KPI key. Schools can override these on the Medal targets page.",
         isSynthetic: band.gender === "M",
       },
     });
@@ -570,6 +583,37 @@ async function main() {
       });
     }
   }
+
+  const extraClasses = await Promise.all([
+    prisma.class.create({
+      data: {
+        schoolId: school.id,
+        coachId: coaches[0]!.id,
+        name: "Varsity Weights",
+        period: "Period 2",
+      },
+    }),
+    prisma.class.create({
+      data: {
+        schoolId: school.id,
+        coachId: coaches[1]!.id,
+        name: "Speed Development",
+        period: "Period 4",
+      },
+    }),
+  ]);
+  const allProfiles = await prisma.studentProfile.findMany({
+    where: { schoolId: school.id },
+    select: { id: true },
+    orderBy: { lastName: "asc" },
+  });
+  await prisma.classEnrollment.createMany({
+    data: [
+      ...allProfiles.slice(0, 80).map((p) => ({ classId: extraClasses[0]!.id, studentId: p.id })),
+      ...allProfiles.slice(40, 120).map((p) => ({ classId: extraClasses[1]!.id, studentId: p.id })),
+    ],
+    skipDuplicates: true,
+  });
 
   console.log("Seed complete.");
   console.log("School:", school.name);

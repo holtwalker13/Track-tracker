@@ -1,11 +1,6 @@
 /**
- * JHS Athletics KPI key: hitting these marks is associated with a 100m / 40-yard time.
- *
- * Female 13.0s Flying 10m is stored as 1.188s. The source sheet listed 1.879s for that
- * cell, which is slower than the 13.5s target (1.226s) and is treated as a typo;
- * 1.188s is the midpoint between the 12.5s and 13.5s flying-10m targets.
- *
- * Male bands are synthetic analogs (no boy KPI sheet was provided).
+ * School medal targets (Gold / Silver / Bronze) per KPI metric.
+ * Defaults come from the JHS Athletics key; each school can override them.
  */
 
 export type KpiMetricSlug =
@@ -17,12 +12,21 @@ export type KpiMetricSlug =
   | "20-meter-start"
   | "40-yard-dash";
 
+export type Medal = "gold" | "silver" | "bronze";
+
+export const MEDALS: Medal[] = ["gold", "silver", "bronze"];
+
+export const MEDAL_LABELS: Record<Medal, string> = {
+  gold: "Gold",
+  silver: "Silver",
+  bronze: "Bronze",
+};
+
 export type KpiBand = {
   id: string;
   gender: "F" | "M";
+  medal: Medal;
   label: string;
-  hundredMeter: number;
-  fortyYard: number;
   /** Target value per KPI metric (seconds, inches, or × bodyweight). */
   targets: Record<KpiMetricSlug, number>;
 };
@@ -44,11 +48,10 @@ export const KPI_METRIC_META: {
 
 export const FEMALE_KPI_BANDS: KpiBand[] = [
   {
-    id: "F-12.5",
+    id: "F-gold",
     gender: "F",
-    label: "Female — 12.5s 100m",
-    hundredMeter: 12.5,
-    fortyYard: 5.22,
+    medal: "gold",
+    label: "Girls Gold",
     targets: {
       "flying-10-meter": 1.151,
       "standing-broad-jump": 94,
@@ -60,11 +63,10 @@ export const FEMALE_KPI_BANDS: KpiBand[] = [
     },
   },
   {
-    id: "F-13.0",
+    id: "F-silver",
     gender: "F",
-    label: "Female — 13.0s 100m",
-    hundredMeter: 13.0,
-    fortyYard: 5.44,
+    medal: "silver",
+    label: "Girls Silver",
     targets: {
       "flying-10-meter": 1.188,
       "standing-broad-jump": 87,
@@ -76,11 +78,10 @@ export const FEMALE_KPI_BANDS: KpiBand[] = [
     },
   },
   {
-    id: "F-13.5",
+    id: "F-bronze",
     gender: "F",
-    label: "Female — 13.5s 100m",
-    hundredMeter: 13.5,
-    fortyYard: 5.64,
+    medal: "bronze",
+    label: "Girls Bronze",
     targets: {
       "flying-10-meter": 1.226,
       "standing-broad-jump": 81,
@@ -93,14 +94,12 @@ export const FEMALE_KPI_BANDS: KpiBand[] = [
   },
 ];
 
-/** Synthetic male analog of the female KPI key (similar structure, faster/stronger targets). */
 export const MALE_KPI_BANDS: KpiBand[] = [
   {
-    id: "M-11.0",
+    id: "M-gold",
     gender: "M",
-    label: "Male — 11.0s 100m",
-    hundredMeter: 11.0,
-    fortyYard: 4.55,
+    medal: "gold",
+    label: "Boys Gold",
     targets: {
       "flying-10-meter": 1.047,
       "standing-broad-jump": 111,
@@ -112,11 +111,10 @@ export const MALE_KPI_BANDS: KpiBand[] = [
     },
   },
   {
-    id: "M-11.5",
+    id: "M-silver",
     gender: "M",
-    label: "Male — 11.5s 100m",
-    hundredMeter: 11.5,
-    fortyYard: 4.75,
+    medal: "silver",
+    label: "Boys Silver",
     targets: {
       "flying-10-meter": 1.081,
       "standing-broad-jump": 103,
@@ -128,11 +126,10 @@ export const MALE_KPI_BANDS: KpiBand[] = [
     },
   },
   {
-    id: "M-12.0",
+    id: "M-bronze",
     gender: "M",
-    label: "Male — 12.0s 100m",
-    hundredMeter: 12.0,
-    fortyYard: 4.95,
+    medal: "bronze",
+    label: "Boys Bronze",
     targets: {
       "flying-10-meter": 1.116,
       "standing-broad-jump": 96,
@@ -153,7 +150,7 @@ export function kpiBandsForGender(gender?: string | null): KpiBand[] {
 
 export function midKpiBand(gender?: string | null): KpiBand {
   const bands = kpiBandsForGender(gender);
-  return bands[1]!;
+  return bands.find((b) => b.medal === "silver") ?? bands[1]!;
 }
 
 export function meetsTarget(
@@ -188,13 +185,31 @@ export type SprintPotential = {
   bands: BandEvaluation[];
 };
 
+export function bandsFromTargets(
+  gender: "F" | "M",
+  byMedal: Record<Medal, Record<KpiMetricSlug, number>>
+): KpiBand[] {
+  return MEDALS.map((medal) => {
+    const fallback = kpiBandsForGender(gender).find((b) => b.medal === medal)!;
+    return {
+      id: `${gender}-${medal}`,
+      gender,
+      medal,
+      label: gender === "M" ? `Boys ${MEDAL_LABELS[medal]}` : `Girls ${MEDAL_LABELS[medal]}`,
+      targets: { ...fallback.targets, ...byMedal[medal] },
+    };
+  });
+}
+
 export function evaluateSprintPotential(
   marks: KpiMark[],
-  gender?: string | null
+  gender?: string | null,
+  customBands?: KpiBand[]
 ): SprintPotential {
   const g: "F" | "M" = gender === "M" ? "M" : "F";
   const bySlug = new Map(marks.map((m) => [m.slug, m.value]));
-  const bands = kpiBandsForGender(g).map((band) => {
+  const source = customBands?.length ? customBands : kpiBandsForGender(g);
+  const bands = source.map((band) => {
     const rows = KPI_METRIC_META.map((meta) => {
       const athlete = bySlug.get(meta.slug) ?? null;
       const target = band.targets[meta.slug];
@@ -219,8 +234,7 @@ export function evaluateSprintPotential(
     };
   });
 
-  // Fastest (lowest 100m) band first in FEMALE/MALE arrays.
-  // Match the fastest band whose hit rate is at least 50% with 2+ KPIs tested.
+  // Gold first. Match the best medal whose hit rate is at least 50% with 2+ KPIs tested.
   let matched: BandEvaluation | null = null;
   for (const ev of bands) {
     if (ev.tested >= 2 && ev.hitRate >= 0.5) {

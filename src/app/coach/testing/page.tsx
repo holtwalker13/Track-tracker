@@ -7,20 +7,32 @@ import { requireSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { ActivityIcon } from "@/lib/activity-icons";
 import { classYearLabel } from "@/lib/grades";
+import { NewTestingSessionForm } from "@/components/testing/new-session-form";
 
 export default async function TestingSessionsPage() {
   const session = await requireSession(["COACH", "ADMIN"]);
   if (!session?.schoolId) redirect("/login");
 
-  const sessions = await prisma.testingSession.findMany({
-    where: { schoolId: session.schoolId },
-    include: { schoolYear: true, activities: { include: { activity: true } } },
-    orderBy: { testingDate: "desc" },
-  });
+  const [sessions, classes] = await Promise.all([
+    prisma.testingSession.findMany({
+      where: { schoolId: session.schoolId },
+      include: { schoolYear: true, activities: { include: { activity: true } }, class: true },
+      orderBy: { testingDate: "desc" },
+    }),
+    prisma.class.findMany({
+      where: { schoolId: session.schoolId },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, period: true },
+    }),
+  ]);
 
   return (
     <AppShell title="Testing" nav={COACH_NAV}>
-      <p className="mb-4 text-muted">Who still needs a score?</p>
+      <p className="mb-4 text-muted">
+        Every live session needs a test date so average, PR, and progress charts can line up over
+        time.
+      </p>
+      <NewTestingSessionForm classes={classes} />
       <div className="space-y-4">
         {sessions.map((s) => (
           <Card key={s.id}>
@@ -29,6 +41,7 @@ export default async function TestingSessionsPage() {
                 <CardTitle>{s.name}</CardTitle>
                 <p className="mt-1 text-sm text-muted">
                   {new Date(s.testingDate).toLocaleDateString()} · {s.schoolYear.label}
+                  {s.class ? ` · ${s.class.name}` : ""}
                   {s.gradeLevel ? ` · ${classYearLabel(s.gradeLevel)}` : ""}
                 </p>
                 <div className="mt-3 flex flex-wrap gap-2">

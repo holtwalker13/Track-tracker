@@ -30,7 +30,8 @@ export default async function CoachLeaderboardsPage({
       </div>
       <LeaderboardGrid
         boards={boards}
-        subtitle={`Top 10 per event · ${gradesLabel(grades)} · ${genderFullLabel(gender).toLowerCase()} · current school year`}
+        subtitle={`Top 10 per event · featured: 40-Yard Dash & Vertical · ${gradesLabel(grades)} · ${genderFullLabel(gender).toLowerCase()} · current school year`}
+        athleteHref={(studentId) => `/coach/students/${studentId}`}
       />
     </AppShell>
   );

@@ -9,6 +9,7 @@ import {
   LayoutDashboard,
   LineChart,
   LogOut,
+  School,
   Target,
   TrendingUp,
   Trophy,
@@ -30,6 +31,7 @@ const NAV_ICONS: Record<NavIconKey, LucideIcon> = {
   gauge: Gauge,
   trending: TrendingUp,
   projection: LineChart,
+  classes: School,
 };
 
 const linkClassName = cn(
@@ -71,10 +73,12 @@ export function TopNav({ items }: { items: NavItem[] }) {
           </Link>
         );
       })}
-      <Link href="/api/auth/logout" className={linkClassName}>
-        <LogOut className="h-5 w-5 shrink-0" aria-hidden />
-        <span className={labelClassName}>Sign out</span>
-      </Link>
+      <form action="/api/auth/logout" method="POST" className="contents">
+        <button type="submit" className={linkClassName}>
+          <LogOut className="h-5 w-5 shrink-0" aria-hidden />
+          <span className={labelClassName}>Sign out</span>
+        </button>
+      </form>
     </nav>
   );
 }

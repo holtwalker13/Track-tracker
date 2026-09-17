@@ -3,12 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack",
+    "dev": "next dev --turbopack --hostname 0.0.0.0 --port 3847",
     "build": "prisma generate && next build --turbopack",
     "start": "next start",
     "lint": "eslint",
     "db:push": "prisma db push",
     "db:seed": "prisma db seed",
+    "db:sync-password": "tsx scripts/sync-demo-password.ts",
     "postinstall": "prisma generate"
   },
   "prisma": {

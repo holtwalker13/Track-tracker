@@ -9,10 +9,25 @@ import type { Activity, ActivityCategory } from "@prisma/client";
 export const LEADERBOARD_TOP_N = 10;
 
 export async function getLeaderboardActivities() {
-  return prisma.activity.findMany({
-    where: { slug: { notIn: ["height", "weight"] } },
+  const featured = ["40-yard-dash", "vertical-jump"];
+  const activities = await prisma.activity.findMany({
+    where: {
+      slug: {
+        notIn: ["height", "weight", "20-meter-start"],
+      },
+    },
     include: { category: true },
     orderBy: { name: "asc" },
+  });
+  return [...activities].sort((a, b) => {
+    const ai = featured.indexOf(a.slug);
+    const bi = featured.indexOf(b.slug);
+    if (ai !== -1 || bi !== -1) {
+      if (ai === -1) return 1;
+      if (bi === -1) return -1;
+      return ai - bi;
+    }
+    return a.name.localeCompare(b.name);
   });
 }
 

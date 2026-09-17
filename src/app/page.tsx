@@ -5,5 +5,5 @@ export default async function Home() {
   const session = await getSession();
   if (!session) redirect("/login");
   if (session.role === "STUDENT") redirect("/student");
-  redirect("/coach");
+  redirect("/coach/leaderboards");
 }

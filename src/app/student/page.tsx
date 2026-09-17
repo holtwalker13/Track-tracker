@@ -11,11 +11,11 @@ import {
 import { RadarProfile } from "@/components/charts/radar-profile";
 import { prisma } from "@/lib/db";
 import { getStudentLeaderboard } from "@/lib/queries/leaderboard-student";
-import { PlayerAvatar } from "@/components/athletes/player-avatar";
 import { genderFullLabel } from "@/lib/gender";
 import { classYearLabel } from "@/lib/grades";
 import { getStudentSprintPotential } from "@/lib/queries/kpi";
 import { SprintPotentialCard } from "@/components/performance/sprint-potential";
+import { ProfileBanner } from "@/components/layout/profile-banner";
 
 export default async function StudentDashboardPage() {
   const session = await requireSession(["STUDENT"]);
@@ -59,21 +59,14 @@ export default async function StudentDashboardPage() {
   const sprint = await getStudentSprintPotential(studentId);
 
   return (
-    <AppShell
-      title={`${student.firstName} ${student.lastName}`}
-      nav={STUDENT_NAV}
-    >
-      <div className="mt-2 flex items-center gap-4">
-        <PlayerAvatar name={`${student.firstName} ${student.lastName}`} size="lg" />
-        <div>
-          <h2 className="text-2xl font-bold">Your athletic performance</h2>
-          <p className="text-muted">
-            {classYearLabel(currentGrade)} · {genderFullLabel(student.gender)}
-          </p>
-        </div>
-      </div>
+    <AppShell title="Dashboard" nav={STUDENT_NAV}>
+      <ProfileBanner
+        name={`${student.firstName} ${student.lastName}`}
+        meta={`${classYearLabel(currentGrade)} · ${genderFullLabel(student.gender)}`}
+        seed={student.id}
+      />
 
-      <div className="mt-6">
+      <div>
         <SprintPotentialCard potential={sprint} />
       </div>
 

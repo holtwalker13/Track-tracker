@@ -15,7 +15,6 @@ export const ROSTER_COLUMNS: { slug: string; label: string }[] = [
   { slug: "flying-10-meter", label: "F10m" },
   { slug: "100-meter-dash", label: "Proj 100m" },
   { slug: "flying-20-meter", label: "F20m" },
-  { slug: "20-meter-start", label: "20m Accel" },
   { slug: "40-yard-dash", label: "40yd" },
 ];
 
@@ -23,18 +22,31 @@ export type RosterMark = { value: number; display: string };
 
 export type RosterAthlete = {
   studentId: string;
+  studentNumber: string;
   firstName: string;
   lastName: string;
   fullName: string;
   classYear: number | null;
   sports: string | null;
+  participationType: string | null;
+  className: string | null;
+  classPeriod: string | null;
   marks: Record<string, RosterMark>;
 };
+
+export async function listSchoolClasses(schoolId: string) {
+  return prisma.class.findMany({
+    where: { schoolId },
+    orderBy: [{ period: "asc" }, { name: "asc" }],
+    select: { id: true, name: true, period: true, gradeLevel: true },
+  });
+}
 
 export async function getClassRoster(
   schoolId: string,
   classYears: number[],
-  gender: AthleteGender
+  gender: AthleteGender,
+  opts?: { classId?: string; participationType?: string }
 ): Promise<RosterAthlete[]> {
   const currentYear = await prisma.schoolYear.findFirst({
     where: { schoolId, isCurrent: true },
@@ -47,9 +59,27 @@ export async function getClassRoster(
     where: {
       schoolYearId: currentYear.id,
       ...(gradeFilter ? { gradeLevel: gradeFilter } : {}),
-      student: { schoolId, gender },
+      student: {
+        schoolId,
+        gender,
+        ...(opts?.participationType
+          ? { participationType: opts.participationType }
+          : {}),
+        ...(opts?.classId
+          ? { classEnrollments: { some: { classId: opts.classId } } }
+          : {}),
+      },
     },
-    include: { student: true },
+    include: {
+      student: {
+        include: {
+          classEnrollments: {
+            include: { class: true },
+            orderBy: { class: { name: "asc" } },
+          },
+        },
+      },
+    },
     orderBy: [{ gradeLevel: "asc" }, { student: { lastName: "asc" } }, { student: { firstName: "asc" } }],
   });
 
@@ -84,13 +114,26 @@ export async function getClassRoster(
     marksByStudent.set(r.studentId, bag);
   }
 
-  return enrollments.map((e) => ({
-    studentId: e.studentId,
-    firstName: e.student.firstName,
-    lastName: e.student.lastName,
-    fullName: `${e.student.firstName} ${e.student.lastName}`,
-    classYear: e.gradeLevel,
-    sports: e.student.sports,
-    marks: marksByStudent.get(e.studentId) ?? {},
-  }));
+  return enrollments.map((e) => {
+    const preferred =
+      (opts?.classId
+        ? e.student.classEnrollments.find((ce) => ce.classId === opts.classId)
+        : null) ??
+      e.student.classEnrollments.find((ce) => ce.class.period && !ce.class.name.startsWith("Class of")) ??
+      e.student.classEnrollments[0];
+
+    return {
+      studentId: e.studentId,
+      studentNumber: e.student.studentNumber,
+      firstName: e.student.firstName,
+      lastName: e.student.lastName,
+      fullName: `${e.student.firstName} ${e.student.lastName}`,
+      classYear: e.gradeLevel,
+      sports: e.student.sports,
+      participationType: e.student.participationType,
+      className: preferred?.class.name ?? null,
+      classPeriod: preferred?.class.period ?? null,
+      marks: marksByStudent.get(e.studentId) ?? {},
+    };
+  });
 }

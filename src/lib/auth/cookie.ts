@@ -10,6 +10,7 @@ export function sessionCookieOptions(
   return {
     httpOnly: true,
     sameSite: "lax",
+    // Always secure in production — Railway serves HTTPS to the browser.
     secure: process.env.NODE_ENV === "production",
     path: "/",
     maxAge,

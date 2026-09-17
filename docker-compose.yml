@@ -6,8 +6,8 @@ services:
       POSTGRES_PASSWORD: sap
       POSTGRES_DB: sap
     ports:
-      # Host npm run dev can use postgresql://sap:sap@localhost:5432/sap
-      - "5432:5432"
+      # Host port 5433 avoids clashing with other local Postgres on 5432
+      - "5433:5432"
     volumes:
       - sap-pg:/var/lib/postgresql/data
     healthcheck:
@@ -25,7 +25,8 @@ services:
         # Skip the production Next.js build locally (Railway uses the Dockerfile default).
         APP_MODE: ${APP_MODE:-development}
     ports:
-      - "3000:3000"
+      # Host port 3847 avoids clashing with other apps on 3000/3001
+      - "3847:3000"
     environment:
       DATABASE_URL: "postgresql://sap:sap@postgres:5432/sap"
       SESSION_SECRET: "local-docker-dev-session-secret-min-32-chars"

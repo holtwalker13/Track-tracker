@@ -27,30 +27,48 @@ export function LatestResultsGrouped({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {DISPLAY_GROUP_ORDER.map((groupKey) => {
         const items = grouped[groupKey];
         if (items.length === 0) return null;
         return (
-          <Card key={groupKey}>
-            <CardTitle>{DISPLAY_GROUP_LABELS[groupKey]}</CardTitle>
-            <ul className="mt-4 space-y-4">
+          <section key={groupKey}>
+            <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted">
+              {DISPLAY_GROUP_LABELS[groupKey]}
+            </h3>
+            <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
               {items.map((item) => (
                 <li
                   key={item.activityId}
-                  className="rounded-xl border border-card-border/50 bg-background/30 p-4"
+                  className="overflow-hidden rounded-xl border border-card-border bg-card"
                 >
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div className="flex gap-3">
-                      <ActivityIcon slug={item.activitySlug} className="mt-1 h-7 w-7" />
-                      <div>
-                        <p className="font-semibold">{item.activityName}</p>
-                        <p className="text-xs text-muted">
+                  <div className="p-4">
+                    <div className="flex items-start gap-3">
+                      <ActivityIcon slug={item.activitySlug} className="mt-0.5 h-6 w-6 shrink-0" />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold">{item.activityName}</p>
+                        <p className="mt-0.5 text-xs text-muted">
                           {item.testingDate.toLocaleDateString()}
                           {item.isPr && (
                             <span className="ml-2 font-medium text-sport-gold">PR</span>
                           )}
                         </p>
+                        <p className="mt-2 text-2xl font-bold tabular-nums text-accent">
+                          {item.display}
+                        </p>
+                        {item.deltaDisplay && (
+                          <p
+                            className={`mt-0.5 text-xs font-medium ${
+                              item.deltaFromPrevious != null && item.deltaFromPrevious > 0
+                                ? "text-sport-green"
+                                : item.deltaFromPrevious != null && item.deltaFromPrevious < 0
+                                  ? "text-sport-red"
+                                  : "text-muted"
+                            }`}
+                          >
+                            {item.deltaDisplay}
+                          </p>
+                        )}
                         {item.percentile != null && (
                           <div className="mt-2 flex flex-wrap items-center gap-2">
                             <PercentileTierBadge percentile={item.percentile} />
@@ -60,30 +78,34 @@ export function LatestResultsGrouped({
                             />
                           </div>
                         )}
+                        <PercentileTrendMini data={item.percentileTrend} />
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-3xl font-bold tabular-nums text-accent">{item.display}</p>
-                      {item.deltaDisplay && (
-                        <p
-                          className={`mt-1 text-xs font-medium ${
-                            item.deltaFromPrevious != null && item.deltaFromPrevious > 0
-                              ? "text-sport-green"
-                              : item.deltaFromPrevious != null && item.deltaFromPrevious < 0
-                                ? "text-sport-red"
-                                : "text-muted"
-                          }`}
-                        >
-                          {item.deltaDisplay}
-                        </p>
-                      )}
-                    </div>
                   </div>
-                  <PercentileTrendMini data={item.percentileTrend} />
+
+                  {item.history.length > 0 && (
+                    <ul className="border-t border-card-border/70 bg-background/40">
+                      {item.history.map((h, idx) => (
+                        <li
+                          key={`${item.activityId}-${h.testingDate.toISOString()}-${idx}`}
+                          className="flex items-center justify-between gap-3 border-t border-card-border/40 px-4 py-2 text-xs text-muted/80 first:border-t-0"
+                        >
+                          <span className="tabular-nums">{h.display}</span>
+                          <span className="shrink-0">
+                            {h.testingDate.toLocaleDateString(undefined, {
+                              month: "numeric",
+                              day: "numeric",
+                              year: "2-digit",
+                            })}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </li>
               ))}
             </ul>
-          </Card>
+          </section>
         );
       })}
     </div>

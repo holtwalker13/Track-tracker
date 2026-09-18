@@ -34,7 +34,8 @@ esac
 run_db_push() {
   echo "==> Prisma db push (sync schema to Postgres) ..."
   i=0
-  until npx prisma db push --skip-generate; do
+  # --accept-data-loss: additive unique-key changes (e.g. ageBracket) otherwise stall boot.
+  until npx prisma db push --skip-generate --accept-data-loss; do
     i=$((i + 1))
     if [ "$i" -ge 30 ]; then
       echo "ERROR: prisma db push failed after 30 attempts. Check DATABASE_URL and that Postgres is running."

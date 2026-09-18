@@ -82,7 +82,10 @@ export async function getAthleteCompare(
   });
 
   const activities = await prisma.activity.findMany({
-    where: { slug: { notIn: ["height", "weight"] } },
+    where: {
+      slug: { notIn: ["height", "weight"] },
+      OR: [{ schoolId: null }, { schoolId }],
+    },
     include: { category: true },
     orderBy: { name: "asc" },
   });
@@ -243,7 +246,8 @@ const MAX_LINEUP = 5;
 
 export async function getAthleteLineup(
   studentIds: string[],
-  schoolId: string
+  schoolId: string,
+  opts?: { anonymize?: boolean; viewerStudentId?: string }
 ): Promise<AthleteLineupView> {
   const unique = [...new Set(studentIds)].slice(0, MAX_LINEUP);
   const currentYear = await prisma.schoolYear.findFirst({
@@ -254,16 +258,25 @@ export async function getAthleteLineup(
   for (const id of unique) {
     const ctx = await getStudentContext(id);
     if (ctx.student.schoolId !== schoolId) continue;
+    const fullName = `${ctx.student.firstName} ${ctx.student.lastName}`;
+    const name = opts?.anonymize
+      ? opts.viewerStudentId === ctx.student.id
+        ? "You"
+        : `Student ${ctx.student.anonymousId}`
+      : fullName;
     athletes.push({
       id: ctx.student.id,
-      name: `${ctx.student.firstName} ${ctx.student.lastName}`,
+      name,
       grade: ctx.currentGrade,
       gender: ctx.student.gender,
     });
   }
 
   const activities = await prisma.activity.findMany({
-    where: { slug: { notIn: ["height", "weight"] } },
+    where: {
+      slug: { notIn: ["height", "weight"] },
+      OR: [{ schoolId: null }, { schoolId }],
+    },
     include: { category: true },
     orderBy: { name: "asc" },
   });

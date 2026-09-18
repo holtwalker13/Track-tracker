@@ -151,6 +151,7 @@ export async function listStudents(
     id: s.id,
     name: `${s.firstName} ${s.lastName}`,
     studentNumber: s.studentNumber,
+    anonymousId: s.anonymousId,
     grade: s.enrollments[0]?.gradeLevel,
     gender: s.gender,
     testsCompleted: s.performanceResults.length,

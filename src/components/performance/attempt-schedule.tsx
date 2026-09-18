@@ -1,6 +1,7 @@
 import type { SchoolYearAttemptLog } from "@/lib/queries/attempt-log";
 import { Card, CardTitle } from "@/components/ui/card";
 import { classYearLabel } from "@/lib/grades";
+import { formatActivityValue } from "@/lib/format";
 
 export function AttemptSchedule({ years }: { years: SchoolYearAttemptLog[] }) {
   if (years.length === 0) {
@@ -25,7 +26,7 @@ export function AttemptSchedule({ years }: { years: SchoolYearAttemptLog[] }) {
                 </span>
               )}
             </CardTitle>
-              {year.gradeLevel != null && (
+            {year.gradeLevel != null && (
               <p className="mt-1 text-sm text-muted">{classYearLabel(year.gradeLevel)}</p>
             )}
           </div>
@@ -72,7 +73,11 @@ export function AttemptSchedule({ years }: { years: SchoolYearAttemptLog[] }) {
                       </td>
                       <td className="px-4 py-3 font-mono text-xs text-muted">
                         {ev.attempts.length > 0
-                          ? ev.attempts.map((a) => a.toFixed(1)).join(" · ")
+                          ? ev.attempts
+                              .map((a) =>
+                                formatActivityValue(a, ev.unit, ev.activitySlug)
+                              )
+                              .join(" · ")
                           : "—"}
                       </td>
                       <td className="px-4 py-3 font-semibold text-accent">{ev.bestDisplay}</td>

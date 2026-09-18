@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db";
 import type { ScoringDirection } from "@/lib/constants";
 import { percentileForResult } from "./benchmarks";
-import { calculateImprovement } from "@/lib/services/performance";
+import { calculateImprovement, pickBestAttempt } from "@/lib/services/performance";
 import {
   activityDisplayGroup,
   DISPLAY_GROUP_ORDER,
@@ -80,49 +80,73 @@ export async function getScholasticAttemptLog(studentId: string): Promise<School
     }
   }
 
-  const eventRows = new Map<string, AttemptEventRow>();
-
+  const byEvent = new Map<string, typeof results>();
   for (const r of results) {
     const key = eventKey(r);
-    const direction = r.activity.scoringDirection as ScoringDirection;
-    let row = eventRows.get(key);
-    if (!row) {
-      row = {
-        id: key,
-        schoolYearId: r.schoolYearId,
-        testingDate: r.testingDate,
-        activityId: r.activityId,
-        activityName: r.activity.name,
-        activitySlug: r.activity.slug,
-        unit: r.activity.unit,
-        direction,
-        attempts: [],
-        best: r.resultValue!,
-        bestDisplay: r.displayValue ?? formatActivityValue(r.resultValue!, r.activity.unit, r.activity.slug),
-        isPersonalRecord: r.isPersonalRecord,
-        deltaFromPrevious: null,
-        deltaDisplay: null,
-        sessionName: r.testingSession?.name ?? null,
-      };
-      eventRows.set(key, row);
-    }
-    if (r.resultValue != null) {
-      // Keep latest mark per attempt number (stacked autosaves used to append forever).
-      const n = Math.max(1, Math.min(3, r.attemptNumber ?? 1));
-      const idx = n - 1;
-      while (row.attempts.length <= idx) row.attempts.push(Number.NaN);
-      row.attempts[idx] = r.resultValue;
-      if (r.isBestAttempt) {
-        row.best = r.resultValue;
-        row.bestDisplay =
-          r.displayValue ?? formatActivityValue(r.resultValue, r.activity.unit, r.activity.slug);
-        row.isPersonalRecord = r.isPersonalRecord;
-      }
-    }
+    const list = byEvent.get(key) ?? [];
+    list.push(r);
+    byEvent.set(key, list);
   }
 
-  for (const row of eventRows.values()) {
-    row.attempts = row.attempts.filter((v) => Number.isFinite(v)).slice(0, 3);
+  const eventRows = new Map<string, AttemptEventRow>();
+
+  for (const [key, list] of byEvent) {
+    const sample = list[0]!;
+    const direction = sample.activity.scoringDirection as ScoringDirection;
+
+    // Anchor on the latest best-attempt row, then only keep marks from that save batch.
+    const anchor =
+      [...list]
+        .filter((r) => r.isBestAttempt)
+        .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0] ??
+      [...list].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0]!;
+
+    const t0 = anchor.createdAt.getTime();
+    const batch = list.filter((r) => Math.abs(r.createdAt.getTime() - t0) <= 3000);
+    const pool = batch.length > 0 ? batch : [anchor];
+
+    const byAttempt = new Map<number, (typeof pool)[number]>();
+    for (const r of pool) {
+      const n = Math.max(1, Math.min(3, r.attemptNumber ?? 1));
+      const prev = byAttempt.get(n);
+      if (!prev || r.createdAt >= prev.createdAt) byAttempt.set(n, r);
+    }
+
+    const attempts = [...byAttempt.entries()]
+      .sort((a, b) => a[0] - b[0])
+      .map(([, r]) => r.resultValue!)
+      .filter((v) => Number.isFinite(v));
+
+    const best =
+      pickBestAttempt(attempts, direction) ??
+      anchor.resultValue ??
+      attempts[0]!;
+
+    const bestRow =
+      [...byAttempt.values()].find((r) => r.resultValue === best && r.isBestAttempt) ??
+      [...byAttempt.values()].find((r) => r.resultValue === best) ??
+      anchor;
+
+    eventRows.set(key, {
+      id: key,
+      schoolYearId: sample.schoolYearId,
+      testingDate: sample.testingDate,
+      activityId: sample.activityId,
+      activityName: sample.activity.name,
+      activitySlug: sample.activity.slug,
+      unit: sample.activity.unit,
+      direction,
+      attempts,
+      best,
+      bestDisplay:
+        bestRow.displayValue && bestRow.resultValue === best
+          ? bestRow.displayValue
+          : formatActivityValue(best, sample.activity.unit, sample.activity.slug),
+      isPersonalRecord: bestRow.isPersonalRecord,
+      deltaFromPrevious: null,
+      deltaDisplay: null,
+      sessionName: sample.testingSession?.name ?? null,
+    });
   }
 
   // Per school year + activity: compute delta vs previous event (chronological)

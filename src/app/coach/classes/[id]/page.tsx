@@ -6,6 +6,7 @@ import { prisma } from "@/lib/db";
 import { classYearLabel } from "@/lib/grades";
 import { listStudents } from "@/lib/queries/coach";
 import { ClassRosterEditor } from "@/components/classes/class-roster-editor";
+import { ClassMetaEditor } from "@/components/classes/class-meta-editor";
 
 export default async function ClassDetailPage({
   params,
@@ -27,12 +28,22 @@ export default async function ClassDetailPage({
   return (
     <AppShell title="Classes" nav={COACH_NAV}>
       <div className="mb-6 border-b border-card-border pb-4">
-        <h1 className="text-2xl font-bold tracking-tight">{cls.name}</h1>
-        <p className="mt-1 text-sm text-muted">
-          {cls.period ? `${cls.period} · ` : ""}
-          {cls.gradeLevel ? classYearLabel(cls.gradeLevel) : "mixed classes"}
-          {" · "}athletes can also be in other classes
-        </p>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">{cls.name}</h1>
+            <p className="mt-1 text-sm text-muted">
+              {cls.period ? `${cls.period} · ` : ""}
+              {cls.gradeLevel ? classYearLabel(cls.gradeLevel) : "mixed classes"}
+              {" · "}athletes can also be in other classes
+            </p>
+          </div>
+          <ClassMetaEditor
+            classId={cls.id}
+            name={cls.name}
+            period={cls.period}
+            gradeLevel={cls.gradeLevel}
+          />
+        </div>
       </div>
       <ClassRosterEditor
         classId={cls.id}

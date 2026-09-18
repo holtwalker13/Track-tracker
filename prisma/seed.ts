@@ -5,6 +5,7 @@ import path from "node:path";
 import { formatActivityValue } from "../src/lib/format";
 import { ALL_KPI_BANDS, KPI_METRIC_META } from "../src/lib/kpi-targets";
 import { DEFAULT_CLASS_YEAR, GRADE_LEVELS, isClassYear } from "../src/lib/grades";
+import { DEFAULT_AGE_BRACKET } from "../src/lib/age-brackets";
 
 const prisma = new PrismaClient();
 
@@ -32,6 +33,8 @@ const ACTIVITIES: {
   { slug: "hang-clean", name: "Hang Clean 1RM", cat: "strength", unit: "lb", dir: "HIGHER_BETTER", min: 45, max: 400, bw: true },
   { slug: "hang-clean-relative", name: "Hang Clean 1RM / BW", cat: "strength", unit: "x BW", dir: "HIGHER_BETTER", min: 0.3, max: 2.2, bw: true },
   { slug: "bench-press", name: "Bench Press 1RM", cat: "strength", unit: "lb", dir: "HIGHER_BETTER", min: 45, max: 400, bw: true },
+  { slug: "sit-and-reach", name: "V-Sit and Reach", cat: "flexibility", unit: "inches", dir: "HIGHER_BETTER", min: 0, max: 30 },
+  { slug: "pull-ups", name: "Pull-Ups", cat: "strength", unit: "reps", dir: "HIGHER_BETTER", min: 0, max: 50 },
   { slug: "weight", name: "Body Weight", cat: "body", unit: "lb", dir: "HIGHER_BETTER", min: 70, max: 320 },
 ];
 
@@ -40,6 +43,7 @@ const CATEGORIES = [
   { slug: "agility", name: "Agility" },
   { slug: "power", name: "Explosive Power" },
   { slug: "strength", name: "Strength" },
+  { slug: "flexibility", name: "Flexibility" },
   { slug: "body", name: "Body Metrics" },
 ];
 
@@ -350,6 +354,7 @@ async function main() {
         medal: band.medal,
         metricSlug: meta.slug,
         target: band.targets[meta.slug],
+        ageBracket: DEFAULT_AGE_BRACKET,
       }))
     ),
   });

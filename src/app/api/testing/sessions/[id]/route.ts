@@ -39,3 +39,40 @@ export async function PATCH(
 
   return NextResponse.json({ ok: true });
 }
+
+export async function DELETE(
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await requireSession(["COACH", "ADMIN"]);
+  if (!session?.schoolId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  const { id } = await params;
+  const rec = await prisma.testingSession.findFirst({
+    where: { id, schoolId: session.schoolId },
+    include: {
+      _count: { select: { students: true, activities: true } },
+    },
+  });
+  if (!rec) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  const resultCount = await prisma.performanceResult.count({
+    where: { testingSessionId: id },
+  });
+
+  // Detach any results, then remove session (cascades activity/student joins).
+  await prisma.$transaction([
+    prisma.performanceResult.updateMany({
+      where: { testingSessionId: id },
+      data: { testingSessionId: null },
+    }),
+    prisma.testingSession.delete({ where: { id } }),
+  ]);
+
+  return NextResponse.json({
+    ok: true,
+    detachedResults: resultCount,
+    students: rec._count.students,
+  });
+}

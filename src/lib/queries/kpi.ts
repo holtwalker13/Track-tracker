@@ -10,6 +10,8 @@ import {
   type Medal,
   type SprintPotential,
 } from "@/lib/kpi-targets";
+import { ageBracketForClassYear, DEFAULT_AGE_BRACKET } from "@/lib/age-brackets";
+import { getStudentContext } from "@/lib/queries/student";
 
 const KPI_SLUGS: KpiMetricSlug[] = KPI_METRIC_META.map((m) => m.slug);
 
@@ -24,16 +26,21 @@ export async function ensureSchoolKpiTargets(schoolId: string): Promise<void> {
         medal: band.medal,
         metricSlug: meta.slug,
         target: band.targets[meta.slug],
+        ageBracket: DEFAULT_AGE_BRACKET,
       }))
     ),
   });
 }
 
-export async function getSchoolKpiBands(schoolId: string, gender?: string | null): Promise<KpiBand[]> {
+export async function getSchoolKpiBands(
+  schoolId: string,
+  gender?: string | null,
+  ageBracket: string = DEFAULT_AGE_BRACKET
+): Promise<KpiBand[]> {
   await ensureSchoolKpiTargets(schoolId);
   const g: "F" | "M" = gender === "M" ? "M" : "F";
   const rows = await prisma.schoolKpiTarget.findMany({
-    where: { schoolId, gender: g },
+    where: { schoolId, gender: g, ageBracket },
   });
   const byMedal = {
     gold: {} as Record<KpiMetricSlug, number>,
@@ -48,10 +55,15 @@ export async function getSchoolKpiBands(schoolId: string, gender?: string | null
 }
 
 export async function getStudentSprintPotential(studentId: string): Promise<SprintPotential> {
-  const student = await prisma.studentProfile.findUniqueOrThrow({
-    where: { id: studentId },
-    select: { gender: true, schoolId: true },
+  const { student, currentGrade } = await getStudentContext(studentId);
+  const schoolYear = await prisma.schoolYear.findFirst({
+    where: { schoolId: student.schoolId, isCurrent: true },
+    select: { endDate: true },
   });
+  const schoolYearEnd = schoolYear?.endDate
+    ? schoolYear.endDate.getFullYear()
+    : new Date().getFullYear();
+  const bracket = ageBracketForClassYear(currentGrade, schoolYearEnd);
 
   const activities = await prisma.activity.findMany({
     where: { slug: { in: KPI_SLUGS } },
@@ -79,6 +91,6 @@ export async function getStudentSprintPotential(studentId: string): Promise<Spri
     marks.push({ slug, value: r.resultValue });
   }
 
-  const custom = await getSchoolKpiBands(student.schoolId, student.gender);
+  const custom = await getSchoolKpiBands(student.schoolId, student.gender, bracket);
   return evaluateSprintPotential(marks, student.gender, custom);
 }

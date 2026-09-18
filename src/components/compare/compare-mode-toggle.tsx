@@ -6,7 +6,13 @@ import { cn } from "@/lib/utils";
 
 export type CompareMode = "benchmark" | "peer" | "athlete";
 
-function CompareModeInner({ allowAthlete }: { allowAthlete: boolean }) {
+function CompareModeInner({
+  allowAthlete,
+  athleteLabel,
+}: {
+  allowAthlete: boolean;
+  athleteLabel: string;
+}) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -17,7 +23,7 @@ function CompareModeInner({ allowAthlete }: { allowAthlete: boolean }) {
   const options: { id: CompareMode; label: string }[] = [
     { id: "benchmark", label: "Medal target" },
     { id: "peer", label: "Class avg" },
-    ...(allowAthlete ? [{ id: "athlete" as const, label: "Athlete" }] : []),
+    ...(allowAthlete ? [{ id: "athlete" as const, label: athleteLabel }] : []),
   ];
 
   function select(next: CompareMode) {
@@ -62,14 +68,20 @@ function CompareModeInner({ allowAthlete }: { allowAthlete: boolean }) {
   );
 }
 
-export function CompareModeToggle({ allowAthlete = false }: { allowAthlete?: boolean }) {
+export function CompareModeToggle({
+  allowAthlete = false,
+  athleteLabel = "Athlete",
+}: {
+  allowAthlete?: boolean;
+  athleteLabel?: string;
+}) {
   return (
     <Suspense
       fallback={
         <div className="h-11 max-w-lg rounded-lg bg-card" />
       }
     >
-      <CompareModeInner allowAthlete={allowAthlete} />
+      <CompareModeInner allowAthlete={allowAthlete} athleteLabel={athleteLabel} />
     </Suspense>
   );
 }

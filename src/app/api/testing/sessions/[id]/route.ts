@@ -120,17 +120,17 @@ export async function DELETE(
     where: { testingSessionId: id },
   });
 
+  // Remove session marks from athlete logs — testing data stays tied to the session.
   await prisma.$transaction([
-    prisma.performanceResult.updateMany({
+    prisma.performanceResult.deleteMany({
       where: { testingSessionId: id },
-      data: { testingSessionId: null },
     }),
     prisma.testingSession.delete({ where: { id } }),
   ]);
 
   return NextResponse.json({
     ok: true,
-    detachedResults: resultCount,
+    deletedResults: resultCount,
     students: rec._count.students,
   });
 }

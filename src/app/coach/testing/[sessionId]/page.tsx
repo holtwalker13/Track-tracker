@@ -144,6 +144,8 @@ export default async function LiveTestingPage({
         sessionId={sessionId}
         activityId={activity.id}
         activityName={activity.name}
+        activitySlug={activity.slug}
+        activityUnit={activity.unit}
         subtitle={subtitle}
         rows={rows}
         readOnly={!coachCanEdit}

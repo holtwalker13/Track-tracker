@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { formatActivityValue } from "@/lib/format";
 import { formatStudentName } from "@/lib/utils";
 
 type Row = {
@@ -18,6 +19,8 @@ export function LiveTestingGrid({
   sessionId,
   activityId,
   activityName,
+  activitySlug,
+  activityUnit,
   subtitle,
   rows: initialRows,
   readOnly = false,
@@ -25,37 +28,58 @@ export function LiveTestingGrid({
   sessionId: string;
   activityId: string;
   activityName: string;
+  activitySlug?: string;
+  activityUnit?: string;
   subtitle: string;
   rows: Row[];
   readOnly?: boolean;
 }) {
   const [rows, setRows] = useState(initialRows);
   const [saving, setSaving] = useState<string | null>(null);
+  const activityIdRef = useRef(activityId);
+  const generationRef = useRef(0);
 
   // Wipe / reload whenever the activity tab changes so marks never carry over.
   useEffect(() => {
+    generationRef.current += 1;
+    activityIdRef.current = activityId;
     setRows(initialRows);
   }, [activityId, initialRows]);
 
   const saveRow = useCallback(
-    async (studentId: string, row: Row) => {
+    async (
+      studentId: string,
+      row: Row,
+      saveActivityId: string,
+      generation: number
+    ) => {
       if (readOnly) return;
-      setSaving(studentId);
+      // Drop blur/saves that fired after the coach switched events.
+      if (generation !== generationRef.current) return;
+      if (saveActivityId !== activityIdRef.current) return;
+
       const attempts = row.attempts.map((a) =>
         a === "" || a === null ? null : Number(a)
       );
+      const hasValue = attempts.some((a) => a != null && !Number.isNaN(a));
+      const nonComplete = row.status !== "COMPLETED";
+      if (!hasValue && !nonComplete) return;
+
+      setSaving(studentId);
       const res = await fetch("/api/testing/save", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           studentId,
-          activityId,
+          activityId: saveActivityId,
           testingSessionId: sessionId,
           attempts,
           status: row.status === "COMPLETED" ? undefined : row.status,
         }),
       });
       const data = await res.json().catch(() => ({}));
+      if (generation !== generationRef.current) return;
+      if (saveActivityId !== activityIdRef.current) return;
       setRows((prev) =>
         prev.map((r) =>
           r.studentId === studentId
@@ -65,7 +89,7 @@ export function LiveTestingGrid({
       );
       setSaving(null);
     },
-    [activityId, sessionId, readOnly]
+    [sessionId, readOnly]
   );
 
   function updateAttempt(studentId: string, idx: number, value: string) {
@@ -117,41 +141,61 @@ export function LiveTestingGrid({
                 )}
               </td>
               <td className="px-2 text-muted">
-                {row.previousBest ?? "—"}
+                {row.previousBest != null && activityUnit
+                  ? formatActivityValue(row.previousBest, activityUnit, activitySlug)
+                  : (row.previousBest ?? "—")}
               </td>
               {[0, 1, 2].map((i) => (
                 <td key={i} className="px-1 py-2">
                   <input
                     inputMode="decimal"
                     disabled={readOnly}
+                    data-activity-id={activityId}
                     className="w-20 rounded-lg border border-card-border bg-background px-2 py-3 text-center text-lg font-semibold disabled:opacity-60"
                     value={row.attempts[i] ?? ""}
                     onChange={(e) => updateAttempt(row.studentId, i, e.target.value)}
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
                         e.preventDefault();
-                        saveRow(row.studentId, {
-                          ...row,
-                          attempts: row.attempts.map((a, idx) =>
-                            idx === i ? (e.target as HTMLInputElement).value : a
-                          ),
-                        });
+                        const aid =
+                          (e.currentTarget as HTMLInputElement).dataset.activityId ??
+                          activityId;
+                        const gen = generationRef.current;
+                        saveRow(
+                          row.studentId,
+                          {
+                            ...row,
+                            attempts: row.attempts.map((a, idx) =>
+                              idx === i ? (e.target as HTMLInputElement).value : a
+                            ),
+                          },
+                          aid,
+                          gen
+                        );
                       }
                     }}
-                    onBlur={(e) =>
-                      saveRow(row.studentId, {
-                        ...row,
-                        attempts: row.attempts.map((a, idx) =>
-                          idx === i ? e.target.value : a
-                        ),
-                      })
-                    }
+                    onBlur={(e) => {
+                      const aid = e.currentTarget.dataset.activityId ?? activityId;
+                      const gen = generationRef.current;
+                      saveRow(
+                        row.studentId,
+                        {
+                          ...row,
+                          attempts: row.attempts.map((a, idx) =>
+                            idx === i ? e.target.value : a
+                          ),
+                        },
+                        aid,
+                        gen
+                      );
+                    }}
                   />
                 </td>
               ))}
               <td className="px-2">
                 <select
                   disabled={readOnly}
+                  data-activity-id={activityId}
                   className="rounded border border-card-border bg-background px-2 py-2 text-sm disabled:opacity-60"
                   value={row.status}
                   onChange={(e) => {
@@ -162,7 +206,8 @@ export function LiveTestingGrid({
                         r.studentId === row.studentId ? next : r
                       )
                     );
-                    saveRow(row.studentId, next);
+                    const aid = e.currentTarget.dataset.activityId ?? activityId;
+                    saveRow(row.studentId, next, aid, generationRef.current);
                   }}
                 >
                   <option value="COMPLETED">Active</option>

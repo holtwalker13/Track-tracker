@@ -18,7 +18,7 @@ export function DeleteSessionButton({
 
   async function onDelete() {
     const warn = hasResults
-      ? `Delete “${sessionName}”? Recorded marks stay on athlete profiles but leave this session.`
+      ? `Delete “${sessionName}”? This permanently removes those marks from student attempt logs.`
       : `Delete empty session “${sessionName}”?`;
     if (!window.confirm(warn)) return;
     setBusy(true);

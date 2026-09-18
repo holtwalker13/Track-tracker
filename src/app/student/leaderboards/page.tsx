@@ -26,6 +26,7 @@ export default async function StudentLeaderboardsPage() {
       <LeaderboardGrid
         boards={boards}
         subtitle={`Top 10 per event · ${classYearLabel(currentGrade)} · anonymous peers · current school year`}
+        compareHref="/student/compare"
       />
     </AppShell>
   );

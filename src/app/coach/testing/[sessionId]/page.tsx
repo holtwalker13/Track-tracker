@@ -45,16 +45,36 @@ export default async function LiveTestingPage({
     testingSession.gradeLevel ? classYearLabel(testingSession.gradeLevel) : "All classes"
   } · ${testingSession.schoolYear.label}`;
 
+  const existingResults = await prisma.performanceResult.findMany({
+    where: {
+      testingSessionId: sessionId,
+      activityId: activity.id,
+      status: { not: "SUPERSEDED" },
+    },
+    orderBy: [{ attemptNumber: "asc" }, { createdAt: "asc" }],
+  });
+
   const rows = await Promise.all(
     testingSession.students.map(async (ss) => {
       const prev = await getPreviousBest(ss.studentId, activity.id, testingSession.testingDate);
+      const mine = existingResults.filter((r) => r.studentId === ss.studentId);
+      const nonComplete = mine.find((r) => r.status !== "COMPLETED");
+      const completed = mine.filter((r) => r.status === "COMPLETED");
+      const attempts: (string | number)[] = ["", "", ""];
+      for (const r of completed) {
+        const idx = Math.max(0, Math.min(2, (r.attemptNumber ?? 1) - 1));
+        if (r.resultValue != null) attempts[idx] = r.resultValue;
+      }
+      const hasMark = completed.length > 0 || Boolean(nonComplete);
       return {
         studentId: ss.studentId,
         firstName: ss.student.firstName,
         lastName: ss.student.lastName,
         previousBest: prev,
-        attempts: ["", "", ""] as (string | number)[],
-        status: "COMPLETED",
+        attempts,
+        status: nonComplete?.status ?? "COMPLETED",
+        saved: hasMark,
+        pr: completed.some((r) => r.isPersonalRecord && r.isBestAttempt),
       };
     })
   );

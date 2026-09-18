@@ -12,18 +12,30 @@ export async function getPreviousBest(
   activityId: string,
   beforeDate?: Date
 ): Promise<number | null> {
+  const activity = await prisma.activity.findUnique({
+    where: { id: activityId },
+    select: { scoringDirection: true },
+  });
+  const direction = (activity?.scoringDirection ?? "HIGHER_BETTER") as ScoringDirection;
+
+  // isBestAttempt = best of that session's attempts — career prev-best must still
+  // respect LOWER_BETTER (faster time) vs HIGHER_BETTER (farther/heavier).
   const results = await prisma.performanceResult.findMany({
     where: {
       studentId,
       activityId,
       status: "COMPLETED",
       isBestAttempt: true,
+      resultValue: { not: null },
       ...(beforeDate ? { testingDate: { lt: beforeDate } } : {}),
     },
-    orderBy: { testingDate: "desc" },
-    take: 1,
+    select: { resultValue: true },
   });
-  return results[0]?.resultValue ?? null;
+
+  const values = results
+    .map((r) => r.resultValue)
+    .filter((v): v is number => v != null && Number.isFinite(v));
+  return pickBestAttempt(values, direction);
 }
 
 export async function saveAttemptResults(input: {

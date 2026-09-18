@@ -476,12 +476,12 @@ async function main() {
   }
 
   const hourDefs = [
-    { name: "1st Hour PE", period: "1st Hour" },
-    { name: "2nd Hour Weights", period: "2nd Hour" },
-    { name: "3rd Hour Athletics", period: "3rd Hour" },
-    { name: "4th Hour Speed", period: "4th Hour" },
-    { name: "Fall Semester PE", period: "Fall" },
-    { name: "Spring Semester Athletics", period: "Spring" },
+    { name: "Fall 2025 Period 1 PE", period: "Fall 2025 Period 1" },
+    { name: "Fall 2025 Period 2 Weights", period: "Fall 2025 Period 2" },
+    { name: "Fall 2025 Period 3 Athletics", period: "Fall 2025 Period 3" },
+    { name: "Fall 2025 Period 4 Speed", period: "Fall 2025 Period 4" },
+    { name: "Spring 2026 Period 1 PE", period: "Spring 2026 Period 1" },
+    { name: "Spring 2026 Period 2 Athletics", period: "Spring 2026 Period 2" },
   ];
   const hourClasses = await Promise.all(
     hourDefs.map((def, i) =>
@@ -665,16 +665,16 @@ async function main() {
       data: {
         schoolId: school.id,
         coachId: coaches[0]!.id,
-        name: "Varsity Weights",
-        period: "Period 2",
+        name: "Fall 2025 Period 5 Varsity Weights",
+        period: "Fall 2025 Period 5",
       },
     }),
     prisma.class.create({
       data: {
         schoolId: school.id,
         coachId: coaches[1]!.id,
-        name: "Speed Development",
-        period: "Period 4",
+        name: "Spring 2026 Period 4 Speed Development",
+        period: "Spring 2026 Period 4",
       },
     }),
   ]);

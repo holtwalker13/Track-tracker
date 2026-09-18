@@ -171,7 +171,7 @@ export async function POST(request: Request) {
   return NextResponse.json({ ok: true });
 }
 
-/** Delete a custom school KPI (activity + its targets). */
+/** Delete a KPI (custom activity hard-delete; built-in = hide for school + clear targets). */
 export async function DELETE(request: Request) {
   const session = await requireSession(["COACH", "ADMIN"]);
   if (!session?.schoolId) {
@@ -183,27 +183,79 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ error: "slug required" }, { status: 400 });
   }
 
-  const activity = await prisma.activity.findFirst({
+  const custom = await prisma.activity.findFirst({
     where: { slug, schoolId: session.schoolId },
   });
-  if (!activity) {
-    return NextResponse.json(
-      { error: "Only custom school KPIs can be deleted" },
-      { status: 400 }
-    );
+
+  if (custom) {
+    await prisma.$transaction([
+      prisma.schoolKpiTarget.deleteMany({
+        where: { schoolId: session.schoolId, metricSlug: slug },
+      }),
+      prisma.schoolHiddenKpi.deleteMany({
+        where: { schoolId: session.schoolId, metricSlug: slug },
+      }),
+      prisma.testingSessionActivity.deleteMany({ where: { activityId: custom.id } }),
+      prisma.benchmarkValue.deleteMany({ where: { activityId: custom.id } }),
+      prisma.performanceResult.deleteMany({ where: { activityId: custom.id } }),
+      prisma.activity.delete({ where: { id: custom.id } }),
+    ]);
+    return NextResponse.json({ ok: true });
+  }
+
+  const global = await prisma.activity.findFirst({
+    where: { slug, schoolId: null },
+  });
+  if (!global && !KPI_METRIC_META.some((m) => m.slug === slug)) {
+    return NextResponse.json({ error: "KPI not found" }, { status: 404 });
   }
 
   await prisma.$transaction([
     prisma.schoolKpiTarget.deleteMany({
       where: { schoolId: session.schoolId, metricSlug: slug },
     }),
-    prisma.testingSessionActivity.deleteMany({ where: { activityId: activity.id } }),
-    prisma.benchmarkValue.deleteMany({ where: { activityId: activity.id } }),
-    prisma.performanceResult.deleteMany({ where: { activityId: activity.id } }),
-    prisma.activity.delete({ where: { id: activity.id } }),
+    prisma.schoolHiddenKpi.upsert({
+      where: {
+        schoolId_metricSlug: { schoolId: session.schoolId, metricSlug: slug },
+      },
+      create: { schoolId: session.schoolId, metricSlug: slug },
+      update: {},
+    }),
   ]);
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, hidden: true });
+}
+
+/** Rename a KPI activity. */
+export async function PATCH(request: Request) {
+  const session = await requireSession(["COACH", "ADMIN"]);
+  if (!session?.schoolId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  const body = await request.json();
+  const slug = String(body.slug ?? "").trim();
+  const name = String(body.name ?? "").trim();
+  if (!slug || !name) {
+    return NextResponse.json({ error: "slug and name required" }, { status: 400 });
+  }
+
+  const activity = await prisma.activity.findFirst({
+    where: {
+      slug,
+      OR: [{ schoolId: session.schoolId }, { schoolId: null }],
+    },
+  });
+  if (!activity) {
+    return NextResponse.json({ error: "KPI not found" }, { status: 404 });
+  }
+
+  // Prefer updating school-owned copy; for global catalog update name in place (single-tenant).
+  await prisma.activity.update({
+    where: { id: activity.id },
+    data: { name },
+  });
+
+  return NextResponse.json({ ok: true, name });
 }
 
 export async function GET() {
@@ -212,7 +264,7 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const [targets, customActivities, categories] = await Promise.all([
+  const [targets, customActivities, categories, hidden] = await Promise.all([
     prisma.schoolKpiTarget.findMany({ where: { schoolId: session.schoolId } }),
     prisma.activity.findMany({
       where: { schoolId: session.schoolId },
@@ -220,12 +272,14 @@ export async function GET() {
       orderBy: { name: "asc" },
     }),
     prisma.activityCategory.findMany({ orderBy: { sortOrder: "asc" } }),
+    prisma.schoolHiddenKpi.findMany({ where: { schoolId: session.schoolId } }),
   ]);
 
   return NextResponse.json({
     targets,
     customActivities,
     categories,
+    hiddenSlugs: hidden.map((h) => h.metricSlug),
     ageBrackets: AGE_BRACKETS,
     units: KPI_UNITS,
   });

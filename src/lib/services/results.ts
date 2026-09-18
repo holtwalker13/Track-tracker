@@ -49,24 +49,16 @@ export async function saveAttemptResults(input: {
     where: { id: input.studentId },
   });
 
-  // Replace prior marks for this session so pause/resume doesn't stack duplicates.
-  // Only delete once we know this write will persist something.
-  async function replaceSessionMarks(
-    create: () => Promise<{ saved: true; pr: boolean; best?: number; warning?: string | null }>
-  ) {
-    await prisma.performanceResult.deleteMany({
-      where: {
-        studentId: input.studentId,
-        activityId: input.activityId,
-        testingSessionId: input.testingSessionId,
-      },
-    });
-    return create();
-  }
-
   if (input.status && input.status !== "COMPLETED") {
-    return replaceSessionMarks(async () => {
-      await prisma.performanceResult.create({
+    return prisma.$transaction(async (tx) => {
+      await tx.performanceResult.deleteMany({
+        where: {
+          studentId: input.studentId,
+          activityId: input.activityId,
+          testingSessionId: input.testingSessionId,
+        },
+      });
+      await tx.performanceResult.create({
         data: {
           studentId: input.studentId,
           activityId: input.activityId,
@@ -118,11 +110,18 @@ export async function saveAttemptResults(input: {
       ? best / input.weightAtTest
       : null;
 
-  return replaceSessionMarks(async () => {
+  return prisma.$transaction(async (tx) => {
+    await tx.performanceResult.deleteMany({
+      where: {
+        studentId: input.studentId,
+        activityId: input.activityId,
+        testingSessionId: input.testingSessionId,
+      },
+    });
     for (let i = 0; i < numericAttempts.length; i++) {
-      const val = numericAttempts[i];
+      const val = numericAttempts[i]!;
       const isBest = val === best;
-      await prisma.performanceResult.create({
+      await tx.performanceResult.create({
         data: {
           studentId: input.studentId,
           activityId: input.activityId,

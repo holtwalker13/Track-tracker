@@ -79,8 +79,7 @@ export function AddStudentForm({
           Student ID
           <input
             name="studentNumber"
-            required
-            placeholder="e.g. F0170"
+            placeholder="Optional — auto S0001…"
             className="mt-1 w-full rounded-lg border border-card-border bg-background px-3 py-2 font-mono"
           />
         </label>

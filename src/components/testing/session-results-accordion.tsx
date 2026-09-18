@@ -30,6 +30,7 @@ export function SessionResultsAccordion({
   activityChips,
   activities,
   hasResults,
+  live = false,
 }: {
   sessionId: string;
   sessionName: string;
@@ -37,6 +38,7 @@ export function SessionResultsAccordion({
   activityChips: { slug: string; name: string }[];
   activities: SessionActivitySummary[];
   hasResults: boolean;
+  live?: boolean;
 }) {
   const totalStudents = activities[0]?.total ?? 0;
   const anyRecorded = activities.some((a) => a.recorded > 0);
@@ -49,6 +51,12 @@ export function SessionResultsAccordion({
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
+              {live && (
+                <span className="relative flex h-2.5 w-2.5 shrink-0" aria-label="Live">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-sport-red opacity-60" />
+                  <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-sport-red shadow-[0_0_10px_rgba(239,68,68,0.75)]" />
+                </span>
+              )}
               <h2 className="text-lg font-semibold tracking-tight">{sessionName}</h2>
               <ChevronDown
                 className="h-4 w-4 shrink-0 text-muted transition group-open:rotate-180"
@@ -178,7 +186,11 @@ export function SessionResultsAccordion({
                   <p className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-muted">
                     Still need a mark
                   </p>
-                  <p className="text-sm text-muted">{act.pendingNames.join(" · ")}</p>
+                  <p className="text-sm text-muted">
+                    {act.pendingNames.length <= 3
+                      ? act.pendingNames.join(" · ")
+                      : `${act.pendingNames.slice(0, 3).join(" · ")} … ${act.pendingNames.length - 3} more needed`}
+                  </p>
                 </div>
               )}
 

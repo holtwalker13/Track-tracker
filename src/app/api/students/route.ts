@@ -12,7 +12,7 @@ export async function POST(request: Request) {
   const body = await request.json();
   const firstName = String(body.firstName ?? "").trim();
   const lastName = String(body.lastName ?? "").trim();
-  const studentNumber = String(body.studentNumber ?? "").trim().toUpperCase();
+  let studentNumber = String(body.studentNumber ?? "").trim().toUpperCase();
   const gender = String(body.gender ?? "F").toUpperCase() === "M" ? "M" : "F";
   const classYear = Number(body.classYear);
   const sportsRaw = body.sports == null ? null : String(body.sports).trim();
@@ -24,8 +24,8 @@ export async function POST(request: Request) {
       : null;
   const classId = body.classId ? String(body.classId) : null;
 
-  if (!firstName || !lastName || !studentNumber) {
-    return NextResponse.json({ error: "Name and student ID are required" }, { status: 400 });
+  if (!firstName || !lastName) {
+    return NextResponse.json({ error: "First and last name are required" }, { status: 400 });
   }
   if (!isClassYear(classYear)) {
     return NextResponse.json({ error: "Invalid graduating class" }, { status: 400 });
@@ -36,6 +36,20 @@ export async function POST(request: Request) {
   });
   if (!schoolYear) {
     return NextResponse.json({ error: "No current school year" }, { status: 400 });
+  }
+
+  if (!studentNumber) {
+    // Auto-assign next school ID: S0001, S0002, …
+    const existing = await prisma.studentProfile.findMany({
+      where: { schoolId: session.schoolId, studentNumber: { startsWith: "S" } },
+      select: { studentNumber: true },
+    });
+    let max = 0;
+    for (const row of existing) {
+      const n = parseInt(row.studentNumber.slice(1), 10);
+      if (Number.isFinite(n) && n > max) max = n;
+    }
+    studentNumber = `S${String(max + 1).padStart(4, "0")}`;
   }
 
   const existing = await prisma.studentProfile.findFirst({

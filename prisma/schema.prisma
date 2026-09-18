@@ -57,6 +57,7 @@ model School {
   performanceResults PerformanceResult[]
   kpiTargets         SchoolKpiTarget[]
   customActivities   Activity[]
+  hiddenKpis         SchoolHiddenKpi[]
 
   @@index([organizationId])
   @@index([districtId])
@@ -76,6 +77,17 @@ model SchoolKpiTarget {
   @@unique([schoolId, gender, medal, metricSlug, ageBracket])
   @@index([schoolId, gender])
   @@index([schoolId, ageBracket])
+}
+
+// Built-in KPIs coaches hid/deleted for this school.
+model SchoolHiddenKpi {
+  id         String @id @default(cuid())
+  schoolId   String
+  school     School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  metricSlug String
+
+  @@unique([schoolId, metricSlug])
+  @@index([schoolId])
 }
 
 model SchoolYear {
@@ -232,7 +244,11 @@ model TestingSession {
   name         String
   testingDate  DateTime
   gradeLevel   Int?
-  status       String @default("DRAFT")
+  // LIVE | PAUSED | CLOSED (legacy: DRAFT/ACTIVE/COMPLETED still read)
+  status       String @default("LIVE")
+  // When false, student self-entry is locked (coach can still record while LIVE)
+  recordingUnlocked Boolean @default(true)
+  liveOpenedAt DateTime?
   createdById  String?
   createdAt    DateTime             @default(now())
 

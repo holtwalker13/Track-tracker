@@ -3,19 +3,24 @@ import { AppShell } from "@/components/layout/app-shell";
 import { COACH_NAV } from "@/lib/navigation";
 import { requireSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
-import { classYearLabel } from "@/lib/grades";
+import { classSectionLabel } from "@/lib/periods";
 import { formatStudentName } from "@/lib/utils";
 import { NewTestingSessionForm } from "@/components/testing/new-session-form";
 import {
   SessionResultsAccordion,
   type SessionActivitySummary,
 } from "@/components/testing/session-results-accordion";
+import { isWithinLiveWindow } from "@/lib/constants";
 
 export default async function TestingSessionsPage() {
   const session = await requireSession(["COACH", "ADMIN"]);
   if (!session?.schoolId) redirect("/login");
 
-  const [sessions, classes] = await Promise.all([
+  const today = new Date();
+  const dayStart = new Date(today.toISOString().slice(0, 10) + "T00:00:00");
+  const dayEnd = new Date(today.toISOString().slice(0, 10) + "T23:59:59.999");
+
+  const [sessions, classes, sameDayCount] = await Promise.all([
     prisma.testingSession.findMany({
       where: { schoolId: session.schoolId },
       include: {
@@ -46,8 +51,14 @@ export default async function TestingSessionsPage() {
     }),
     prisma.class.findMany({
       where: { schoolId: session.schoolId },
-      orderBy: { name: "asc" },
+      orderBy: [{ period: "asc" }, { name: "asc" }],
       select: { id: true, name: true, period: true },
+    }),
+    prisma.testingSession.count({
+      where: {
+        schoolId: session.schoolId,
+        testingDate: { gte: dayStart, lte: dayEnd },
+      },
     }),
   ]);
 
@@ -57,7 +68,7 @@ export default async function TestingSessionsPage() {
         Start a session, record what you can, then leave — expand any test below to see who still
         needs a mark at each station. Continue picks up where you left off.
       </p>
-      <NewTestingSessionForm classes={classes} />
+      <NewTestingSessionForm classes={classes} sameDayCount={sameDayCount} />
       <div className="space-y-3">
         {sessions.map((s) => {
           const athletes = [...s.students]
@@ -114,12 +125,22 @@ export default async function TestingSessionsPage() {
           });
 
           const hasResults = s.results.length > 0;
+          const live =
+            (s.status === "LIVE" || s.status === "ACTIVE" || s.status === "DRAFT") &&
+            s.recordingUnlocked &&
+            isWithinLiveWindow(s.liveOpenedAt);
           const meta = [
             new Date(s.testingDate).toLocaleDateString(),
             s.schoolYear.label,
-            s.class?.name,
-            s.gradeLevel ? classYearLabel(s.gradeLevel) : null,
+            s.class ? classSectionLabel(s.class) : null,
             `${total} athletes`,
+            s.status === "CLOSED" || s.status === "COMPLETED"
+              ? "closed"
+              : s.status === "PAUSED"
+                ? "paused"
+                : live
+                  ? "live"
+                  : null,
             !hasResults && total === 0 ? "empty" : null,
           ]
             .filter(Boolean)
@@ -131,6 +152,7 @@ export default async function TestingSessionsPage() {
               sessionId={s.id}
               sessionName={s.name}
               meta={meta}
+              live={live}
               activityChips={s.activities.map((a) => ({
                 slug: a.activity.slug,
                 name: a.activity.name,

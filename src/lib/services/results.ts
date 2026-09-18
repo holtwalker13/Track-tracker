@@ -49,27 +49,44 @@ export async function saveAttemptResults(input: {
     where: { id: input.studentId },
   });
 
-  if (input.status && input.status !== "COMPLETED") {
-    await prisma.performanceResult.create({
-      data: {
+  // Replace prior marks for this session so pause/resume doesn't stack duplicates.
+  // Only delete once we know this write will persist something.
+  async function replaceSessionMarks(
+    create: () => Promise<{ saved: true; pr: boolean; best?: number; warning?: string | null }>
+  ) {
+    await prisma.performanceResult.deleteMany({
+      where: {
         studentId: input.studentId,
         activityId: input.activityId,
         testingSessionId: input.testingSessionId,
-        schoolId: input.schoolId,
-        schoolYearId: input.schoolYearId,
-        organizationId: input.organizationId,
-        gradeLevel: input.gradeLevel,
-        testingDate: input.testingDate,
-        status: input.status,
-        enteredById: input.enteredById,
-        entryMethod: input.entryMethod,
-        ageAtTest: ageAtDate(student.dateOfBirth, input.testingDate),
-        weightAtTest: input.weightAtTest,
-        heightAtTest: input.heightAtTest,
-        isBestAttempt: true,
       },
     });
-    return { saved: true, pr: false };
+    return create();
+  }
+
+  if (input.status && input.status !== "COMPLETED") {
+    return replaceSessionMarks(async () => {
+      await prisma.performanceResult.create({
+        data: {
+          studentId: input.studentId,
+          activityId: input.activityId,
+          testingSessionId: input.testingSessionId,
+          schoolId: input.schoolId,
+          schoolYearId: input.schoolYearId,
+          organizationId: input.organizationId,
+          gradeLevel: input.gradeLevel,
+          testingDate: input.testingDate,
+          status: input.status!,
+          enteredById: input.enteredById,
+          entryMethod: input.entryMethod,
+          ageAtTest: ageAtDate(student.dateOfBirth, input.testingDate),
+          weightAtTest: input.weightAtTest,
+          heightAtTest: input.heightAtTest,
+          isBestAttempt: true,
+        },
+      });
+      return { saved: true as const, pr: false };
+    });
   }
 
   const numericAttempts = input.attempts.filter(
@@ -96,50 +113,42 @@ export async function saveAttemptResults(input: {
     direction
   );
 
-  await prisma.performanceResult.updateMany({
-    where: {
-      studentId: input.studentId,
-      activityId: input.activityId,
-      testingSessionId: input.testingSessionId,
-    },
-    data: { isBestAttempt: false },
-  });
-
   const relativeStrength =
     activity.bodyweightInfluenced && input.weightAtTest
       ? best / input.weightAtTest
       : null;
 
-  for (let i = 0; i < numericAttempts.length; i++) {
-    const val = numericAttempts[i];
-    const isBest = val === best;
-    await prisma.performanceResult.create({
-      data: {
-        studentId: input.studentId,
-        activityId: input.activityId,
-        testingSessionId: input.testingSessionId,
-        schoolId: input.schoolId,
-        schoolYearId: input.schoolYearId,
-        organizationId: input.organizationId,
-        gradeLevel: input.gradeLevel,
-        resultValue: val,
-        displayValue: formatActivityValue(val, activity.unit, activity.slug),
-        attemptNumber: i + 1,
-        isBestAttempt: isBest,
-        isPersonalRecord: isBest && isPr,
-        testingDate: input.testingDate,
-        status: "COMPLETED",
-        enteredById: input.enteredById,
-        entryMethod: input.entryMethod,
-        ageAtTest: ageAtDate(student.dateOfBirth, input.testingDate),
-        weightAtTest: input.weightAtTest,
-        heightAtTest: input.heightAtTest,
-        relativeStrength: isBest ? relativeStrength : null,
-      },
-    });
-  }
-
-  return { saved: true, pr: isPr, best, warning };
+  return replaceSessionMarks(async () => {
+    for (let i = 0; i < numericAttempts.length; i++) {
+      const val = numericAttempts[i];
+      const isBest = val === best;
+      await prisma.performanceResult.create({
+        data: {
+          studentId: input.studentId,
+          activityId: input.activityId,
+          testingSessionId: input.testingSessionId,
+          schoolId: input.schoolId,
+          schoolYearId: input.schoolYearId,
+          organizationId: input.organizationId,
+          gradeLevel: input.gradeLevel,
+          resultValue: val,
+          displayValue: formatActivityValue(val, activity.unit, activity.slug),
+          attemptNumber: i + 1,
+          isBestAttempt: isBest,
+          isPersonalRecord: isBest && isPr,
+          testingDate: input.testingDate,
+          status: "COMPLETED",
+          enteredById: input.enteredById,
+          entryMethod: input.entryMethod,
+          ageAtTest: ageAtDate(student.dateOfBirth, input.testingDate),
+          weightAtTest: input.weightAtTest,
+          heightAtTest: input.heightAtTest,
+          relativeStrength: isBest ? relativeStrength : null,
+        },
+      });
+    }
+    return { saved: true as const, pr: isPr, best, warning };
+  });
 }
 
 export async function correctResult(

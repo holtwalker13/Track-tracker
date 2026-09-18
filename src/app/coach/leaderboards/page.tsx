@@ -31,7 +31,8 @@ export default async function CoachLeaderboardsPage({
       <LeaderboardGrid
         boards={boards}
         subtitle={`Top 10 per event · featured: 40-Yard Dash & Vertical · ${gradesLabel(grades)} · ${genderFullLabel(gender).toLowerCase()} · current school year`}
-        athleteHref={(studentId) => `/coach/students/${studentId}`}
+        athleteHrefBase="/coach/students"
+        compareHref="/coach/compare"
       />
     </AppShell>
   );

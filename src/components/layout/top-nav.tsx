@@ -50,9 +50,9 @@ export function TopNav({ items }: { items: NavItem[] }) {
     <nav
       aria-label="Main"
       className={cn(
-        "flex snap-x snap-mandatory gap-0.5 overflow-x-auto overscroll-x-contain pb-1",
+        "flex snap-x snap-mandatory gap-0.5 overflow-x-auto overscroll-x-contain pt-1 pb-1.5",
         "-mx-4 px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
-        "md:mx-0 md:flex-wrap md:justify-end md:overflow-visible md:snap-none md:px-0 md:pb-0"
+        "md:mx-0 md:flex-wrap md:justify-end md:overflow-visible md:snap-none md:px-0 md:pt-0 md:pb-0"
       )}
     >
       {items.map((item) => {

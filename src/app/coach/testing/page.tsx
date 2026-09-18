@@ -1,14 +1,15 @@
 import { redirect } from "next/navigation";
-import Link from "next/link";
 import { AppShell } from "@/components/layout/app-shell";
-import { Card, CardTitle } from "@/components/ui/card";
 import { COACH_NAV } from "@/lib/navigation";
 import { requireSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
-import { ActivityIcon } from "@/lib/activity-icons";
 import { classYearLabel } from "@/lib/grades";
+import { formatStudentName } from "@/lib/utils";
 import { NewTestingSessionForm } from "@/components/testing/new-session-form";
-import { DeleteSessionButton } from "@/components/testing/delete-session-button";
+import {
+  SessionResultsAccordion,
+  type SessionActivitySummary,
+} from "@/components/testing/session-results-accordion";
 
 export default async function TestingSessionsPage() {
   const session = await requireSession(["COACH", "ADMIN"]);
@@ -19,10 +20,27 @@ export default async function TestingSessionsPage() {
       where: { schoolId: session.schoolId },
       include: {
         schoolYear: true,
-        activities: { include: { activity: true } },
+        activities: {
+          include: { activity: true },
+          orderBy: { sortOrder: "asc" },
+        },
         class: true,
-        _count: { select: { students: true } },
-        results: { select: { id: true }, take: 1 },
+        students: {
+          include: {
+            student: { select: { id: true, firstName: true, lastName: true } },
+          },
+        },
+        results: {
+          where: { status: { not: "SUPERSEDED" } },
+          select: {
+            studentId: true,
+            activityId: true,
+            status: true,
+            resultValue: true,
+            displayValue: true,
+            isBestAttempt: true,
+          },
+        },
       },
       orderBy: { testingDate: "desc" },
     }),
@@ -36,58 +54,90 @@ export default async function TestingSessionsPage() {
   return (
     <AppShell title="Testing" nav={COACH_NAV}>
       <p className="mb-4 text-muted">
-        Every live session needs a test date so average, PR, and progress charts can line up over
-        time. Delete empty or unused sessions anytime.
+        Start a session, record what you can, then leave — expand any test below to see who still
+        needs a mark at each station. Continue picks up where you left off.
       </p>
       <NewTestingSessionForm classes={classes} />
-      <div className="space-y-4">
+      <div className="space-y-3">
         {sessions.map((s) => {
+          const athletes = [...s.students]
+            .map((ss) => ({
+              id: ss.student.id,
+              name: formatStudentName(ss.student.firstName, ss.student.lastName, true),
+            }))
+            .sort((a, b) => a.name.localeCompare(b.name));
+          const total = athletes.length;
+
+          const activities: SessionActivitySummary[] = s.activities.map((sa) => {
+            const recordedRows = athletes
+              .map((athlete) => {
+                const marks = s.results.filter(
+                  (r) => r.studentId === athlete.id && r.activityId === sa.activityId
+                );
+                if (marks.length === 0) return null;
+                const nonComplete = marks.find((r) => r.status !== "COMPLETED");
+                if (nonComplete) {
+                  return {
+                    studentId: athlete.id,
+                    name: athlete.name,
+                    display: null,
+                    status: nonComplete.status,
+                  };
+                }
+                const best =
+                  marks.find((r) => r.isBestAttempt && r.status === "COMPLETED") ??
+                  marks.find((r) => r.status === "COMPLETED");
+                if (!best) return null;
+                return {
+                  studentId: athlete.id,
+                  name: athlete.name,
+                  display: best.displayValue,
+                  status: "COMPLETED",
+                };
+              })
+              .filter((row): row is NonNullable<typeof row> => row != null);
+
+            const recordedIds = new Set(recordedRows.map((r) => r.studentId));
+            const pendingNames = athletes
+              .filter((a) => !recordedIds.has(a.id))
+              .map((a) => a.name);
+
+            return {
+              activityId: sa.activityId,
+              slug: sa.activity.slug,
+              name: sa.activity.name,
+              recorded: recordedRows.length,
+              total,
+              recordedRows,
+              pendingNames,
+            };
+          });
+
           const hasResults = s.results.length > 0;
+          const meta = [
+            new Date(s.testingDate).toLocaleDateString(),
+            s.schoolYear.label,
+            s.class?.name,
+            s.gradeLevel ? classYearLabel(s.gradeLevel) : null,
+            `${total} athletes`,
+            !hasResults && total === 0 ? "empty" : null,
+          ]
+            .filter(Boolean)
+            .join(" · ");
+
           return (
-            <Card key={s.id}>
-              <div className="flex flex-wrap items-center justify-between gap-4">
-                <div>
-                  <CardTitle>{s.name}</CardTitle>
-                  <p className="mt-1 text-sm text-muted">
-                    {new Date(s.testingDate).toLocaleDateString()} · {s.schoolYear.label}
-                    {s.class ? ` · ${s.class.name}` : ""}
-                    {s.gradeLevel ? ` · ${classYearLabel(s.gradeLevel)}` : ""}
-                    {` · ${s._count.students} athletes`}
-                    {!hasResults && s._count.students === 0 ? " · empty" : ""}
-                  </p>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {s.activities.map((a) => (
-                      <span
-                        key={a.id}
-                        className="inline-flex items-center gap-1.5 rounded-full border border-card-border px-2.5 py-1 text-xs"
-                      >
-                        <ActivityIcon slug={a.activity.slug} className="h-3.5 w-3.5" />
-                        {a.activity.name}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <Link
-                    href={`/coach/testing/${s.id}`}
-                    className="rounded-lg bg-accent px-4 py-2 font-medium text-background"
-                  >
-                    Live testing
-                  </Link>
-                  <Link
-                    href={`/coach/testing/${s.id}/station`}
-                    className="rounded-lg border border-card-border px-4 py-2"
-                  >
-                    Student station
-                  </Link>
-                  <DeleteSessionButton
-                    sessionId={s.id}
-                    sessionName={s.name}
-                    hasResults={hasResults}
-                  />
-                </div>
-              </div>
-            </Card>
+            <SessionResultsAccordion
+              key={s.id}
+              sessionId={s.id}
+              sessionName={s.name}
+              meta={meta}
+              activityChips={s.activities.map((a) => ({
+                slug: a.activity.slug,
+                name: a.activity.name,
+              }))}
+              activities={activities}
+              hasResults={hasResults}
+            />
           );
         })}
       </div>

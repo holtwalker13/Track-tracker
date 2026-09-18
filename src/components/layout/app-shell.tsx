@@ -14,7 +14,7 @@ export function AppShell({
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-40 border-b border-card-border bg-background/90 backdrop-blur">
         <div className="mx-auto max-w-7xl px-4 py-3">
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between md:gap-4">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between md:gap-4">
             <div className="shrink-0">
               <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted">
                 Track Tracker

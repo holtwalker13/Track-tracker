@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { formatStudentName } from "@/lib/utils";
 
 type Row = {
@@ -20,18 +20,26 @@ export function LiveTestingGrid({
   activityName,
   subtitle,
   rows: initialRows,
+  readOnly = false,
 }: {
   sessionId: string;
   activityId: string;
   activityName: string;
   subtitle: string;
   rows: Row[];
+  readOnly?: boolean;
 }) {
   const [rows, setRows] = useState(initialRows);
   const [saving, setSaving] = useState<string | null>(null);
 
+  // Wipe / reload whenever the activity tab changes so marks never carry over.
+  useEffect(() => {
+    setRows(initialRows);
+  }, [activityId, initialRows]);
+
   const saveRow = useCallback(
     async (studentId: string, row: Row) => {
+      if (readOnly) return;
       setSaving(studentId);
       const attempts = row.attempts.map((a) =>
         a === "" || a === null ? null : Number(a)
@@ -47,17 +55,17 @@ export function LiveTestingGrid({
           status: row.status === "COMPLETED" ? undefined : row.status,
         }),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       setRows((prev) =>
         prev.map((r) =>
           r.studentId === studentId
-            ? { ...r, saved: data.saved, pr: data.pr }
+            ? { ...r, saved: Boolean(data.saved), pr: Boolean(data.pr) }
             : r
         )
       );
       setSaving(null);
     },
-    [activityId, sessionId]
+    [activityId, sessionId, readOnly]
   );
 
   function updateAttempt(studentId: string, idx: number, value: string) {
@@ -76,6 +84,9 @@ export function LiveTestingGrid({
       <div className="mb-4">
         <h2 className="text-2xl font-bold">{activityName}</h2>
         <p className="text-muted">{subtitle}</p>
+        {readOnly && (
+          <p className="mt-1 text-sm text-sport-gold">Recording paused or closed — view only.</p>
+        )}
       </div>
       <table className="w-full min-w-[720px] border-collapse text-left">
         <thead>
@@ -91,7 +102,7 @@ export function LiveTestingGrid({
         <tbody>
           {rows.map((row) => (
             <tr
-              key={row.studentId}
+              key={`${activityId}-${row.studentId}`}
               className={`border-b border-card-border/60 ${row.pr ? "bg-success/10" : ""}`}
             >
               <td className="py-3 pr-2 font-medium">
@@ -112,31 +123,46 @@ export function LiveTestingGrid({
                 <td key={i} className="px-1 py-2">
                   <input
                     inputMode="decimal"
-                    className="w-20 rounded-lg border border-card-border bg-background px-2 py-3 text-center text-lg font-semibold"
+                    disabled={readOnly}
+                    className="w-20 rounded-lg border border-card-border bg-background px-2 py-3 text-center text-lg font-semibold disabled:opacity-60"
                     value={row.attempts[i] ?? ""}
                     onChange={(e) => updateAttempt(row.studentId, i, e.target.value)}
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
                         e.preventDefault();
-                        saveRow(row.studentId, row);
+                        saveRow(row.studentId, {
+                          ...row,
+                          attempts: row.attempts.map((a, idx) =>
+                            idx === i ? (e.target as HTMLInputElement).value : a
+                          ),
+                        });
                       }
                     }}
-                    onBlur={() => saveRow(row.studentId, row)}
+                    onBlur={(e) =>
+                      saveRow(row.studentId, {
+                        ...row,
+                        attempts: row.attempts.map((a, idx) =>
+                          idx === i ? e.target.value : a
+                        ),
+                      })
+                    }
                   />
                 </td>
               ))}
               <td className="px-2">
                 <select
-                  className="rounded border border-card-border bg-background px-2 py-2 text-sm"
+                  disabled={readOnly}
+                  className="rounded border border-card-border bg-background px-2 py-2 text-sm disabled:opacity-60"
                   value={row.status}
                   onChange={(e) => {
                     const status = e.target.value;
+                    const next = { ...row, status };
                     setRows((prev) =>
                       prev.map((r) =>
-                        r.studentId === row.studentId ? { ...r, status } : r
+                        r.studentId === row.studentId ? next : r
                       )
                     );
-                    saveRow(row.studentId, { ...row, status });
+                    saveRow(row.studentId, next);
                   }}
                 >
                   <option value="COMPLETED">Active</option>

@@ -58,7 +58,7 @@ export async function getScholasticAttemptLog(studentId: string): Promise<School
       schoolYear: true,
       testingSession: true,
     },
-    orderBy: { testingDate: "asc" },
+    orderBy: [{ testingDate: "asc" }, { createdAt: "asc" }],
   });
 
   const enrollments = await prisma.studentEnrollment.findMany({
@@ -107,7 +107,11 @@ export async function getScholasticAttemptLog(studentId: string): Promise<School
       eventRows.set(key, row);
     }
     if (r.resultValue != null) {
-      row.attempts.push(r.resultValue);
+      // Keep latest mark per attempt number (stacked autosaves used to append forever).
+      const n = Math.max(1, Math.min(3, r.attemptNumber ?? 1));
+      const idx = n - 1;
+      while (row.attempts.length <= idx) row.attempts.push(Number.NaN);
+      row.attempts[idx] = r.resultValue;
       if (r.isBestAttempt) {
         row.best = r.resultValue;
         row.bestDisplay =
@@ -115,6 +119,10 @@ export async function getScholasticAttemptLog(studentId: string): Promise<School
         row.isPersonalRecord = r.isPersonalRecord;
       }
     }
+  }
+
+  for (const row of eventRows.values()) {
+    row.attempts = row.attempts.filter((v) => Number.isFinite(v)).slice(0, 3);
   }
 
   // Per school year + activity: compute delta vs previous event (chronological)

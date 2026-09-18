@@ -14,24 +14,34 @@ export default async function BenchmarksPage() {
 
   await ensureSchoolKpiTargets(session.schoolId);
 
-  // Ensure flexibility category exists for PE builders.
   await prisma.activityCategory.upsert({
     where: { slug: "flexibility" },
     create: { slug: "flexibility", name: "Flexibility", sortOrder: 40 },
     update: {},
   });
 
-  const [rows, customActivities] = await Promise.all([
+  const [rows, customActivities, catalogActivities, hidden] = await Promise.all([
     prisma.schoolKpiTarget.findMany({ where: { schoolId: session.schoolId } }),
     prisma.activity.findMany({
       where: { schoolId: session.schoolId },
       include: { category: true },
       orderBy: { name: "asc" },
     }),
+    prisma.activity.findMany({
+      where: { schoolId: null, slug: { in: KPI_METRIC_META.map((m) => m.slug) } },
+      select: { slug: true, name: true, unit: true },
+    }),
+    prisma.schoolHiddenKpi.findMany({
+      where: { schoolId: session.schoolId },
+      select: { metricSlug: true },
+    }),
   ]);
 
+  const hiddenSet = new Set(hidden.map((h) => h.metricSlug));
+  const catalogName = new Map(catalogActivities.map((a) => [a.slug, a]));
+
   const initial: TargetCell[] = rows
-    .filter((r) => MEDALS.includes(r.medal as Medal))
+    .filter((r) => MEDALS.includes(r.medal as Medal) && !hiddenSet.has(r.metricSlug))
     .map((r) => ({
       gender: r.gender === "M" ? "M" : "F",
       medal: r.medal as Medal,
@@ -41,12 +51,15 @@ export default async function BenchmarksPage() {
     }));
 
   const metrics = [
-    ...KPI_METRIC_META.map((m) => ({
-      slug: m.slug,
-      name: m.name,
-      unit: m.unit,
-      custom: false as const,
-    })),
+    ...KPI_METRIC_META.filter((m) => !hiddenSet.has(m.slug)).map((m) => {
+      const live = catalogName.get(m.slug);
+      return {
+        slug: m.slug,
+        name: live?.name ?? m.name,
+        unit: live?.unit ?? m.unit,
+        custom: false as const,
+      };
+    }),
     ...customActivities.map((a) => ({
       slug: a.slug,
       name: a.name,

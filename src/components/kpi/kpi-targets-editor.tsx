@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, X } from "lucide-react";
+import { Plus, Pencil, Trash2, X } from "lucide-react";
 import { MEDAL_LABELS, MEDALS, type Medal } from "@/lib/kpi-targets";
 import {
   AGE_BRACKETS,
@@ -43,6 +43,7 @@ export function KpiTargetsEditor({
   const [gender, setGender] = useState<"F" | "M">("F");
   const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [builderOpen, setBuilderOpen] = useState(false);
+  const [editing, setEditing] = useState<MetricInfo | null>(null);
 
   useEffect(() => setCells(initial), [initial]);
   useEffect(() => setMetricList(metrics), [metrics]);
@@ -86,12 +87,14 @@ export function KpiTargetsEditor({
     setStatus(res.ok ? "saved" : "error");
   }
 
-  async function deleteMetric(slug: string, isCustom: boolean) {
-    if (!isCustom) {
-      window.alert("Built-in KPIs can’t be deleted. Clear their targets instead.");
+  async function deleteMetric(slug: string) {
+    if (
+      !window.confirm(
+        "Delete this KPI for your school? Targets will be cleared. Custom KPIs are removed entirely."
+      )
+    ) {
       return;
     }
-    if (!window.confirm("Delete this custom KPI and its targets?")) return;
     const res = await fetch("/api/kpi-targets", {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
@@ -104,6 +107,22 @@ export function KpiTargetsEditor({
     setMetricList((prev) => prev.filter((m) => m.slug !== slug));
     setCells((prev) => prev.filter((c) => c.metricSlug !== slug));
     router.refresh();
+  }
+
+  async function renameMetric(slug: string, name: string) {
+    const res = await fetch("/api/kpi-targets", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ slug, name }),
+    });
+    if (!res.ok) {
+      window.alert("Could not rename KPI.");
+      return false;
+    }
+    setMetricList((prev) => prev.map((m) => (m.slug === slug ? { ...m, name } : m)));
+    setEditing(null);
+    router.refresh();
+    return true;
   }
 
   const visibleMetrics = useMemo(() => {
@@ -222,16 +241,24 @@ export function KpiTargetsEditor({
                   </td>
                 ))}
                 <td className="py-2">
-                  {meta.custom && (
+                  <div className="flex items-center gap-0.5">
                     <button
                       type="button"
-                      onClick={() => deleteMetric(meta.slug, true)}
+                      onClick={() => setEditing(meta)}
+                      className="rounded-md p-1.5 text-muted hover:bg-sky-400/10 hover:text-sky-300"
+                      aria-label={`Edit ${meta.name}`}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => deleteMetric(meta.slug)}
                       className="rounded-md p-1.5 text-muted hover:bg-sport-red/10 hover:text-sport-red"
                       aria-label={`Delete ${meta.name}`}
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
-                  )}
+                  </div>
                 </td>
               </tr>
             ))}
@@ -262,6 +289,89 @@ export function KpiTargetsEditor({
           }}
         />
       )}
+
+      {editing && (
+        <KpiRenameModal
+          metric={editing}
+          onClose={() => setEditing(null)}
+          onSave={renameMetric}
+        />
+      )}
+    </div>
+  );
+}
+
+function KpiRenameModal({
+  metric,
+  onClose,
+  onSave,
+}: {
+  metric: MetricInfo;
+  onClose: () => void;
+  onSave: (slug: string, name: string) => Promise<boolean>;
+}) {
+  const [name, setName] = useState(metric.name);
+  const [saving, setSaving] = useState(false);
+
+  async function submit() {
+    if (!name.trim()) return;
+    setSaving(true);
+    await onSave(metric.slug, name.trim());
+    setSaving(false);
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center p-3 sm:items-center sm:p-4">
+      <button
+        type="button"
+        aria-label="Close"
+        className="absolute inset-0 bg-black/60 backdrop-blur-[2px]"
+        onClick={onClose}
+      />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Rename KPI"
+        className="relative z-10 w-full max-w-sm rounded-2xl border border-card-border bg-card p-4 shadow-2xl"
+      >
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-lg font-semibold">Rename KPI</h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-card-border text-muted"
+            aria-label="Cancel"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <label className="block text-sm">
+          Title
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="mt-1 w-full rounded-lg border border-card-border bg-background px-3 py-2.5"
+          />
+        </label>
+        <p className="mt-2 text-xs text-muted">Unit: {metric.unit}</p>
+        <div className="mt-4 flex gap-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 rounded-lg border border-card-border py-2.5 text-sm font-medium text-muted"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={submit}
+            disabled={saving || !name.trim()}
+            className="flex-1 rounded-lg bg-accent py-2.5 text-sm font-semibold text-background disabled:opacity-50"
+          >
+            {saving ? "Saving…" : "Save"}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

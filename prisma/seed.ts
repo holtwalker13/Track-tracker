@@ -59,6 +59,19 @@ const MALE_LAST = [
   "Barrett", "Collins", "Dunn", "Everett", "Farley", "Gibson", "Hale", "Iverson", "Keene", "Lang",
 ];
 
+/** Synthetic female names — CSV marks are kept; real roster names are never seeded. */
+const FEMALE_FIRST = [
+  "Ava", "Bryn", "Chloe", "Daisy", "Elena", "Faith", "Gia", "Harper", "Isla", "Jade",
+  "Keira", "Lila", "Maya", "Nora", "Olivia", "Piper", "Quinn", "Reese", "Sadie", "Tessa",
+  "Uma", "Vera", "Willow", "Xena", "Yara", "Zoe", "Ainsley", "Blair", "Camille", "Delaney",
+  "Eden", "Freya", "Genesis", "Hadley", "Iris", "Jolene", "Kinsley", "Lark", "Maren", "Noelle",
+];
+const FEMALE_LAST = [
+  "Ashford", "Bellamy", "Crosby", "Dawson", "Ellsworth", "Finley", "Grayson", "Holloway", "Iver", "Jennings",
+  "Kingsley", "Larkin", "Monroe", "North", "Oakley", "Prescott", "Quill", "Rivers", "Sterling", "Thorne",
+  "Underwood", "Vale", "Westbrook", "York", "Brennan", "Callahan", "Drake", "Everton", "Farrow", "Glenn",
+];
+
 const MALE_SPORTS: Record<string, string> = {
   volleyball: "football",
   soccer: "football",
@@ -129,12 +142,6 @@ function parseClassYear(raw?: string): number {
   if (n === 2038) return 2028;
   if (isClassYear(n)) return n;
   return DEFAULT_CLASS_YEAR;
-}
-
-function splitName(full: string): { firstName: string; lastName: string } {
-  const parts = full.trim().split(/\s+/);
-  if (parts.length === 1) return { firstName: parts[0]!, lastName: "Athlete" };
-  return { firstName: parts[0]!, lastName: parts.slice(1).join(" ") };
 }
 
 function displayFor(slug: string, unit: string, value: number): string {
@@ -216,7 +223,10 @@ function loadFemaleAthletes(): AthleteRow[] {
   for (const row of rows.slice(headerIdx + 1)) {
     const name = (row[idx.name] ?? "").trim();
     if (!name || name.toLowerCase() === "name") continue;
-    const { firstName, lastName } = splitName(name.replace("?", "").trim());
+    // Replace imported real names with synthetic demo identities.
+    const i = athletes.length;
+    const firstName = FEMALE_FIRST[i % FEMALE_FIRST.length]!;
+    const lastName = FEMALE_LAST[Math.floor(i / FEMALE_FIRST.length) % FEMALE_LAST.length]!;
     const bodyWeight = parseNum(row[idx.bw]);
     const marks: Record<string, number> = {};
     const add = (slug: string, raw?: string) => {
@@ -245,12 +255,12 @@ function loadFemaleAthletes(): AthleteRow[] {
 
     athletes.push({
       firstName,
-      lastName: lastName || "Athlete",
+      lastName,
       classYear: parseClassYear(row[idx.classYear]),
       gender: "F",
       bodyWeight,
       sports: (row[idx.sports] ?? "").trim() || null,
-      comments: (row[idx.comments] ?? "").trim() || null,
+      comments: null,
       marks,
     });
   }
@@ -301,6 +311,7 @@ async function main() {
   }
 
   await prisma.schoolKpiTarget.deleteMany();
+  await prisma.schoolHiddenKpi.deleteMany();
   await prisma.performanceResult.deleteMany();
   await prisma.studentAchievement.deleteMany();
   await prisma.testingSessionStudent.deleteMany();
@@ -521,6 +532,7 @@ async function main() {
   const coachUser = await prisma.user.findFirst({ where: { role: "COACH" } });
   let studentIndex = 0;
   let sampleFemaleEmail: string | null = null;
+  const createdStudentIds: string[] = [];
 
   for (const athlete of roster) {
     studentIndex++;
@@ -556,6 +568,7 @@ async function main() {
         anonymousId: String(2000 + studentIndex),
       },
     });
+    createdStudentIds.push(profile.id);
 
     await prisma.studentEnrollment.create({
       data: {
@@ -691,10 +704,26 @@ async function main() {
     skipDuplicates: true,
   });
 
+  // Demo: five students opted out of peer name visibility (coaches still see real names).
+  const incognitoIds = [
+    createdStudentIds[3],
+    createdStudentIds[11],
+    createdStudentIds[19],
+    createdStudentIds[27],
+    createdStudentIds[41],
+  ].filter((id): id is string => Boolean(id));
+  if (incognitoIds.length > 0) {
+    await prisma.studentProfile.updateMany({
+      where: { id: { in: incognitoIds } },
+      data: { anonymousToPeers: true },
+    });
+  }
+
   console.log("Seed complete.");
   console.log("School:", school.name);
   console.log("Female athletes:", females.length);
   console.log("Male athletes (synthetic, same structure):", males.length);
+  console.log("Incognito (anonymous to peers):", incognitoIds.length);
   console.log("Coach login: coach1@jhs.demo / rekcart");
   console.log("Sample student:", sampleFemaleEmail, "/ rekcart");
 }

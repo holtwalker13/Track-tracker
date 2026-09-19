@@ -24,6 +24,7 @@ export async function PATCH(
     participationType?: string | null;
     firstName?: string;
     lastName?: string;
+    anonymousToPeers?: boolean;
   } = {};
 
   if ("sports" in body) {
@@ -33,6 +34,9 @@ export async function PATCH(
   if ("participationType" in body) {
     const raw = String(body.participationType ?? "").toUpperCase();
     data.participationType = raw === "PE" || raw === "ATHLETE" ? raw : null;
+  }
+  if ("anonymousToPeers" in body) {
+    data.anonymousToPeers = Boolean(body.anonymousToPeers);
   }
   if (body.firstName) data.firstName = String(body.firstName).trim();
   if (body.lastName) data.lastName = String(body.lastName).trim();

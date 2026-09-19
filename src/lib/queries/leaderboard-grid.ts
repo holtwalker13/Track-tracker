@@ -37,6 +37,9 @@ export type LeaderboardBoardEntry = {
   displayName: string;
   studentId: string;
   percentile: number | null;
+  /** ISO timestamp when the mark was recorded (for “new on board” highlight). */
+  recordedAt: string | null;
+  isRecent: boolean;
 };
 
 export type LeaderboardBoard = {
@@ -44,6 +47,8 @@ export type LeaderboardBoard = {
   group: ActivityDisplayGroup;
   entries: LeaderboardBoardEntry[];
 };
+
+const RECENT_MS = 24 * 60 * 60 * 1000;
 
 export async function getLeaderboardGrid(
   schoolId: string,
@@ -55,6 +60,7 @@ export async function getLeaderboardGrid(
   const activities = await getLeaderboardActivities();
   const grades = gradeLevels && gradeLevels.length > 0 ? gradeLevels : undefined;
   const percentileGrade = grades && !isAllGrades(grades) ? grades[0] : DEFAULT_CLASS_YEAR;
+  const now = Date.now();
 
   const boards: LeaderboardBoard[] = [];
 
@@ -64,7 +70,8 @@ export async function getLeaderboardGrid(
       act.slug,
       anonymize,
       grades,
-      gender
+      gender,
+      viewerStudentId
     );
 
     const top = entries.slice(0, LEADERBOARD_TOP_N);
@@ -80,12 +87,18 @@ export async function getLeaderboardGrid(
         if (anonymize && viewerStudentId && e.studentId === viewerStudentId) {
           displayName = "You";
         }
+        const recordedAt = e.recordedAt ?? null;
+        const isRecent = Boolean(
+          recordedAt && now - new Date(recordedAt).getTime() <= RECENT_MS
+        );
         return {
           rank: e.rank,
           value: e.value,
           studentId: e.studentId,
           displayName,
           percentile: pct,
+          recordedAt,
+          isRecent,
         };
       })
     );

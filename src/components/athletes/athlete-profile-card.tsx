@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Pencil } from "lucide-react";
 import { PlayerAvatar } from "@/components/athletes/player-avatar";
+import { AnonymousPeersToggle } from "@/components/athletes/anonymous-peers-toggle";
 import { GRADE_LEVELS } from "@/lib/grades";
 
 type EditProps = {
@@ -12,6 +13,7 @@ type EditProps = {
   lastName: string;
   sports: string | null;
   participationType: string | null;
+  anonymousToPeers: boolean;
   classYear: number;
   classes: { id: string; name: string; period: string | null }[];
   enrolledClassIds: string[];
@@ -53,6 +55,7 @@ export function AthleteProfileCard({
         lastName: form.get("lastName"),
         sports: form.get("sports"),
         participationType: form.get("participationType"),
+        anonymousToPeers: form.get("anonymousToPeers") === "on",
         classYear: Number(form.get("classYear")),
         classId: classId || null,
       }),
@@ -93,6 +96,10 @@ export function AthleteProfileCard({
                 PE / general tracking
               </span>
             )}
+            <AnonymousPeersToggle
+              studentId={edit.studentId}
+              anonymousToPeers={edit.anonymousToPeers}
+            />
           </div>
         </div>
         <button
@@ -117,7 +124,7 @@ export function AthleteProfileCard({
         >
           <h2 className="text-lg font-semibold">Update roster info</h2>
           <p className="mt-1 text-sm text-muted">
-            Coaches can set PE vs athlete tracking and class hour.
+            Coaches can set PE vs athlete tracking, peer anonymity, and class hour.
           </p>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             <label className="text-sm">
@@ -161,6 +168,21 @@ export function AthleteProfileCard({
                 <option value="PE">PE student</option>
                 <option value="ATHLETE">Student athlete</option>
               </select>
+            </label>
+            <label className="flex items-start gap-2 text-sm sm:col-span-2">
+              <input
+                type="checkbox"
+                name="anonymousToPeers"
+                defaultChecked={edit.anonymousToPeers}
+                className="mt-1"
+              />
+              <span>
+                <span className="font-medium">Incognito for student views</span>
+                <span className="mt-0.5 block text-muted">
+                  Hide this athlete’s name from classmates and parents. Coaches still see full
+                  identity.
+                </span>
+              </span>
             </label>
             <label className="text-sm sm:col-span-2">
               Sports (leave blank for PE-only)

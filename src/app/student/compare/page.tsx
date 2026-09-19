@@ -42,7 +42,7 @@ export default async function StudentComparePage({
     name:
       s.id === session.studentId
         ? "You"
-        : showNames
+        : showNames && !s.anonymousToPeers
           ? s.name
           : `Student ${s.anonymousId ?? s.studentNumber}`,
     studentNumber: s.studentNumber,

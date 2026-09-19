@@ -23,13 +23,21 @@ export function canAccessStudentRecord(
 
 export function leaderboardDisplayName(
   session: SessionPayload,
-  student: { id: string; firstName: string; lastName: string; anonymousId: string },
+  student: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    anonymousId: string;
+    anonymousToPeers?: boolean;
+  },
   showNamesForStudents: boolean
 ): string {
   if (session.role === "COACH" || session.role === "ADMIN") {
     return `${student.firstName} ${student.lastName}`;
   }
   if (session.studentId === student.id) return "You";
-  if (showNamesForStudents) return `${student.firstName} ${student.lastName}`;
+  if (showNamesForStudents && !student.anonymousToPeers) {
+    return `${student.firstName} ${student.lastName}`;
+  }
   return `Student ${student.anonymousId}`;
 }

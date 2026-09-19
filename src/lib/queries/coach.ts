@@ -152,6 +152,7 @@ export async function listStudents(
     name: `${s.firstName} ${s.lastName}`,
     studentNumber: s.studentNumber,
     anonymousId: s.anonymousId,
+    anonymousToPeers: s.anonymousToPeers,
     grade: s.enrollments[0]?.gradeLevel,
     gender: s.gender,
     testsCompleted: s.performanceResults.length,
@@ -165,7 +166,8 @@ export async function getLeaderboard(
   activitySlug: string,
   anonymize: boolean,
   gradeLevels?: number[],
-  gender?: string
+  gender?: string,
+  viewerStudentId?: string
 ) {
   const activity = await prisma.activity.findUniqueOrThrow({ where: { slug: activitySlug } });
   const currentYear = await prisma.schoolYear.findFirst({
@@ -193,7 +195,12 @@ export async function getLeaderboard(
   });
 
   const ranked = rankResults(
-    results.map((r) => ({ studentId: r.studentId, value: r.resultValue! })),
+    results.map((r) => ({
+      studentId: r.studentId,
+      value: r.resultValue!,
+      testingDate: r.testingDate,
+      createdAt: r.createdAt,
+    })),
     activity.scoringDirection as ScoringDirection
   );
 
@@ -201,13 +208,18 @@ export async function getLeaderboard(
     activity,
     entries: ranked.map((e) => {
       const st = results.find((r) => r.studentId === e.studentId)!.student;
+      const isSelf = Boolean(viewerStudentId && st.id === viewerStudentId);
+      const hideName =
+        anonymize || (Boolean(viewerStudentId) && st.anonymousToPeers && !isSelf);
       return {
         rank: e.rank,
         value: e.value,
         studentId: st.id,
-        displayName: anonymize
+        displayName: hideName
           ? `Student ${st.anonymousId}`
           : `${st.firstName} ${st.lastName}`,
+        testingDate: e.testingDate.toISOString(),
+        recordedAt: e.createdAt.toISOString(),
         grade: st,
       };
     }),

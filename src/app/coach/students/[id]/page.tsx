@@ -76,6 +76,7 @@ export default async function StudentProfilePage({
       : student.participationType === "PE"
         ? "PE student"
         : null,
+    student.anonymousToPeers ? "Incognito to peers" : null,
     classNames || null,
     enrollment?.schoolYear?.label ?? null,
   ]
@@ -102,6 +103,7 @@ export default async function StudentProfilePage({
           lastName: student.lastName,
           sports: student.sports,
           participationType: student.participationType,
+          anonymousToPeers: student.anonymousToPeers,
           classYear: grade,
           classes: schoolClasses,
           enrolledClassIds: student.classEnrollments.map((e) => e.classId),

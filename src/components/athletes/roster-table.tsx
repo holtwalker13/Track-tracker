@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { ROSTER_COLUMNS, type RosterAthlete } from "@/lib/queries/roster";
 import { classYearShort } from "@/lib/grades";
 import { cn } from "@/lib/utils";
+import { AnonymousPeersToggle } from "@/components/athletes/anonymous-peers-toggle";
 
 type SortKey =
   | "name"
@@ -13,6 +14,7 @@ type SortKey =
   | "classPeriod"
   | "sports"
   | "participationType"
+  | "anonymousToPeers"
   | (typeof ROSTER_COLUMNS)[number]["slug"];
 
 function participationLabel(value: string | null) {
@@ -52,6 +54,9 @@ export function RosterTable({
         if (av == null) return 1;
         if (bv == null) return -1;
         return (av - bv) * dir;
+      }
+      if (sortKey === "anonymousToPeers") {
+        return (Number(a.anonymousToPeers) - Number(b.anonymousToPeers)) * dir;
       }
       const astr =
         sortKey === "name"
@@ -143,6 +148,7 @@ export function RosterTable({
             {showClass && <Header label="Year" sortId="classYear" />}
             <Header label="Hour / Class" sortId="classPeriod" />
             <Header label="Type" sortId="participationType" />
+            <Header label="Peers" sortId="anonymousToPeers" />
             <Header label="Sports" sortId="sports" />
             {ROSTER_COLUMNS.map((col) => (
               <Header key={col.slug} label={col.label} sortId={col.slug} align="right" />
@@ -185,6 +191,13 @@ export function RosterTable({
                   {participationLabel(a.participationType)}
                 </span>
               </td>
+              <td className="px-3 py-2">
+                <AnonymousPeersToggle
+                  studentId={a.studentId}
+                  anonymousToPeers={a.anonymousToPeers}
+                  compact
+                />
+              </td>
               <td className="max-w-[10rem] truncate px-3 py-2 text-muted" title={a.sports ?? undefined}>
                 {a.sports ?? "—"}
               </td>
@@ -198,7 +211,8 @@ export function RosterTable({
         </tbody>
       </table>
       <p className="border-t border-card-border px-3 py-2 text-xs text-muted">
-        {athletes.length} athlete{athletes.length === 1 ? "" : "s"} · click a column header to sort
+        {athletes.length} athlete{athletes.length === 1 ? "" : "s"} · eye icon hides name from student
+        views (coaches still see it) · click a column header to sort
       </p>
     </div>
   );

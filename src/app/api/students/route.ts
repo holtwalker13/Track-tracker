@@ -22,6 +22,7 @@ export async function POST(request: Request) {
     participationTypeRaw === "PE" || participationTypeRaw === "ATHLETE"
       ? participationTypeRaw
       : null;
+  const anonymousToPeers = Boolean(body.anonymousToPeers);
   const classId = body.classId ? String(body.classId) : null;
 
   if (!firstName || !lastName) {
@@ -78,6 +79,7 @@ export async function POST(request: Request) {
       gender,
       sports,
       participationType,
+      anonymousToPeers,
       anonymousId: `manual-${studentNumber.toLowerCase()}`,
       enrollments: {
         create: {

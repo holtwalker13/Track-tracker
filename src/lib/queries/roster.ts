@@ -29,6 +29,7 @@ export type RosterAthlete = {
   classYear: number | null;
   sports: string | null;
   participationType: string | null;
+  anonymousToPeers: boolean;
   className: string | null;
   classPeriod: string | null;
   marks: Record<string, RosterMark>;
@@ -131,6 +132,7 @@ export async function getClassRoster(
       classYear: e.gradeLevel,
       sports: e.student.sports,
       participationType: e.student.participationType,
+      anonymousToPeers: e.student.anonymousToPeers,
       className: preferred?.class.name ?? null,
       classPeriod: preferred?.class.period ?? null,
       marks: marksByStudent.get(e.studentId) ?? {},

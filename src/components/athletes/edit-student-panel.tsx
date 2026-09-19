@@ -10,6 +10,7 @@ export function EditStudentPanel({
   lastName,
   sports,
   participationType,
+  anonymousToPeers,
   classYear,
   classes,
   enrolledClassIds,
@@ -19,6 +20,7 @@ export function EditStudentPanel({
   lastName: string;
   sports: string | null;
   participationType: string | null;
+  anonymousToPeers: boolean;
   classYear: number;
   classes: { id: string; name: string; period: string | null }[];
   enrolledClassIds: string[];
@@ -43,6 +45,7 @@ export function EditStudentPanel({
         lastName: form.get("lastName"),
         sports: form.get("sports"),
         participationType: form.get("participationType"),
+        anonymousToPeers: form.get("anonymousToPeers") === "on",
         classYear: Number(form.get("classYear")),
         classId: classId || null,
       }),
@@ -60,7 +63,7 @@ export function EditStudentPanel({
   return (
     <form onSubmit={onSubmit} className="rounded-2xl border border-card-border bg-card p-5">
       <h2 className="text-lg font-semibold">Update roster info</h2>
-      <p className="mt-1 text-sm text-muted">Coaches can set PE vs athlete tracking and class hour.</p>
+      <p className="mt-1 text-sm text-muted">Coaches can set PE vs athlete tracking, peer anonymity, and class hour.</p>
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
         <label className="text-sm">
           First name
@@ -103,6 +106,20 @@ export function EditStudentPanel({
             <option value="PE">PE student</option>
             <option value="ATHLETE">Student athlete</option>
           </select>
+        </label>
+        <label className="flex items-start gap-2 text-sm sm:col-span-2">
+          <input
+            type="checkbox"
+            name="anonymousToPeers"
+            defaultChecked={anonymousToPeers}
+            className="mt-1"
+          />
+          <span>
+            <span className="font-medium">Incognito for student views</span>
+            <span className="mt-0.5 block text-muted">
+              Hide this athlete’s name from classmates and parents. Coaches still see full identity.
+            </span>
+          </span>
         </label>
         <label className="text-sm sm:col-span-2">
           Sports (leave blank for PE-only)

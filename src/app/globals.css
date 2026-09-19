@@ -47,3 +47,141 @@ body {
 input, select, textarea {
   font-size: 16px;
 }
+
+/* Leaderboard: recent (≤24h) climb highlight */
+@keyframes lb-row-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(250, 204, 21, 0.15), inset 0 0 0 1px rgba(250, 204, 21, 0.25);
+  }
+  50% {
+    box-shadow: 0 0 16px 2px rgba(250, 204, 21, 0.28), inset 0 0 0 1px rgba(250, 204, 21, 0.45);
+  }
+}
+
+@keyframes lb-shine-sweep {
+  0% {
+    transform: translateX(-120%) skewX(-18deg);
+    opacity: 0;
+  }
+  15% {
+    opacity: 0.55;
+  }
+  45% {
+    opacity: 0.35;
+  }
+  100% {
+    transform: translateX(180%) skewX(-18deg);
+    opacity: 0;
+  }
+}
+
+@keyframes lb-new-pop {
+  0% {
+    transform: scale(0.4) rotate(-8deg);
+    opacity: 0;
+  }
+  35% {
+    transform: scale(1.15) rotate(2deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+@keyframes lb-trophy-burst {
+  0% {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  20% {
+    transform: scale(1.25);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes lb-confetti {
+  0% {
+    transform: translate(0, 0) scale(0.4);
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--dx), var(--dy)) scale(1);
+    opacity: 0;
+  }
+}
+
+.lb-recent {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(
+    105deg,
+    rgba(250, 204, 21, 0.1),
+    rgba(34, 211, 238, 0.06) 45%,
+    rgba(250, 204, 21, 0.08)
+  );
+  animation: lb-row-glow 2.8s ease-in-out infinite;
+}
+
+.lb-recent::after {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  width: 45%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.14),
+    transparent
+  );
+  animation: lb-shine-sweep 4.5s ease-in-out 0.2s 1;
+}
+
+.lb-recent-intro {
+  animation: lb-row-glow 2.8s ease-in-out infinite, lb-trophy-burst 0.7s ease-out;
+}
+
+.lb-new-badge {
+  animation: lb-new-pop 0.55s cubic-bezier(0.22, 1.4, 0.36, 1) both;
+}
+
+.lb-trophy-burst {
+  position: relative;
+  display: inline-flex;
+  animation: lb-trophy-burst 0.65s ease-out both;
+}
+
+.lb-confetti-dot {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 3px;
+  height: 3px;
+  border-radius: 9999px;
+  pointer-events: none;
+  animation: lb-confetti 0.9s ease-out forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lb-recent,
+  .lb-recent-intro,
+  .lb-new-badge,
+  .lb-trophy-burst,
+  .lb-confetti-dot,
+  .lb-recent::after {
+    animation: none !important;
+  }
+  .lb-recent {
+    box-shadow: inset 0 0 0 1px rgba(250, 204, 21, 0.35);
+  }
+}

@@ -259,11 +259,11 @@ export async function getAthleteLineup(
     const ctx = await getStudentContext(id);
     if (ctx.student.schoolId !== schoolId) continue;
     const fullName = `${ctx.student.firstName} ${ctx.student.lastName}`;
-    const name = opts?.anonymize
-      ? opts.viewerStudentId === ctx.student.id
-        ? "You"
-        : `Student ${ctx.student.anonymousId}`
-      : fullName;
+    const isSelf = opts?.viewerStudentId === ctx.student.id;
+    const hidePeerName =
+      Boolean(opts?.anonymize) ||
+      (Boolean(opts?.viewerStudentId) && ctx.student.anonymousToPeers && !isSelf);
+    const name = isSelf ? "You" : hidePeerName ? `Student ${ctx.student.anonymousId}` : fullName;
     athletes.push({
       id: ctx.student.id,
       name,

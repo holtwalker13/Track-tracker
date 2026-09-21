@@ -15,7 +15,7 @@ export async function AppShell({
 }) {
   const session = await getSession();
   let schoolName: string | null = null;
-  let schools: { id: string; name: string; slug: string }[] = [];
+  let schools: { id: string; name: string }[] = [];
 
   if (session?.schoolId) {
     const school = await prisma.school.findUnique({
@@ -27,7 +27,7 @@ export async function AppShell({
   if (session?.role === "ADMIN") {
     schools = await prisma.school.findMany({
       orderBy: { createdAt: "asc" },
-      select: { id: true, name: true, slug: true },
+      select: { id: true, name: true },
     });
   }
 

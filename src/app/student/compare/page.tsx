@@ -12,7 +12,6 @@ import { CompareModeToggle, type CompareMode } from "@/components/compare/compar
 import { genderFullLabel } from "@/lib/gender";
 import { classYearLabel } from "@/lib/grades";
 import { listStudents } from "@/lib/queries/coach";
-import { prisma } from "@/lib/db";
 
 export default async function StudentComparePage({
   searchParams,
@@ -26,11 +25,6 @@ export default async function StudentComparePage({
     sp.vs === "peer" || sp.vs === "athlete" ? sp.vs : "benchmark";
 
   const { student, currentGrade } = await getStudentContext(session.studentId);
-  const org = await prisma.organization.findFirst({
-    where: { schools: { some: { id: student.schoolId } } },
-    include: { settings: true },
-  });
-  const showNames = org?.settings?.showNamesOnLeaderboardsForStudents ?? false;
 
   const peers = await listStudents(student.schoolId, {
     grades: [currentGrade],
@@ -42,9 +36,9 @@ export default async function StudentComparePage({
     name:
       s.id === session.studentId
         ? "You"
-        : showNames
-          ? s.name
-          : `Student ${s.anonymousId ?? s.studentNumber}`,
+        : s.nameHidden
+          ? "Hidden"
+          : s.name,
     studentNumber: s.studentNumber,
     grade: s.grade,
   }));
@@ -79,7 +73,7 @@ export default async function StudentComparePage({
   const lineup =
     mode === "athlete" && lineupIds.length >= 2
       ? await getAthleteLineup(lineupIds, student.schoolId, {
-          anonymize: !showNames,
+          anonymize: true,
           viewerStudentId: session.studentId,
         })
       : null;
@@ -92,8 +86,7 @@ export default async function StudentComparePage({
   return (
     <AppShell title="Compare" nav={STUDENT_NAV}>
       <p className="mb-4 text-sm text-muted">
-        Compare yourself to medal targets, class average, or classmates (names stay private unless
-        your school turns them on).
+        Compare yourself to medal targets, class average, or classmates. Hidden athletes stay nameless.
       </p>
       <div className="mb-6">
         <CompareModeToggle allowAthlete athleteLabel="Classmates" />

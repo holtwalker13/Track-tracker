@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { rankResults } from "@/lib/services/leaderboard";
+import { leaderboardEntryName } from "@/lib/queries/coach";
 import type { ScoringDirection } from "@/lib/constants";
 
 export async function getStudentLeaderboard(
@@ -22,9 +23,21 @@ export async function getStudentLeaderboard(
       status: "COMPLETED",
       isBestAttempt: true,
       resultValue: { not: null },
-      ...(gradeLevel ? { gradeLevel: { in: Array.isArray(gradeLevel) ? gradeLevel : [gradeLevel] } } : {}),
+      ...(gradeLevel
+        ? { gradeLevel: { in: Array.isArray(gradeLevel) ? gradeLevel : [gradeLevel] } }
+        : {}),
     },
-    include: { student: true },
+    include: {
+      student: {
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          schoolId: true,
+          nameHidden: true,
+        },
+      },
+    },
   });
 
   const ranked = rankResults(
@@ -36,11 +49,15 @@ export async function getStudentLeaderboard(
     activity,
     entries: ranked.map((e) => {
       const st = results.find((r) => r.studentId === e.studentId)!.student;
-      const isYou = st.id === viewerStudentId;
       return {
         rank: e.rank,
         value: e.value,
-        displayName: isYou ? "You" : `Student ${st.anonymousId}`,
+        studentId: st.id,
+        displayName: leaderboardEntryName(st, {
+          role: "STUDENT",
+          studentId: viewerStudentId,
+          schoolId,
+        }),
       };
     }),
   };

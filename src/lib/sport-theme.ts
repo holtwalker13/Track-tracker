@@ -35,8 +35,8 @@ export type PercentileTier = {
 };
 
 export const PERCENTILE_TIERS: PercentileTier[] = [
-  { id: "elite", label: "Elite", minPercentile: 90, icon: "trophy", colorClass: "text-sport-gold" },
-  { id: "all-star", label: "All-Star", minPercentile: 75, icon: "trophy", colorClass: "text-sport-yellow" },
+  { id: "p90", label: "90th+", minPercentile: 90, icon: "trophy", colorClass: "text-sport-gold" },
+  { id: "p75", label: "75th+", minPercentile: 75, icon: "trophy", colorClass: "text-sport-yellow" },
   { id: "starter", label: "Starter", minPercentile: 50, icon: "medal", colorClass: "text-sport-green" },
   { id: "developing", label: "Developing", minPercentile: 25, icon: "star", colorClass: "text-muted" },
   { id: "rookie", label: "Rookie", minPercentile: 0, icon: "star", colorClass: "text-muted" },

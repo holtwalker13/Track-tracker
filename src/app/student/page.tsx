@@ -101,7 +101,7 @@ export default async function StudentDashboardPage() {
       </Card>
 
       <Card className="mt-6">
-        <CardTitle>{classYearLabel(currentGrade)} ranking (anonymous)</CardTitle>
+        <CardTitle>{classYearLabel(currentGrade)} ranking</CardTitle>
         <ul className="mt-4 space-y-2">
           {ranks.map((r) => (
             <li key={r.activity} className="flex justify-between text-sm">

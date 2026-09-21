@@ -148,6 +148,9 @@ model StudentProfile {
   participationType String?
   notes         String?
   anonymousId   String
+  // When true, other students never see this athlete's name on leaderboards.
+  // Coaches still see the real name. Marks still count in ranks and benchmarks.
+  nameHidden    Boolean  @default(false)
   createdAt     DateTime @default(now())
 
   enrollments        StudentEnrollment[]

@@ -6,26 +6,40 @@ import { getStudentContext } from "@/lib/queries/student";
 import { classYearLabel } from "@/lib/grades";
 import { getLeaderboardGrid } from "@/lib/queries/leaderboard-grid";
 import { LeaderboardGrid } from "@/components/leaderboards/leaderboard-grid";
+import { RankScopeToggle } from "@/components/ui/rank-scope-toggle";
 
-export default async function StudentLeaderboardsPage() {
+export default async function StudentLeaderboardsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ scope?: string }>;
+}) {
   const session = await requireSession(["STUDENT"]);
   if (!session?.studentId) redirect("/login");
 
   const { student, currentGrade } = await getStudentContext(session.studentId);
+  const sp = await searchParams;
+  const scope = sp.scope === "global" ? "global" : "school";
 
   const { boards } = await getLeaderboardGrid(
     student.schoolId,
-    true,
     [currentGrade],
-    session.studentId,
-    student.gender ?? undefined
+    student.gender ?? undefined,
+    scope,
+    {
+      role: "STUDENT",
+      studentId: session.studentId,
+      schoolId: student.schoolId,
+    }
   );
 
   return (
     <AppShell title="Leaderboards" nav={STUDENT_NAV}>
+      <div className="mb-6">
+        <RankScopeToggle />
+      </div>
       <LeaderboardGrid
         boards={boards}
-        subtitle={`Top 10 per event · ${classYearLabel(currentGrade)} · anonymous peers · current school year`}
+        subtitle={`${scope === "global" ? "Global" : "School"} rank · ${classYearLabel(currentGrade)}`}
         compareHref="/student/compare"
       />
     </AppShell>

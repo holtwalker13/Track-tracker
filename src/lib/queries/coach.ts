@@ -152,6 +152,7 @@ export async function listStudents(
     name: `${s.firstName} ${s.lastName}`,
     studentNumber: s.studentNumber,
     anonymousId: s.anonymousId,
+    nameHidden: s.nameHidden,
     grade: s.enrollments[0]?.gradeLevel,
     gender: s.gender,
     testsCompleted: s.performanceResults.length,
@@ -163,33 +164,56 @@ export async function listStudents(
 export async function getLeaderboard(
   schoolId: string,
   activitySlug: string,
-  anonymize: boolean,
-  gradeLevels?: number[],
-  gender?: string
+  opts: {
+    gradeLevels?: number[];
+    gender?: string;
+    scope?: "school" | "global";
+    viewer?: {
+      role: "ADMIN" | "COACH" | "STUDENT";
+      studentId?: string;
+      schoolId: string;
+    };
+  } = {}
 ) {
   const activity = await prisma.activity.findUniqueOrThrow({ where: { slug: activitySlug } });
-  const currentYear = await prisma.schoolYear.findFirst({
-    where: { schoolId, isCurrent: true },
-  });
-  if (!currentYear) return { activity, entries: [] };
+  const scope = opts.scope === "global" ? "global" : "school";
+  const currentYear =
+    scope === "school"
+      ? await prisma.schoolYear.findFirst({
+          where: { schoolId, isCurrent: true },
+        })
+      : null;
+  if (scope === "school" && !currentYear) return { activity, entries: [] };
 
   const gradeFilter =
-    gradeLevels && gradeLevels.length > 0 && gradeLevels.length < GRADE_LEVELS.length
-      ? { in: gradeLevels }
+    opts.gradeLevels && opts.gradeLevels.length > 0 && opts.gradeLevels.length < GRADE_LEVELS.length
+      ? { in: opts.gradeLevels }
       : undefined;
 
   const results = await prisma.performanceResult.findMany({
     where: {
-      schoolId,
-      schoolYearId: currentYear.id,
       activityId: activity.id,
       status: "COMPLETED",
       isBestAttempt: true,
       resultValue: { not: null },
+      ...(scope === "school"
+        ? { schoolId, schoolYearId: currentYear!.id }
+        : {}),
       ...(gradeFilter ? { gradeLevel: gradeFilter } : {}),
-      ...(gender ? { student: { gender } } : {}),
+      ...(opts.gender ? { student: { gender: opts.gender } } : {}),
     },
-    include: { student: true },
+    include: {
+      student: {
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          schoolId: true,
+          nameHidden: true,
+          anonymousId: true,
+        },
+      },
+    },
   });
 
   const ranked = rankResults(
@@ -199,17 +223,40 @@ export async function getLeaderboard(
 
   return {
     activity,
-    entries: ranked.map((e) => {
+    entries: ranked.slice(0, 500).map((e) => {
       const st = results.find((r) => r.studentId === e.studentId)!.student;
       return {
         rank: e.rank,
         value: e.value,
         studentId: st.id,
-        displayName: anonymize
-          ? `Student ${st.anonymousId}`
-          : `${st.firstName} ${st.lastName}`,
-        grade: st,
+        displayName: leaderboardEntryName(st, opts.viewer),
+        nameHidden: st.nameHidden,
+        linkable: !opts.viewer || (opts.viewer.role !== "STUDENT" && st.schoolId === opts.viewer.schoolId),
       };
     }),
   };
+}
+
+export function leaderboardEntryName(
+  student: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    schoolId: string;
+    nameHidden: boolean;
+  },
+  viewer?: {
+    role: "ADMIN" | "COACH" | "STUDENT";
+    studentId?: string;
+    schoolId: string;
+  }
+) {
+  if (!viewer) return `${student.firstName} ${student.lastName}`;
+  if (viewer.role === "COACH" || viewer.role === "ADMIN") {
+    if (student.schoolId !== viewer.schoolId) return "Other school";
+    return `${student.firstName} ${student.lastName}`;
+  }
+  if (viewer.studentId === student.id) return "You";
+  if (student.schoolId !== viewer.schoolId || student.nameHidden) return "Hidden";
+  return `${student.firstName} ${student.lastName}`;
 }

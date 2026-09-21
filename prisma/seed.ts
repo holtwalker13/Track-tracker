@@ -402,6 +402,7 @@ async function seedRoster(opts: {
         participationType: isAthlete ? "ATHLETE" : studentIndex % 5 === 0 ? "PE" : athlete.sports ? "ATHLETE" : "PE",
         notes: athlete.comments,
         anonymousId: String(2000 + studentIndex),
+        nameHidden: studentIndex % 4 === 0,
       },
     });
 

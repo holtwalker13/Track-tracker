@@ -6,7 +6,6 @@ import {
 import type { LatestResultItem } from "@/lib/queries/attempt-log";
 import { Card, CardTitle } from "@/components/ui/card";
 import { ActivityIcon } from "@/lib/activity-icons";
-import { PercentileTierBadge } from "@/components/performance/percentile-tier-badge";
 import { PercentileTicker } from "@/components/performance/percentile-ticker";
 import { PercentileTrendMini } from "@/components/charts/percentile-trend-mini";
 
@@ -71,7 +70,6 @@ export function LatestResultsGrouped({
                         )}
                         {item.percentile != null && (
                           <div className="mt-2 flex flex-wrap items-center gap-2">
-                            <PercentileTierBadge percentile={item.percentile} />
                             <PercentileTicker
                               percentile={item.percentile}
                               previousPercentile={item.previousPercentile}

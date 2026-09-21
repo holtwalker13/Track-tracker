@@ -1,7 +1,9 @@
 "use client";
 
+import { Check } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { ActivityIcon } from "@/lib/activity-icons";
 import { KPI_METRIC_META } from "@/lib/kpi-targets";
 import {
   classSectionLabel,
@@ -69,10 +71,6 @@ export function NewTestingSessionForm({
   return (
     <form onSubmit={onSubmit} className="mb-8 space-y-3 rounded-2xl border border-card-border bg-card p-4">
       <h2 className="font-semibold">New live testing session</h2>
-      <p className="text-sm text-muted">
-        Class hour is required. Period is guessed from Central Time so you can start quickly — change
-        it if you need another section.
-      </p>
       <div className="grid gap-3 sm:grid-cols-3">
         <label className="block text-sm sm:col-span-1">
           Name
@@ -119,15 +117,25 @@ export function NewTestingSessionForm({
         </p>
       )}
       <fieldset>
-        <legend className="text-sm text-muted">Events</legend>
-        <div className="mt-2 flex flex-wrap gap-2">
+        <legend className="text-sm font-medium text-muted">Events</legend>
+        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
           {KPI_METRIC_META.map((m) => (
             <label
               key={m.slug}
-              className="inline-flex items-center gap-2 rounded-full border border-card-border px-3 py-1 text-sm"
+              className="group relative flex cursor-pointer flex-col items-start gap-2 rounded-2xl border border-card-border bg-background/50 px-3.5 py-3.5 text-left transition duration-150 hover:-translate-y-0.5 hover:border-sky-400/50 hover:bg-sky-400/10 hover:shadow-[0_8px_24px_rgba(56,189,248,0.12)] active:translate-y-0 active:scale-[0.97] has-[:checked]:border-sky-400/70 has-[:checked]:bg-sky-500/15 has-[:checked]:shadow-[0_0_20px_rgba(56,189,248,0.16)] has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-sky-400"
             >
-              <input type="checkbox" name="activity" value={m.slug} defaultChecked />
-              {m.name}
+              <input
+                type="checkbox"
+                name="activity"
+                value={m.slug}
+                defaultChecked
+                className="peer sr-only"
+              />
+              <span className="pointer-events-none absolute right-2.5 top-2.5 flex h-5 w-5 items-center justify-center rounded-full border border-card-border bg-background/80 text-transparent transition peer-checked:border-sky-400 peer-checked:bg-sky-500 peer-checked:text-white">
+                <Check className="h-3 w-3" strokeWidth={3} aria-hidden />
+              </span>
+              <ActivityIcon slug={m.slug} className="pointer-events-none h-6 w-6" />
+              <span className="pointer-events-none pr-5 text-sm font-semibold leading-snug">{m.name}</span>
             </label>
           ))}
         </div>

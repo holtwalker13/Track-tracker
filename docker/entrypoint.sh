@@ -59,6 +59,9 @@ else
   npm run db:seed
 fi
 
+echo "==> Anonymizing real names and ensuring Demo / JHS / CHS schools..."
+npm run db:migrate-tenants
+
 echo "==> Syncing demo passwords to rekcart (or DEMO_PASSWORD)..."
 npm run db:sync-password
 

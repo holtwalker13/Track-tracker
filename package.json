@@ -10,6 +10,7 @@
     "db:push": "prisma db push",
     "db:seed": "prisma db seed",
     "db:sync-password": "tsx scripts/sync-demo-password.ts",
+    "db:migrate-tenants": "tsx scripts/migrate-tenants.ts",
     "postinstall": "prisma generate"
   },
   "prisma": {

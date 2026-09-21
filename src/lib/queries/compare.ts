@@ -262,7 +262,9 @@ export async function getAthleteLineup(
     const name = opts?.anonymize
       ? opts.viewerStudentId === ctx.student.id
         ? "You"
-        : `Student ${ctx.student.anonymousId}`
+        : ctx.student.nameHidden
+          ? "Hidden"
+          : fullName
       : fullName;
     athletes.push({
       id: ctx.student.id,

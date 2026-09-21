@@ -4,6 +4,7 @@ import { requireSchoolSession } from "@/lib/auth/session";
 import { ensureSchoolKpiTargets } from "@/lib/queries/kpi";
 import { prisma } from "@/lib/db";
 import { KpiTargetsEditor, type TargetCell } from "@/components/kpi/kpi-targets-editor";
+import { ImportMarksForm } from "@/components/kpi/import-marks-form";
 import { KPI_METRIC_META, MEDALS, type Medal } from "@/lib/kpi-targets";
 import { DEFAULT_AGE_BRACKET } from "@/lib/age-brackets";
 
@@ -70,6 +71,9 @@ export default async function BenchmarksPage() {
   return (
     <AppShell title="KPI targets" nav={COACH_NAV}>
       <KpiTargetsEditor initial={initial} metrics={metrics} />
+      <div className="mt-8 max-w-2xl">
+        <ImportMarksForm />
+      </div>
     </AppShell>
   );
 }

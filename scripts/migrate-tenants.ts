@@ -89,6 +89,23 @@ async function ensureKpiTargets(schoolId: string) {
   });
 }
 
+async function hideSomeDemoNames(schoolId: string) {
+  const students = await prisma.studentProfile.findMany({
+    where: { schoolId },
+    orderBy: { studentNumber: "asc" },
+    select: { id: true, nameHidden: true },
+  });
+  if (students.length < 20) return;
+  if (students.some((s) => s.nameHidden)) return;
+  const ids = students.filter((_, i) => i % 4 === 0).map((s) => s.id);
+  if (ids.length === 0) return;
+  await prisma.studentProfile.updateMany({
+    where: { id: { in: ids } },
+    data: { nameHidden: true },
+  });
+  console.log(`Hid ${ids.length} student name(s) on student leaderboards for demo.`);
+}
+
 async function ensureSchoolYear(schoolId: string) {
   const current = await prisma.schoolYear.findFirst({ where: { schoolId, isCurrent: true } });
   if (current) return current;
@@ -249,6 +266,8 @@ async function main() {
     });
     console.log(`Created app admin ${ADMIN_LOGIN.email}`);
   }
+
+  await hideSomeDemoNames(populated.id);
 
   const jhs = await prisma.school.findUnique({
     where: { slug: "jhs" },

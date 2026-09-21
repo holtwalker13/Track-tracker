@@ -1,9 +1,6 @@
 import Link from "next/link";
 import { PlayerAvatar } from "@/components/athletes/player-avatar";
-import { PercentileTierBadge } from "@/components/performance/percentile-tier-badge";
 import { cn } from "@/lib/utils";
-import { rankAccent } from "@/lib/sport-theme";
-import { Trophy } from "lucide-react";
 
 export function PlayerRow({
   rank,
@@ -11,7 +8,6 @@ export function PlayerRow({
   meta,
   value,
   unitLabel,
-  percentile,
   highlight,
   href,
 }: {
@@ -32,15 +28,7 @@ export function PlayerRow({
       )}
     >
       {rank != null && (
-        <span
-          className={cn(
-            "flex w-8 shrink-0 items-center justify-end gap-0.5 font-bold tabular-nums",
-            rankAccent(rank)
-          )}
-        >
-          {rank <= 3 && <Trophy className="h-3.5 w-3.5 shrink-0" aria-hidden />}
-          {rank}
-        </span>
+        <span className="w-8 shrink-0 text-right font-bold tabular-nums text-muted">{rank}</span>
       )}
       <PlayerAvatar name={name} size="sm" />
       <span className="min-w-0 flex-1">
@@ -54,9 +42,6 @@ export function PlayerRow({
             <span className="ml-1 text-[10px] font-normal uppercase text-muted">{unitLabel}</span>
           )}
         </span>
-        {percentile != null && rank != null && rank <= 3 && (
-          <PercentileTierBadge percentile={percentile} />
-        )}
       </span>
     </div>
   );

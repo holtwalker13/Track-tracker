@@ -31,6 +31,7 @@ export type RosterAthlete = {
   participationType: string | null;
   className: string | null;
   classPeriod: string | null;
+  nameHidden: boolean;
   marks: Record<string, RosterMark>;
 };
 
@@ -133,6 +134,7 @@ export async function getClassRoster(
       participationType: e.student.participationType,
       className: preferred?.class.name ?? null,
       classPeriod: preferred?.class.period ?? null,
+      nameHidden: e.student.nameHidden,
       marks: marksByStudent.get(e.studentId) ?? {},
     };
   });

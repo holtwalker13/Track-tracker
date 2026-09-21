@@ -1,19 +1,22 @@
 import { prisma } from "@/lib/db";
 import { getLeaderboard } from "./coach";
-import { percentileForResult } from "./benchmarks";
-import type { ScoringDirection } from "@/lib/constants";
 import { activityDisplayGroup, type ActivityDisplayGroup } from "@/lib/activity-groups";
-import { DEFAULT_CLASS_YEAR, isAllGrades } from "@/lib/grades";
 import type { Activity, ActivityCategory } from "@prisma/client";
 
-export const LEADERBOARD_TOP_N = 10;
+export const LEADERBOARD_MAX_N = 500;
 
-export async function getLeaderboardActivities() {
+export async function getLeaderboardActivities(schoolId: string) {
   const featured = ["40-yard-dash", "vertical-jump"];
+  const hidden = await prisma.schoolHiddenKpi.findMany({
+    where: { schoolId },
+    select: { metricSlug: true },
+  });
+  const hiddenSlugs = hidden.map((h) => h.metricSlug);
   const activities = await prisma.activity.findMany({
     where: {
+      OR: [{ schoolId: null }, { schoolId }],
       slug: {
-        notIn: ["height", "weight", "20-meter-start"],
+        notIn: ["height", "weight", "20-meter-start", ...hiddenSlugs],
       },
     },
     include: { category: true },
@@ -36,7 +39,7 @@ export type LeaderboardBoardEntry = {
   value: number;
   displayName: string;
   studentId: string;
-  percentile: number | null;
+  linkable?: boolean;
 };
 
 export type LeaderboardBoard = {
@@ -47,52 +50,31 @@ export type LeaderboardBoard = {
 
 export async function getLeaderboardGrid(
   schoolId: string,
-  anonymize: boolean,
   gradeLevels?: number[],
-  viewerStudentId?: string,
-  gender?: string
+  gender?: string,
+  scope: "school" | "global" = "school",
+  viewer?: {
+    role: "ADMIN" | "COACH" | "STUDENT";
+    studentId?: string;
+    schoolId: string;
+  }
 ) {
-  const activities = await getLeaderboardActivities();
+  const activities = await getLeaderboardActivities(schoolId);
   const grades = gradeLevels && gradeLevels.length > 0 ? gradeLevels : undefined;
-  const percentileGrade = grades && !isAllGrades(grades) ? grades[0] : DEFAULT_CLASS_YEAR;
 
   const boards: LeaderboardBoard[] = [];
 
   for (const act of activities) {
-    const { activity, entries } = await getLeaderboard(
-      schoolId,
-      act.slug,
-      anonymize,
-      grades,
-      gender
-    );
-
-    const top = entries.slice(0, LEADERBOARD_TOP_N);
-    const enriched = await Promise.all(
-      top.map(async (e) => {
-        const pct = await percentileForResult(
-          activity.id,
-          percentileGrade,
-          e.value,
-          activity.scoringDirection as ScoringDirection
-        );
-        let displayName = e.displayName;
-        if (anonymize && viewerStudentId && e.studentId === viewerStudentId) {
-          displayName = "You";
-        }
-        return {
-          rank: e.rank,
-          value: e.value,
-          studentId: e.studentId,
-          displayName,
-          percentile: pct,
-        };
-      })
-    );
+    const { entries } = await getLeaderboard(schoolId, act.slug, {
+      gradeLevels: grades,
+      gender,
+      scope,
+      viewer,
+    });
 
     boards.push({
       activity: act,
-      entries: enriched,
+      entries,
       group: activityDisplayGroup(act.slug, act.category.slug),
     });
   }

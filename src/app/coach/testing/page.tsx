@@ -62,10 +62,6 @@ export default async function TestingSessionsPage() {
 
   return (
     <AppShell title="Testing" nav={COACH_NAV}>
-      <p className="mb-4 text-muted">
-        Start a session, record what you can, then leave — expand any test below to see who still
-        needs a mark at each station. Continue picks up where you left off.
-      </p>
       <NewTestingSessionForm classes={classes} sameDayCount={sameDayCount} />
       <div className="space-y-3">
         {sessions.map((s) => {

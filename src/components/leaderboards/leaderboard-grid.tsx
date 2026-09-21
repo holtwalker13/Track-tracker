@@ -3,13 +3,11 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Check, GitCompare, Trophy, X } from "lucide-react";
+import { Check, GitCompare, X } from "lucide-react";
 import { Card, CardTitle } from "@/components/ui/card";
 import { ActivityIcon } from "@/lib/activity-icons";
 import { formatActivityValue } from "@/lib/format";
-import { PercentileTierBadge } from "@/components/performance/percentile-tier-badge";
 import { cn } from "@/lib/utils";
-import { rankAccent } from "@/lib/sport-theme";
 import type { LeaderboardBoard } from "@/lib/queries/leaderboard-grid";
 
 const MAX_COMPARE = 2;
@@ -100,7 +98,7 @@ export function LeaderboardGrid({
             {board.entries.length === 0 ? (
               <p className="mt-3 text-xs text-muted sm:text-sm">No results yet</p>
             ) : (
-              <ol className="mt-2 space-y-0.5 sm:mt-3">
+              <ol className="mt-2 max-h-80 space-y-0.5 overflow-y-auto sm:mt-3">
                 {board.entries.map((e) => {
                   const isSelected = selected.includes(e.studentId);
                   const value = formatActivityValue(
@@ -109,7 +107,7 @@ export function LeaderboardGrid({
                     board.activity.slug
                   );
                   const href =
-                    !selectMode && athleteHrefBase
+                    !selectMode && athleteHrefBase && e.linkable !== false
                       ? `${athleteHrefBase}/${e.studentId}`
                       : undefined;
 
@@ -135,15 +133,10 @@ export function LeaderboardGrid({
                         </span>
                       ) : (
                         <span
-                          className={cn(
-                            "flex w-5 shrink-0 items-center justify-center sm:w-6",
-                            rankAccent(e.rank)
-                          )}
+                          className="w-7 shrink-0 text-right text-xs font-bold tabular-nums text-muted sm:w-8 sm:text-sm"
                           aria-label={`Rank ${e.rank}`}
                         >
-                          {e.rank <= 3 ? (
-                            <Trophy className="h-3.5 w-3.5 sm:h-4 sm:w-4" aria-hidden />
-                          ) : null}
+                          {e.rank}
                         </span>
                       )}
                       <span className="min-w-0 flex-1 truncate text-xs font-medium sm:text-sm">
@@ -153,11 +146,6 @@ export function LeaderboardGrid({
                         <span className="block font-mono text-[11px] font-semibold tabular-nums sm:text-sm">
                           {value}
                         </span>
-                        {e.percentile != null && e.rank <= 3 && (
-                          <span className="hidden sm:block">
-                            <PercentileTierBadge percentile={e.percentile} />
-                          </span>
-                        )}
                       </span>
                     </div>
                   );
@@ -193,9 +181,11 @@ export function LeaderboardGrid({
                 })}
               </ol>
             )}
-            <p className="mt-2 text-center text-[9px] uppercase tracking-wider text-muted sm:text-[10px]">
-              Top 10
-            </p>
+            {board.entries.length > 0 && (
+              <p className="mt-2 text-center text-[9px] uppercase tracking-wider text-muted sm:text-[10px]">
+                {board.entries.length} ranked
+              </p>
+            )}
           </Card>
         ))}
       </div>

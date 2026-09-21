@@ -34,16 +34,38 @@
   --color-sport-red: var(--sport-red);
   --color-sport-bronze: var(--sport-bronze);
   --color-sport-silver: var(--sport-silver);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-strait);
+  --font-mono: var(--font-strait);
+}
+
+html {
+  font-size: 18px;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-sans), system-ui, sans-serif;
+  font-family: var(--font-sans), sans-serif;
+  line-height: 1.45;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  line-height: 1.2;
+}
+
+body,
+button,
+input,
+select,
+textarea {
+  font-family: var(--font-sans), sans-serif;
 }
 
 input, select, textarea {
-  font-size: 16px;
+  font-size: 1rem;
 }

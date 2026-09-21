@@ -237,6 +237,29 @@ export async function getLeaderboard(
   };
 }
 
+export async function getStudentActivityRanks(
+  schoolId: string,
+  studentId: string,
+  slugs: string[],
+  opts: {
+    gradeLevels?: number[];
+    gender?: string;
+    scope?: "school" | "global";
+  } = {}
+) {
+  const ranks: Record<string, number> = {};
+  await Promise.all(
+    [...new Set(slugs)].map(async (slug) => {
+      const activity = await prisma.activity.findUnique({ where: { slug } });
+      if (!activity) return;
+      const { entries } = await getLeaderboard(schoolId, slug, opts);
+      const me = entries.find((e) => e.studentId === studentId);
+      if (me) ranks[slug] = me.rank;
+    })
+  );
+  return ranks;
+}
+
 export function leaderboardEntryName(
   student: {
     id: string;

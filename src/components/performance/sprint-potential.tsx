@@ -53,7 +53,15 @@ function KpiScoreMeter({
   );
 }
 
-export function SprintPotentialCard({ potential }: { potential: SprintPotential }) {
+export function SprintPotentialCard({
+  potential,
+  ranks,
+  highlightSlug,
+}: {
+  potential: SprintPotential;
+  ranks?: Record<string, number>;
+  highlightSlug?: string;
+}) {
   const { matched, next, bands } = potential;
   if (!matched && bands.every((b) => b.tested === 0)) {
     return (
@@ -81,9 +89,9 @@ export function SprintPotentialCard({ potential }: { potential: SprintPotential 
     <Card>
       <CardTitle>Medal standard</CardTitle>
       {matched && (
-        <p className={`mt-4 text-3xl font-bold ${medalClass}`}>
+        <h2 className={`mt-4 text-3xl font-bold ${medalClass}`}>
           {MEDAL_LABELS[matched.band.medal]}
-        </p>
+        </h2>
       )}
       {matched && (
         <KpiScoreMeter
@@ -112,11 +120,35 @@ export function SprintPotentialCard({ potential }: { potential: SprintPotential 
             const mark =
               row.athlete == null ? "—" : formatActivityValue(row.athlete, meta.unit, row.slug);
             const target = formatActivityValue(row.target, meta.unit, row.slug);
+            const rank = ranks?.[row.slug];
+            const highlighted = highlightSlug === row.slug;
             return (
               <div
                 key={row.slug}
-                className="rounded-2xl border border-card-border bg-background/60 px-4 py-3"
+                className={cn(
+                  "relative rounded-2xl border bg-background/60 px-4 py-3",
+                  highlighted
+                    ? "border-sky-400 ring-1 ring-sky-400/40"
+                    : "border-card-border",
+                  rank != null && "pr-12"
+                )}
               >
+                {rank != null && (
+                  <div className="absolute right-2.5 top-2.5 flex flex-col items-end">
+                    <span
+                      className={cn(
+                        "text-xl font-black leading-none tabular-nums sm:text-2xl",
+                        highlighted ? "text-sky-300" : "text-sky-300/90"
+                      )}
+                      aria-label={`School rank ${rank}`}
+                    >
+                      {rank}
+                    </span>
+                    <span className="mt-0.5 text-[8px] font-semibold uppercase tracking-wider text-muted">
+                      School
+                    </span>
+                  </div>
+                )}
                 <div className="flex items-baseline gap-2">
                   <p className="text-2xl font-bold leading-none tabular-nums tracking-tight">
                     {mark}

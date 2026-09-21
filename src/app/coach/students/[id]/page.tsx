@@ -17,6 +17,7 @@ import { MarksWindowCard } from "@/components/performance/marks-window-card";
 import { ProgressLine } from "@/components/charts/progress-line";
 import { ActivityChartPicker } from "@/components/charts/activity-chart-picker";
 import { classYearLabel, DEFAULT_CLASS_YEAR } from "@/lib/grades";
+import { classSectionLabel, isGraduatingClassName } from "@/lib/periods";
 import { AthleteProfileCard } from "@/components/athletes/athlete-profile-card";
 import { genderFullLabel } from "@/lib/gender";
 
@@ -65,21 +66,10 @@ export default async function StudentProfilePage({
     getProgressByTestDate(id, activitySlug),
   ]);
 
-  const classNames = student.classEnrollments.map((e) => e.class.name).join(" · ");
   const fullName = `${student.firstName} ${student.lastName}`;
-  const meta = [
-    student.studentNumber,
-    student.gender ? genderFullLabel(student.gender) : null,
-    student.participationType === "ATHLETE"
-      ? "Student athlete"
-      : student.participationType === "PE"
-        ? "PE student"
-        : null,
-    classNames || null,
-    enrollment?.schoolYear?.label ?? null,
-  ]
-    .filter(Boolean)
-    .join(" · ");
+  const sections = student.classEnrollments
+    .filter((e) => !isGraduatingClassName(e.class.name))
+    .map((e) => ({ id: e.class.id, label: classSectionLabel(e.class) }));
 
   const schoolClasses = await prisma.class.findMany({
     where: { schoolId: session.schoolId },
@@ -91,7 +81,10 @@ export default async function StudentProfilePage({
     <AppShell title="Athlete" nav={COACH_NAV}>
       <AthleteProfileCard
         name={fullName}
-        meta={meta}
+        studentNumber={student.studentNumber}
+        gender={student.gender ? genderFullLabel(student.gender) : null}
+        schoolYear={enrollment?.schoolYear?.label ?? null}
+        sections={sections}
         seed={student.id}
         sports={student.sports}
         classLabel={classYearLabel(grade)}

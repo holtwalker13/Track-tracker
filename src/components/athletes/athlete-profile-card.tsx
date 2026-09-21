@@ -19,20 +19,27 @@ type EditProps = {
 
 export function AthleteProfileCard({
   name,
-  meta,
+  studentNumber,
+  gender,
+  schoolYear,
+  sections,
   seed,
   sports,
   classLabel,
   edit,
 }: {
   name: string;
-  meta: string;
+  studentNumber?: string | null;
+  gender?: string | null;
+  schoolYear?: string | null;
+  sections?: { id: string; label: string }[];
   seed?: string;
   sports?: string | null;
   classLabel?: string | null;
   edit: EditProps;
 }) {
   const router = useRouter();
+  const facts = [studentNumber, gender, schoolYear].filter(Boolean);
   const [editing, setEditing] = useState(false);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
@@ -77,7 +84,9 @@ export function AthleteProfileCard({
             Athlete profile
           </p>
           <h1 className="mt-1 truncate text-2xl font-bold tracking-tight sm:text-3xl">{name}</h1>
-          <p className="mt-2 text-sm text-muted">{meta}</p>
+          {facts.length > 0 && (
+            <p className="mt-1.5 text-sm text-muted">{facts.join(" · ")}</p>
+          )}
           <div className="mt-3 flex flex-wrap gap-2">
             {classLabel && (
               <span className="rounded-full bg-sky-400/15 px-3 py-1 text-xs font-semibold text-sky-300 ring-1 ring-sky-400/40">
@@ -94,6 +103,18 @@ export function AthleteProfileCard({
               </span>
             )}
           </div>
+          {sections && sections.length > 0 && (
+            <ul className="mt-2.5 flex flex-wrap gap-1.5">
+              {sections.map((section) => (
+                <li
+                  key={section.id}
+                  className="rounded-full border border-card-border px-2.5 py-1 text-xs text-muted"
+                >
+                  {section.label}
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
         <button
           type="button"

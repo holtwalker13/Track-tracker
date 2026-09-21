@@ -1,3 +1,4 @@
+import { Target } from "lucide-react";
 import { formatActivityValue } from "@/lib/format";
 import { KPI_METRIC_META, MEDAL_LABELS, type SprintPotential } from "@/lib/kpi-targets";
 import { Card, CardTitle } from "@/components/ui/card";
@@ -105,27 +106,37 @@ export function SprintPotentialCard({ potential }: { potential: SprintPotential 
       )}
 
       {matched && (
-        <ul className="mt-5 space-y-2 text-sm">
+        <div className="mt-5 grid grid-cols-2 gap-3">
           {matched.rows.map((row) => {
             const meta = KPI_METRIC_META.find((m) => m.slug === row.slug)!;
+            const mark =
+              row.athlete == null ? "—" : formatActivityValue(row.athlete, meta.unit, row.slug);
+            const target = formatActivityValue(row.target, meta.unit, row.slug);
             return (
-              <li key={row.slug} className="flex items-baseline justify-between gap-3">
-                <span className="text-muted">{row.name}</span>
-                <span className="tabular-nums">
-                  {row.athlete == null
-                    ? "—"
-                    : formatActivityValue(row.athlete, meta.unit, row.slug)}
-                  <span className="mx-1 text-card-border">/</span>
-                  <span className="text-muted">
-                    {formatActivityValue(row.target, meta.unit, row.slug)}
-                  </span>
-                  {row.hit === true && <span className="ml-2 text-success">hit</span>}
-                  {row.hit === false && <span className="ml-2 text-warning">gap</span>}
-                </span>
-              </li>
+              <div
+                key={row.slug}
+                className="rounded-2xl border border-card-border bg-background/60 px-4 py-3"
+              >
+                <div className="flex items-baseline gap-2">
+                  <p className="text-2xl font-bold leading-none tabular-nums tracking-tight">
+                    {mark}
+                  </p>
+                  {row.hit === true && (
+                    <span className="text-xs font-semibold text-success">hit</span>
+                  )}
+                  {row.hit === false && (
+                    <span className="text-xs font-semibold text-warning">gap</span>
+                  )}
+                </div>
+                <p className="mt-1.5 flex items-center gap-1.5 text-sm leading-none tabular-nums text-muted">
+                  {target}
+                  <Target className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                </p>
+                <p className="mt-1 text-sm font-bold leading-tight text-muted">{row.name}</p>
+              </div>
             );
           })}
-        </ul>
+        </div>
       )}
     </Card>
   );

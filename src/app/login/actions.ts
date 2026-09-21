@@ -21,7 +21,7 @@ export async function loginAction(formData: FormData) {
     redirect("/login?error=1");
   }
 
-  let schoolId = user.coachProfile?.schoolId ?? user.studentProfile?.schoolId;
+  const schoolId = user.coachProfile?.schoolId ?? user.studentProfile?.schoolId;
 
   const token = await signSessionToken({
     userId: user.id,

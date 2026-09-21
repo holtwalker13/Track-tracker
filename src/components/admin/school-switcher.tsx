@@ -6,7 +6,7 @@ export function SchoolSwitcher({
   schools,
   currentSchoolId,
 }: {
-  schools: { id: string; name: string; slug: string }[];
+  schools: { id: string; name: string }[];
   currentSchoolId?: string;
 }) {
   const router = useRouter();

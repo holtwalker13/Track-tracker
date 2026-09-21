@@ -45,7 +45,7 @@ export default async function AdminPage() {
                 active ? "border-accent ring-1 ring-accent/40" : "border-card-border"
               }`}
             >
-              <p className="text-xs uppercase tracking-widest text-muted">{school.slug}</p>
+              <p className="text-xs uppercase tracking-widest text-muted">{school.slug ?? "school"}</p>
               <h2 className="mt-1 text-lg font-semibold">{school.name}</h2>
               <p className="mt-2 text-sm text-muted">
                 {school._count.studentProfiles} students · {school._count.classes} classes ·{" "}

@@ -40,6 +40,8 @@ export default async function StudentLeaderboardsPage({
       <LeaderboardGrid
         boards={boards}
         subtitle={`${scope === "global" ? "Global" : "School"} rank · ${classYearLabel(currentGrade)}`}
+        selfHref="/student"
+        rankScope={scope}
         compareHref="/student/compare"
       />
     </AppShell>

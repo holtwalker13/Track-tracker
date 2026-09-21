@@ -47,7 +47,7 @@ export async function AppShell({
                   Track Tracker
                   {schoolName ? <span className="text-accent"> · {schoolName}</span> : null}
                 </p>
-                <h1 className="text-lg font-bold tracking-tight">{title}</h1>
+                <h1 className="text-lg font-bold uppercase tracking-wide">{title}</h1>
               </div>
               {session?.role === "ADMIN" && schools.length > 0 ? (
                 <div className="md:mt-2">

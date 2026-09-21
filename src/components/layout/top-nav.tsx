@@ -41,7 +41,7 @@ const linkClassName = cn(
 );
 
 const labelClassName =
-  "text-center text-[10px] font-medium leading-tight md:text-sm md:leading-snug";
+  "text-center text-[10px] font-medium uppercase leading-tight tracking-wide md:text-sm md:leading-snug";
 
 export function TopNav({ items }: { items: NavItem[] }) {
   const pathname = usePathname();

@@ -37,6 +37,7 @@ export default async function CoachLeaderboardsPage({
         boards={boards}
         subtitle={`${scope === "global" ? "Global" : "School"} rank · ${gradesLabel(grades)} · ${genderFullLabel(gender).toLowerCase()}`}
         athleteHrefBase="/coach/students"
+        rankScope={scope}
         compareHref="/coach/compare"
       />
     </AppShell>

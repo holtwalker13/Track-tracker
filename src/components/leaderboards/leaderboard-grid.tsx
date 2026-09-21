@@ -9,6 +9,7 @@ import { ActivityIcon } from "@/lib/activity-icons";
 import { formatActivityValue } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { LeaderboardBoard } from "@/lib/queries/leaderboard-grid";
+import { leaderboardProfileQuery } from "@/lib/leaderboard-link";
 
 const MAX_COMPARE = 2;
 
@@ -16,12 +17,17 @@ export function LeaderboardGrid({
   boards,
   subtitle,
   athleteHrefBase,
+  selfHref,
+  rankScope = "school",
   compareHref,
 }: {
   boards: LeaderboardBoard[];
   subtitle?: string;
   /** Profile path prefix, e.g. `/coach/students` → `/coach/students/{id}`. */
   athleteHrefBase?: string;
+  /** Student viewing themselves, e.g. `/student/performance`. */
+  selfHref?: string;
+  rankScope?: "school" | "global";
   /** Base compare path, e.g. `/coach/compare` or `/student/compare`. */
   compareHref?: string;
 }) {
@@ -99,22 +105,33 @@ export function LeaderboardGrid({
               <p className="mt-3 text-xs text-muted sm:text-sm">No results yet</p>
             ) : (
               <ol className="mt-2 max-h-80 space-y-0.5 overflow-y-auto sm:mt-3">
-                {board.entries.map((e) => {
+                {board.entries.map((e, i) => {
                   const isSelected = selected.includes(e.studentId);
+                  const striped =
+                    i % 2 === 1 && e.displayName !== "You" && !(selectMode && isSelected);
                   const value = formatActivityValue(
                     e.value,
                     board.activity.unit,
                     board.activity.slug
                   );
-                  const href =
-                    !selectMode && athleteHrefBase && e.linkable !== false
-                      ? `${athleteHrefBase}/${e.studentId}`
-                      : undefined;
+                  const query = leaderboardProfileQuery(
+                    board.activity.slug,
+                    e.rank,
+                    rankScope
+                  );
+                  const href = selectMode
+                    ? undefined
+                    : athleteHrefBase && e.linkable !== false
+                      ? `${athleteHrefBase}/${e.studentId}?${query}`
+                      : selfHref && e.displayName === "You"
+                        ? `${selfHref}?${query}`
+                        : undefined;
 
                   const row = (
                     <div
                       className={cn(
                         "flex items-center gap-1.5 rounded-lg px-1 py-1 sm:gap-2 sm:px-2 sm:py-1.5",
+                        striped && "bg-foreground/[0.045]",
                         e.displayName === "You" && "bg-foreground/8 ring-1 ring-foreground/15",
                         selectMode && isSelected && "bg-sky-400/10 ring-1 ring-sky-400/40"
                       )}

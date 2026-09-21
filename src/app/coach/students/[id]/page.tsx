@@ -9,6 +9,7 @@ import { getLatestResultsGrouped, getScholasticAttemptLog } from "@/lib/queries/
 import { getStudentSprintPotential } from "@/lib/queries/kpi";
 import { getStudentMarksWindow } from "@/lib/queries/marks-window";
 import { getProgressByTestDate } from "@/lib/queries/student";
+import { getStudentActivityRanks } from "@/lib/queries/coach";
 import { RadarProfile } from "@/components/charts/radar-profile";
 import { LatestResultsGrouped } from "@/components/performance/latest-results-grouped";
 import { AttemptSchedule } from "@/components/performance/attempt-schedule";
@@ -20,13 +21,15 @@ import { classYearLabel, DEFAULT_CLASS_YEAR } from "@/lib/grades";
 import { classSectionLabel, isGraduatingClassName } from "@/lib/periods";
 import { AthleteProfileCard } from "@/components/athletes/athlete-profile-card";
 import { genderFullLabel } from "@/lib/gender";
+import { leaderboardHighlightFromSearch } from "@/lib/leaderboard-link";
+import { KPI_METRIC_META } from "@/lib/kpi-targets";
 
 export default async function StudentProfilePage({
   params,
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ from?: string; to?: string; activity?: string }>;
+  searchParams: Promise<{ from?: string; to?: string; activity?: string; lb?: string; rank?: string; scope?: string }>;
 }) {
   const session = await requireSchoolSession();
   const { id } = await params;
@@ -48,6 +51,7 @@ export default async function StudentProfilePage({
   const grade = enrollment?.gradeLevel ?? DEFAULT_CLASS_YEAR;
   const schoolYearId = enrollment?.schoolYearId;
 
+  const highlight = leaderboardHighlightFromSearch(sp);
   const catalog = await prisma.activity.findMany({
     where: { slug: { notIn: ["height", "weight"] } },
     orderBy: { name: "asc" },
@@ -55,16 +59,24 @@ export default async function StudentProfilePage({
   });
   const activitySlug = catalog.some((a) => a.slug === sp.activity)
     ? sp.activity!
-    : "vertical-jump";
+    : highlight?.slug && catalog.some((a) => a.slug === highlight.slug)
+      ? highlight.slug
+      : "vertical-jump";
 
-  const [radar, latestGrouped, attemptLog, sprint, marksWindow, progress] = await Promise.all([
-    getCategoryRadar(id, grade),
-    getLatestResultsGrouped(id, schoolYearId),
-    getScholasticAttemptLog(id),
-    getStudentSprintPotential(id),
-    getStudentMarksWindow(id, sp.from, sp.to),
-    getProgressByTestDate(id, activitySlug),
-  ]);
+  const [radar, latestGrouped, attemptLog, sprint, marksWindow, progress, activityRanks] =
+    await Promise.all([
+      getCategoryRadar(id, grade),
+      getLatestResultsGrouped(id, schoolYearId),
+      getScholasticAttemptLog(id),
+      getStudentSprintPotential(id),
+      getStudentMarksWindow(id, sp.from, sp.to),
+      getProgressByTestDate(id, activitySlug),
+      getStudentActivityRanks(student.schoolId, id, KPI_METRIC_META.map((m) => m.slug), {
+        gender: student.gender ?? undefined,
+        scope: "school",
+      }),
+    ]);
+  const ranks = { ...activityRanks };
 
   const fullName = `${student.firstName} ${student.lastName}`;
   const sections = student.classEnrollments
@@ -101,7 +113,11 @@ export default async function StudentProfilePage({
       />
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <SprintPotentialCard potential={sprint} />
+        <SprintPotentialCard
+          potential={sprint}
+          ranks={ranks}
+          highlightSlug={highlight?.slug}
+        />
         <Card>
           <CardTitle>Athletic profile</CardTitle>
           <RadarProfile data={radar} />

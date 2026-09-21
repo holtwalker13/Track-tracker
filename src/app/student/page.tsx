@@ -16,11 +16,20 @@ import { classYearLabel } from "@/lib/grades";
 import { getStudentSprintPotential } from "@/lib/queries/kpi";
 import { SprintPotentialCard } from "@/components/performance/sprint-potential";
 import { ProfileBanner } from "@/components/layout/profile-banner";
+import { getStudentActivityRanks } from "@/lib/queries/coach";
+import { KPI_METRIC_META } from "@/lib/kpi-targets";
+import { leaderboardHighlightFromSearch } from "@/lib/leaderboard-link";
 
-export default async function StudentDashboardPage() {
+export default async function StudentDashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ lb?: string; rank?: string; scope?: string }>;
+}) {
   const session = await requireSession(["STUDENT"]);
   if (!session?.studentId) redirect("/login");
   const studentId = session.studentId;
+  const sp = await searchParams;
+  const highlight = leaderboardHighlightFromSearch(sp);
 
   const { student, currentGrade } = await getStudentContext(studentId);
   const scorecard = await getStudentScorecard(studentId, currentGrade);
@@ -57,6 +66,15 @@ export default async function StudentDashboardPage() {
   );
 
   const sprint = await getStudentSprintPotential(studentId);
+  const kpiRanks = await getStudentActivityRanks(
+    schoolId,
+    studentId,
+    KPI_METRIC_META.map((m) => m.slug),
+    {
+      gender: student.gender ?? undefined,
+      scope: "school",
+    }
+  );
 
   return (
     <AppShell title="Dashboard" nav={STUDENT_NAV}>
@@ -67,7 +85,11 @@ export default async function StudentDashboardPage() {
       />
 
       <div>
-        <SprintPotentialCard potential={sprint} />
+        <SprintPotentialCard
+          potential={sprint}
+          ranks={kpiRanks}
+          highlightSlug={highlight?.slug}
+        />
       </div>
 
       <Card className="mt-6">

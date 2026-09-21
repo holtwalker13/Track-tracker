@@ -1,13 +1,9 @@
+import { FEMALE_FIRST, MALE_FIRST } from "@/lib/synthetic-names";
+
 export type AthleteGender = "M" | "F";
 
-const MALE_NAMES = new Set([
-  "Connor",
-  "Noah",
-  "Liam",
-  "Ethan",
-  "Lucas",
-]);
-const FEMALE_NAMES = new Set(["Emma", "Mia", "Sophia", "Olivia", "Ava"]);
+const MALE_NAMES = new Set<string>([...MALE_FIRST, "Connor", "Noah", "Liam", "Ethan", "Lucas"]);
+const FEMALE_NAMES = new Set<string>([...FEMALE_FIRST]);
 
 export function genderFromFirstName(firstName: string, index = 0): AthleteGender {
   if (MALE_NAMES.has(firstName)) return "M";

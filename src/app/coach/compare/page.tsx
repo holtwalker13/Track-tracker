@@ -1,8 +1,7 @@
-import { redirect } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
 import { Card } from "@/components/ui/card";
 import { COACH_NAV } from "@/lib/navigation";
-import { requireSession } from "@/lib/auth/session";
+import { requireSchoolSession } from "@/lib/auth/session";
 import { getAthleteCompare, getAthleteLineup } from "@/lib/queries/compare";
 import { AthleteDuel } from "@/components/compare/athlete-duel";
 import { AthletePicker } from "@/components/compare/athlete-picker";
@@ -29,8 +28,7 @@ export default async function ComparePage({
     gender?: string;
   }>;
 }) {
-  const session = await requireSession(["COACH", "ADMIN"]);
-  if (!session?.schoolId) redirect("/login");
+  const session = await requireSchoolSession();
   const sp = await searchParams;
   const grades = gradesFromSearch(sp);
   const gender = parseGenderParam(sp.gender);

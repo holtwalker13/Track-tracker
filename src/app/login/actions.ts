@@ -22,17 +22,6 @@ export async function loginAction(formData: FormData) {
   }
 
   let schoolId = user.coachProfile?.schoolId ?? user.studentProfile?.schoolId;
-  if (!schoolId && (user.role === "COACH" || user.role === "ADMIN")) {
-    const school = await prisma.school.findFirst({ orderBy: { createdAt: "asc" } });
-    if (school) {
-      await prisma.coachProfile.upsert({
-        where: { userId: user.id },
-        create: { userId: user.id, schoolId: school.id },
-        update: { schoolId: school.id },
-      });
-      schoolId = school.id;
-    }
-  }
 
   const token = await signSessionToken({
     userId: user.id,
@@ -49,7 +38,9 @@ export async function loginAction(formData: FormData) {
       ? nextRaw
       : user.role === "STUDENT"
         ? "/student"
-        : "/coach/leaderboards";
+        : user.role === "ADMIN"
+          ? "/admin"
+          : "/coach/leaderboards";
 
   redirect(next);
 }

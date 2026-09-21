@@ -1,8 +1,8 @@
-import { redirect, notFound } from "next/navigation";
+import { notFound } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
 import { Card, CardTitle } from "@/components/ui/card";
 import { COACH_NAV } from "@/lib/navigation";
-import { requireSession } from "@/lib/auth/session";
+import { requireSchoolSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { getCategoryRadar } from "@/lib/queries/student";
 import { getLatestResultsGrouped, getScholasticAttemptLog } from "@/lib/queries/attempt-log";
@@ -27,8 +27,7 @@ export default async function StudentProfilePage({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ from?: string; to?: string; activity?: string }>;
 }) {
-  const session = await requireSession(["COACH", "ADMIN"]);
-  if (!session?.schoolId) redirect("/login");
+  const session = await requireSchoolSession();
   const { id } = await params;
   const sp = await searchParams;
 

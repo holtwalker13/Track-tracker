@@ -4,7 +4,7 @@ import { prisma } from "@/lib/db";
 
 export async function GET(request: Request) {
   const session = await getSession();
-  if (!session || session.role !== "COACH") {
+  if (!session || (session.role !== "COACH" && session.role !== "ADMIN")) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const sessionId = new URL(request.url).searchParams.get("sessionId");

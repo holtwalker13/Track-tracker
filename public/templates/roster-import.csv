@@ -1,0 +1,5 @@
+firstName,lastName,gender,classYear,studentNumber,className,period,sports
+Jane,Sample,F,2028,1001,Period 1 Weights,Period 1,track
+John,Sample,M,2027,1002,Period 1 Weights,Period 1,football
+Alex,Sample,F,2029,1003,Period 2 Weights,Period 2,volleyball
+Sam,Sample,M,2028,1004,Period 2 Weights,Period 2,football

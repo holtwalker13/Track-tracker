@@ -1,14 +1,12 @@
-import { redirect } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
 import { Card, CardTitle } from "@/components/ui/card";
 import { COACH_NAV } from "@/lib/navigation";
-import { requireSession } from "@/lib/auth/session";
+import { requireSchoolSession } from "@/lib/auth/session";
 import { getCoachDashboard } from "@/lib/queries/coach";
 import Link from "next/link";
 
 export default async function CoachDashboardPage() {
-  const session = await requireSession(["COACH", "ADMIN"]);
-  if (!session?.schoolId) redirect("/login");
+  const session = await requireSchoolSession();
 
   const data = await getCoachDashboard(session.schoolId);
 

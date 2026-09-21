@@ -14,12 +14,18 @@ export function CreateClassForm() {
     setPending(true);
     setError(null);
     const fd = new FormData(e.currentTarget);
+    const type = String(fd.get("classType") ?? "");
+    let name = String(fd.get("name") ?? "").trim();
+    const period = String(fd.get("period") ?? "").trim();
+    if (!name && type === "weights") {
+      name = period ? `${period} Weights` : "Weightlifting";
+    }
     const res = await fetch("/api/classes", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        name: fd.get("name"),
-        period: fd.get("period"),
+        name,
+        period,
         gradeLevel: fd.get("gradeLevel"),
       }),
     });
@@ -39,6 +45,19 @@ export function CreateClassForm() {
       <p className="text-sm text-muted">
         Athletes can belong to more than one class (weights, speed, a graduating year, etc.).
       </p>
+      <label className="block text-sm">
+        Class type
+        <select
+          name="classType"
+          defaultValue="custom"
+          className="mt-1 w-full rounded-lg border border-card-border bg-background px-3 py-2"
+        >
+          <option value="custom">Custom</option>
+          <option value="weights">Weightlifting</option>
+          <option value="pe">PE</option>
+          <option value="speed">Speed</option>
+        </select>
+      </label>
       <label className="block text-sm">
         Name
         <input
@@ -115,5 +134,46 @@ export function ImportClassesForm() {
         Import CSV
       </button>
     </form>
+  );
+}
+
+export function CreateWeightsPeriodsButton() {
+  const router = useRouter();
+  const [msg, setMsg] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
+
+  async function createPeriods() {
+    setPending(true);
+    setMsg(null);
+    let created = 0;
+    for (const n of [1, 2, 3, 4]) {
+      const res = await fetch("/api/classes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: `Period ${n} Weights`, period: `Period ${n}` }),
+      });
+      if (res.ok) created += 1;
+    }
+    setPending(false);
+    setMsg(`Added ${created} weightlifting period${created === 1 ? "" : "s"}.`);
+    router.refresh();
+  }
+
+  return (
+    <div className="rounded-2xl border border-card-border bg-card p-4">
+      <h2 className="font-semibold">Weightlifting periods</h2>
+      <p className="mt-1 text-sm text-muted">
+        Create Period 1–4 Weights in one click, then upload a roster into them.
+      </p>
+      {msg && <p className="mt-2 text-sm text-success">{msg}</p>}
+      <button
+        type="button"
+        disabled={pending}
+        onClick={() => void createPeriods()}
+        className="mt-3 rounded-lg border border-card-border px-4 py-2 text-sm font-medium hover:bg-background"
+      >
+        {pending ? "Creating…" : "Add Period 1–4 Weights"}
+      </button>
+    </div>
   );
 }

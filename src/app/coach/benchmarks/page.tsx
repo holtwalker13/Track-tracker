@@ -1,7 +1,6 @@
-import { redirect } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
 import { COACH_NAV } from "@/lib/navigation";
-import { requireSession } from "@/lib/auth/session";
+import { requireSchoolSession } from "@/lib/auth/session";
 import { ensureSchoolKpiTargets } from "@/lib/queries/kpi";
 import { prisma } from "@/lib/db";
 import { KpiTargetsEditor, type TargetCell } from "@/components/kpi/kpi-targets-editor";
@@ -9,8 +8,7 @@ import { KPI_METRIC_META, MEDALS, type Medal } from "@/lib/kpi-targets";
 import { DEFAULT_AGE_BRACKET } from "@/lib/age-brackets";
 
 export default async function BenchmarksPage() {
-  const session = await requireSession(["COACH", "ADMIN"]);
-  if (!session?.schoolId) redirect("/login");
+  const session = await requireSchoolSession();
 
   await ensureSchoolKpiTargets(session.schoolId);
 

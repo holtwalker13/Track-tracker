@@ -1,8 +1,8 @@
-import { redirect, notFound } from "next/navigation";
+import { notFound } from "next/navigation";
 import Link from "next/link";
 import { AppShell } from "@/components/layout/app-shell";
 import { COACH_NAV } from "@/lib/navigation";
-import { requireSession } from "@/lib/auth/session";
+import { requireSchoolSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { getPreviousBest } from "@/lib/services/results";
 import { LiveTestingGrid } from "@/components/testing/live-grid";
@@ -20,8 +20,7 @@ export default async function LiveTestingPage({
   params: Promise<{ sessionId: string }>;
   searchParams: Promise<{ activity?: string }>;
 }) {
-  const session = await requireSession(["COACH", "ADMIN"]);
-  if (!session?.schoolId) redirect("/login");
+  const session = await requireSchoolSession();
   const { sessionId } = await params;
   const sp = await searchParams;
 

@@ -25,7 +25,10 @@ export async function POST(request: Request) {
     include: { school: true },
   });
 
-  if (session.schoolId && sessionRec.schoolId !== session.schoolId) {
+  if (!session?.schoolId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  if (sessionRec.schoolId !== session.schoolId) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

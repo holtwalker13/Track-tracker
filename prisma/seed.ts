@@ -6,6 +6,9 @@ import { formatActivityValue } from "../src/lib/format";
 import { ALL_KPI_BANDS, KPI_METRIC_META } from "../src/lib/kpi-targets";
 import { DEFAULT_CLASS_YEAR, GRADE_LEVELS, isClassYear } from "../src/lib/grades";
 import { DEFAULT_AGE_BRACKET } from "../src/lib/age-brackets";
+import { parseCsv } from "../src/lib/csv";
+import { ADMIN_LOGIN, DEMO_PASSWORD, TENANTS } from "../src/lib/tenants";
+import { syntheticName } from "../src/lib/synthetic-names";
 
 const prisma = new PrismaClient();
 
@@ -47,18 +50,6 @@ const CATEGORIES = [
   { slug: "body", name: "Body Metrics" },
 ];
 
-const MALE_FIRST = [
-  "Aiden", "Bennett", "Caleb", "Drew", "Eli", "Finn", "Grant", "Hunter", "Isaac", "Jonah",
-  "Kaden", "Landon", "Mason", "Nolan", "Owen", "Parker", "Quinn", "Ryder", "Silas", "Tucker",
-  "Wesley", "Xander", "Yale", "Zane", "Brady", "Colton", "Declan", "Emmett", "Felix", "Graham",
-  "Holden", "Jasper", "Knox", "Luca", "Miles", "Nash", "Oscar", "Pierce", "Roman", "Theo",
-];
-const MALE_LAST = [
-  "Adler", "Brooks", "Carson", "Dalton", "Ellis", "Foster", "Griffin", "Hayes", "Ingram", "Jensen",
-  "Keller", "Lawson", "Madden", "Norris", "Palmer", "Reeves", "Sutton", "Trent", "Vaughn", "Walker",
-  "Barrett", "Collins", "Dunn", "Everett", "Farley", "Gibson", "Hale", "Iverson", "Keene", "Lang",
-];
-
 const MALE_SPORTS: Record<string, string> = {
   volleyball: "football",
   soccer: "football",
@@ -79,43 +70,6 @@ type AthleteRow = {
   marks: Record<string, number>;
 };
 
-function parseCsv(text: string): string[][] {
-  const rows: string[][] = [];
-  let row: string[] = [];
-  let cell = "";
-  let inQuotes = false;
-  for (let i = 0; i < text.length; i++) {
-    const c = text[i]!;
-    if (inQuotes) {
-      if (c === '"' && text[i + 1] === '"') {
-        cell += '"';
-        i++;
-      } else if (c === '"') {
-        inQuotes = false;
-      } else {
-        cell += c;
-      }
-    } else if (c === '"') {
-      inQuotes = true;
-    } else if (c === ",") {
-      row.push(cell);
-      cell = "";
-    } else if (c === "\n") {
-      row.push(cell);
-      rows.push(row);
-      row = [];
-      cell = "";
-    } else if (c !== "\r") {
-      cell += c;
-    }
-  }
-  if (cell.length > 0 || row.length > 0) {
-    row.push(cell);
-    rows.push(row);
-  }
-  return rows.filter((r) => r.some((v) => v.trim() !== ""));
-}
-
 function parseNum(raw?: string): number | null {
   if (!raw) return null;
   const t = raw.trim();
@@ -129,12 +83,6 @@ function parseClassYear(raw?: string): number {
   if (n === 2038) return 2028;
   if (isClassYear(n)) return n;
   return DEFAULT_CLASS_YEAR;
-}
-
-function splitName(full: string): { firstName: string; lastName: string } {
-  const parts = full.trim().split(/\s+/);
-  if (parts.length === 1) return { firstName: parts[0]!, lastName: "Athlete" };
-  return { firstName: parts[0]!, lastName: parts.slice(1).join(" ") };
 }
 
 function displayFor(slug: string, unit: string, value: number): string {
@@ -216,7 +164,7 @@ function loadFemaleAthletes(): AthleteRow[] {
   for (const row of rows.slice(headerIdx + 1)) {
     const name = (row[idx.name] ?? "").trim();
     if (!name || name.toLowerCase() === "name") continue;
-    const { firstName, lastName } = splitName(name.replace("?", "").trim());
+    const { firstName, lastName } = syntheticName("F", athletes.length);
     const bodyWeight = parseNum(row[idx.bw]);
     const marks: Record<string, number> = {};
     const add = (slug: string, raw?: string) => {
@@ -245,7 +193,7 @@ function loadFemaleAthletes(): AthleteRow[] {
 
     athletes.push({
       firstName,
-      lastName: lastName || "Athlete",
+      lastName,
       classYear: parseClassYear(row[idx.classYear]),
       gender: "F",
       bodyWeight,
@@ -257,10 +205,9 @@ function loadFemaleAthletes(): AthleteRow[] {
   return athletes;
 }
 
-function makeMaleAthletes(females: AthleteRow[]): AthleteRow[] {
+function makeMaleAthletes(females: AthleteRow[], nameOffset = 0): AthleteRow[] {
   return females.map((f, i) => {
-    const firstName = MALE_FIRST[i % MALE_FIRST.length]!;
-    const lastName = MALE_LAST[Math.floor(i / MALE_FIRST.length) % MALE_LAST.length]!;
+    const { firstName, lastName } = syntheticName("M", i, nameOffset);
     const marks: Record<string, number> = {};
     for (const [slug, value] of Object.entries(f.marks)) {
       if (slug.endsWith("-relative")) continue;
@@ -285,22 +232,9 @@ function makeMaleAthletes(females: AthleteRow[]): AthleteRow[] {
   });
 }
 
-async function main() {
-  const DEMO_PASSWORD = "rekcart";
-  const existingUsers = await prisma.user.count();
-  if (existingUsers > 0 && process.env.FORCE_SEED !== "1") {
-    const hash = await bcrypt.hash(DEMO_PASSWORD, 10);
-    await prisma.user.updateMany({ data: { passwordHash: hash } });
-    console.log(
-      `Skipping full seed (${existingUsers} users). Demo passwords updated to "${DEMO_PASSWORD}". Set FORCE_SEED=1 to wipe and reload.`
-    );
-    return;
-  }
-  if (existingUsers > 0) {
-    console.log("FORCE_SEED=1: wiping database and reloading JHS roster...");
-  }
-
+async function wipe() {
   await prisma.schoolKpiTarget.deleteMany();
+  await prisma.schoolHiddenKpi.deleteMany();
   await prisma.performanceResult.deleteMany();
   await prisma.studentAchievement.deleteMany();
   await prisma.testingSessionStudent.deleteMany();
@@ -322,34 +256,13 @@ async function main() {
   await prisma.organizationSettings.deleteMany();
   await prisma.organization.deleteMany();
   await prisma.achievement.deleteMany();
+}
 
-  const hash = await bcrypt.hash("rekcart", 10);
-
-  const org = await prisma.organization.create({
-    data: {
-      name: "JHS Athletics",
-      slug: "jhs-athletics",
-      benchmarkSharingEnabled: true,
-      settings: { create: {} },
-    },
-  });
-
-  const district = await prisma.district.create({
-    data: { organizationId: org.id, name: "JHS District", region: "Local" },
-  });
-
-  const school = await prisma.school.create({
-    data: {
-      organizationId: org.id,
-      districtId: district.id,
-      name: "Jackson High School",
-    },
-  });
-
+async function seedKpiTargets(schoolId: string) {
   await prisma.schoolKpiTarget.createMany({
     data: ALL_KPI_BANDS.flatMap((band) =>
       KPI_METRIC_META.map((meta) => ({
-        schoolId: school.id,
+        schoolId,
         gender: band.gender,
         medal: band.medal,
         metricSlug: meta.slug,
@@ -358,14 +271,303 @@ async function main() {
       }))
     ),
   });
+}
 
-  const schoolYear = await prisma.schoolYear.create({
+async function seedCoaches(schoolId: string, emailDomain: string, hash: string) {
+  const firstNames = ["Morgan", "Taylor", "Jordan", "Casey"];
+  return Promise.all(
+    firstNames.map(async (first, i) => {
+      const user = await prisma.user.create({
+        data: {
+          email: `coach${i + 1}@${emailDomain}`,
+          passwordHash: hash,
+          role: "COACH",
+          firstName: first,
+          lastName: "Coach",
+        },
+      });
+      return prisma.coachProfile.create({
+        data: { userId: user.id, schoolId },
+      });
+    })
+  );
+}
+
+async function seedRoster(opts: {
+  schoolId: string;
+  orgId: string;
+  schoolYearId: string;
+  coaches: { id: string }[];
+  roster: AthleteRow[];
+  studentEmailDomain: string;
+  sessionName: string;
+  hash: string;
+  hourClasses: boolean;
+  extraClasses: boolean;
+}) {
+  const classesByYear = new Map<number, string>();
+  for (const year of GRADE_LEVELS) {
+    const rec = await prisma.class.create({
+      data: {
+        schoolId: opts.schoolId,
+        coachId: opts.coaches[year % opts.coaches.length]!.id,
+        name: `Class of ${year}`,
+        period: null,
+        gradeLevel: year,
+      },
+    });
+    classesByYear.set(year, rec.id);
+  }
+
+  const hourDefs = opts.hourClasses
+    ? [
+        { name: "Fall 2025 Period 1 PE", period: "Fall 2025 Period 1" },
+        { name: "Fall 2025 Period 2 Weights", period: "Fall 2025 Period 2" },
+        { name: "Fall 2025 Period 3 Athletics", period: "Fall 2025 Period 3" },
+        { name: "Fall 2025 Period 4 Speed", period: "Fall 2025 Period 4" },
+        { name: "Spring 2026 Period 1 PE", period: "Spring 2026 Period 1" },
+        { name: "Spring 2026 Period 2 Athletics", period: "Spring 2026 Period 2" },
+      ]
+    : [
+        { name: "Period 1 Weights", period: "Period 1" },
+        { name: "Period 2 Weights", period: "Period 2" },
+      ];
+  const hourClasses = await Promise.all(
+    hourDefs.map((def, i) =>
+      prisma.class.create({
+        data: {
+          schoolId: opts.schoolId,
+          coachId: opts.coaches[i % opts.coaches.length]!.id,
+          name: def.name,
+          period: def.period,
+        },
+      })
+    )
+  );
+
+  const testingDate = new Date("2026-04-15");
+  const session = await prisma.testingSession.create({
     data: {
-      schoolId: school.id,
-      label: "2025–2026",
-      startDate: new Date("2025-08-12"),
-      endDate: new Date("2026-06-05"),
-      isCurrent: true,
+      schoolId: opts.schoolId,
+      schoolYearId: opts.schoolYearId,
+      name: opts.sessionName,
+      testingDate,
+      status: "COMPLETED",
+    },
+  });
+
+  const activities = await prisma.activity.findMany();
+  const actBySlug = new Map(activities.map((a) => [a.slug, a]));
+  const testSlugs = ACTIVITIES.filter((a) => a.slug !== "weight").map((a) => a.slug);
+  for (const [i, slug] of testSlugs.entries()) {
+    await prisma.testingSessionActivity.create({
+      data: { sessionId: session.id, activityId: actBySlug.get(slug)!.id, sortOrder: i },
+    });
+  }
+
+  const coachUser = await prisma.user.findFirst({
+    where: { role: "COACH", coachProfile: { schoolId: opts.schoolId } },
+  });
+  let studentIndex = 0;
+  let sampleEmail: string | null = null;
+
+  for (const athlete of opts.roster) {
+    studentIndex++;
+    const email = `student${studentIndex}@${opts.studentEmailDomain}`;
+    if (!sampleEmail) sampleEmail = email;
+    const ageOffset = Math.max(0, 2031 - athlete.classYear);
+    const dob = new Date(2008 + (2031 - athlete.classYear), (studentIndex * 3) % 12, 10 + (studentIndex % 18));
+
+    const user = await prisma.user.create({
+      data: {
+        email,
+        passwordHash: opts.hash,
+        role: "STUDENT",
+        firstName: athlete.firstName,
+        lastName: athlete.lastName,
+      },
+    });
+
+    const isAthlete = Boolean(athlete.sports && athlete.sports.trim() && !/^pe\b/i.test(athlete.sports));
+    const profile = await prisma.studentProfile.create({
+      data: {
+        userId: user.id,
+        schoolId: opts.schoolId,
+        studentNumber: `${athlete.gender}${String(studentIndex).padStart(4, "0")}`,
+        firstName: athlete.firstName,
+        lastName: athlete.lastName,
+        dateOfBirth: dob,
+        gender: athlete.gender,
+        sports: athlete.sports,
+        participationType: isAthlete ? "ATHLETE" : studentIndex % 5 === 0 ? "PE" : athlete.sports ? "ATHLETE" : "PE",
+        notes: athlete.comments,
+        anonymousId: String(2000 + studentIndex),
+      },
+    });
+
+    await prisma.studentEnrollment.create({
+      data: {
+        studentId: profile.id,
+        schoolYearId: opts.schoolYearId,
+        gradeLevel: athlete.classYear,
+      },
+    });
+
+    const classId = classesByYear.get(athlete.classYear);
+    if (classId) {
+      await prisma.classEnrollment.create({
+        data: { classId, studentId: profile.id },
+      });
+    }
+
+    const hourClass = hourClasses[studentIndex % hourClasses.length]!;
+    await prisma.classEnrollment.create({
+      data: { classId: hourClass.id, studentId: profile.id },
+    });
+
+    const hasMarks = Object.keys(athlete.marks).length > 0;
+    if (hasMarks) {
+      await prisma.testingSessionStudent.create({
+        data: { sessionId: session.id, studentId: profile.id },
+      });
+    }
+
+    const ageAtTest = 14 + (12 - Math.min(12, 6 + ageOffset)) + ((studentIndex % 8) - 4) * 0.1;
+    const historyDates = [new Date("2025-09-01"), new Date("2025-12-04"), new Date("2026-03-01")];
+    const dirBySlug = new Map(ACTIVITIES.map((a) => [a.slug, a.dir]));
+
+    for (const [slug, value] of Object.entries(athlete.marks)) {
+      const act = actBySlug.get(slug);
+      if (!act) continue;
+      const dir = dirBySlug.get(slug) ?? "HIGHER_BETTER";
+
+      for (const [hi, histDate] of historyDates.entries()) {
+        const stepsBack = historyDates.length - hi;
+        const histValue =
+          dir === "LOWER_BETTER"
+            ? Number((value * (1 + stepsBack * 0.035)).toFixed(3))
+            : Number((value * (1 - stepsBack * 0.035)).toFixed(2));
+        await prisma.performanceResult.create({
+          data: {
+            studentId: profile.id,
+            activityId: act.id,
+            schoolId: opts.schoolId,
+            schoolYearId: opts.schoolYearId,
+            organizationId: opts.orgId,
+            gradeLevel: athlete.classYear,
+            resultValue: histValue,
+            displayValue: displayFor(slug, act.unit, histValue),
+            attemptNumber: 1,
+            isBestAttempt: true,
+            isPersonalRecord: false,
+            testingDate: histDate,
+            ageAtTest: ageAtTest - stepsBack * 0.15,
+            weightAtTest: athlete.bodyWeight,
+            enteredById: coachUser?.id,
+            entryMethod: "IMPORT",
+            status: "COMPLETED",
+            notes: "Prior season / mid-year check",
+          },
+        });
+      }
+
+      await prisma.performanceResult.create({
+        data: {
+          studentId: profile.id,
+          activityId: act.id,
+          schoolId: opts.schoolId,
+          schoolYearId: opts.schoolYearId,
+          organizationId: opts.orgId,
+          gradeLevel: athlete.classYear,
+          resultValue: value,
+          displayValue: displayFor(slug, act.unit, value),
+          attemptNumber: 1,
+          isBestAttempt: true,
+          isPersonalRecord: true,
+          testingDate,
+          ageAtTest,
+          weightAtTest: athlete.bodyWeight,
+          enteredById: coachUser?.id,
+          entryMethod: "IMPORT",
+          status: "COMPLETED",
+          testingSessionId: session.id,
+          notes: slug === "100-meter-dash" ? "Projected 100m from flying speed" : athlete.comments,
+          relativeStrength:
+            slug === "squat" || slug === "hang-clean"
+              ? athlete.marks[`${slug === "squat" ? "squat" : "hang-clean"}-relative`] ?? null
+              : slug.endsWith("-relative")
+                ? value
+                : null,
+        },
+      });
+    }
+  }
+
+  if (opts.extraClasses) {
+    const extraClasses = await Promise.all([
+      prisma.class.create({
+        data: {
+          schoolId: opts.schoolId,
+          coachId: opts.coaches[0]!.id,
+          name: "Fall 2025 Period 5 Varsity Weights",
+          period: "Fall 2025 Period 5",
+        },
+      }),
+      prisma.class.create({
+        data: {
+          schoolId: opts.schoolId,
+          coachId: opts.coaches[1]!.id,
+          name: "Spring 2026 Period 4 Speed Development",
+          period: "Spring 2026 Period 4",
+        },
+      }),
+    ]);
+    const allProfiles = await prisma.studentProfile.findMany({
+      where: { schoolId: opts.schoolId },
+      select: { id: true },
+      orderBy: { lastName: "asc" },
+    });
+    await prisma.classEnrollment.createMany({
+      data: [
+        ...allProfiles.slice(0, Math.min(80, allProfiles.length)).map((p) => ({
+          classId: extraClasses[0]!.id,
+          studentId: p.id,
+        })),
+        ...allProfiles.slice(Math.min(20, allProfiles.length), Math.min(80, allProfiles.length)).map((p) => ({
+          classId: extraClasses[1]!.id,
+          studentId: p.id,
+        })),
+      ],
+      skipDuplicates: true,
+    });
+  }
+
+  return sampleEmail;
+}
+
+async function main() {
+  const existingUsers = await prisma.user.count();
+  if (existingUsers > 0 && process.env.FORCE_SEED !== "1") {
+    const hash = await bcrypt.hash(DEMO_PASSWORD, 10);
+    await prisma.user.updateMany({ data: { passwordHash: hash } });
+    console.log(
+      `Skipping full seed (${existingUsers} users). Passwords updated to "${DEMO_PASSWORD}". Set FORCE_SEED=1 to wipe and reload Demo / JHS / CHS.`
+    );
+    return;
+  }
+  if (existingUsers > 0) {
+    console.log("FORCE_SEED=1: wiping database and loading Demo, empty JHS, and CHS test data...");
+  }
+
+  await wipe();
+  const hash = await bcrypt.hash(DEMO_PASSWORD, 10);
+
+  const org = await prisma.organization.create({
+    data: {
+      name: "Track Tracker",
+      slug: "track-tracker",
+      benchmarkSharingEnabled: true,
+      settings: { create: {} },
     },
   });
 
@@ -402,15 +604,15 @@ async function main() {
         name: band.label,
         sourceName:
           band.gender === "F"
-            ? "JHS Athletics KPI Database — Female"
-            : "Synthetic male analog of the JHS female KPI key",
+            ? "Track Tracker KPI Database — Female"
+            : "Synthetic male analog of the female KPI key",
         datasetYear: 2026,
         population: band.gender === "F" ? "FEMALE" : "MALE",
-        geographicRegion: "JHS",
+        geographicRegion: "Demo",
         methodologyNotes:
           band.gender === "F"
-            ? "JHS default Gold/Silver/Bronze KPI marks. Schools can override these on the Medal targets page."
-            : "Synthetic male analog of the JHS female KPI key. Schools can override these on the Medal targets page.",
+            ? "Default Gold/Silver/Bronze KPI marks. Schools can override these on the Medal targets page."
+            : "Synthetic male analog of the female KPI key. Schools can override these on the Medal targets page.",
         isSynthetic: band.gender === "M",
       },
     });
@@ -444,259 +646,86 @@ async function main() {
     ],
   });
 
-  const coaches = await Promise.all(
-    ["Morgan", "Taylor", "Jordan", "Casey"].map(async (first, i) => {
-      const user = await prisma.user.create({
-        data: {
-          email: `coach${i + 1}@jhs.demo`,
-          passwordHash: hash,
-          role: "COACH",
-          firstName: first,
-          lastName: "Coach",
-        },
-      });
-      return prisma.coachProfile.create({
-        data: { userId: user.id, schoolId: school.id },
-      });
-    })
-  );
-
-  const classesByYear = new Map<number, string>();
-  for (const year of GRADE_LEVELS) {
-    const rec = await prisma.class.create({
-      data: {
-        schoolId: school.id,
-        coachId: coaches[year % coaches.length]!.id,
-        name: `Class of ${year}`,
-        period: null,
-        gradeLevel: year,
-      },
-    });
-    classesByYear.set(year, rec.id);
-  }
-
-  const hourDefs = [
-    { name: "Fall 2025 Period 1 PE", period: "Fall 2025 Period 1" },
-    { name: "Fall 2025 Period 2 Weights", period: "Fall 2025 Period 2" },
-    { name: "Fall 2025 Period 3 Athletics", period: "Fall 2025 Period 3" },
-    { name: "Fall 2025 Period 4 Speed", period: "Fall 2025 Period 4" },
-    { name: "Spring 2026 Period 1 PE", period: "Spring 2026 Period 1" },
-    { name: "Spring 2026 Period 2 Athletics", period: "Spring 2026 Period 2" },
-  ];
-  const hourClasses = await Promise.all(
-    hourDefs.map((def, i) =>
-      prisma.class.create({
-        data: {
-          schoolId: school.id,
-          coachId: coaches[i % coaches.length]!.id,
-          name: def.name,
-          period: def.period,
-        },
-      })
-    )
-  );
-
-  const females = loadFemaleAthletes();
-  const males = makeMaleAthletes(females);
-  const roster = [...females, ...males];
-
-  const testingDate = new Date("2026-04-15");
-  const session = await prisma.testingSession.create({
+  await prisma.user.create({
     data: {
-      schoolId: school.id,
-      schoolYearId: schoolYear.id,
-      name: "JHS KPI Testing 2026",
-      testingDate,
-      status: "COMPLETED",
+      email: ADMIN_LOGIN.email,
+      passwordHash: hash,
+      role: "ADMIN",
+      firstName: "App",
+      lastName: "Admin",
     },
   });
 
-  const testSlugs = ACTIVITIES.filter((a) => a.slug !== "weight").map((a) => a.slug);
-  for (const [i, slug] of testSlugs.entries()) {
-    await prisma.testingSessionActivity.create({
-      data: { sessionId: session.id, activityId: actBySlug.get(slug)!.id, sortOrder: i },
+  const females = loadFemaleAthletes();
+  const males = makeMaleAthletes(females);
+  const demoRoster = [...females, ...males];
+  const chsFemales = females.filter((_, i) => i % 7 === 0).slice(0, 18);
+  const chsMales = makeMaleAthletes(chsFemales, 80);
+  const chsRoster = [
+    ...chsFemales.map((row, i) => ({ ...row, ...syntheticName("F", i, 80) })),
+    ...chsMales,
+  ];
+
+  const schoolYearData = {
+    label: "2025–2026",
+    startDate: new Date("2025-08-12"),
+    endDate: new Date("2026-06-05"),
+    isCurrent: true,
+  };
+
+  for (const tenant of TENANTS) {
+    const district = await prisma.district.create({
+      data: { organizationId: org.id, name: `${tenant.shortName} District`, region: "Local" },
     });
-  }
-
-  const coachUser = await prisma.user.findFirst({ where: { role: "COACH" } });
-  let studentIndex = 0;
-  let sampleFemaleEmail: string | null = null;
-
-  for (const athlete of roster) {
-    studentIndex++;
-    const email = `student${studentIndex}@jhs.demo`;
-    if (!sampleFemaleEmail && athlete.gender === "F") sampleFemaleEmail = email;
-
-    const ageOffset = Math.max(0, 2031 - athlete.classYear);
-    const dob = new Date(2008 + (2031 - athlete.classYear), (studentIndex * 3) % 12, 10 + (studentIndex % 18));
-
-    const user = await prisma.user.create({
+    const school = await prisma.school.create({
       data: {
-        email,
-        passwordHash: hash,
-        role: "STUDENT",
-        firstName: athlete.firstName,
-        lastName: athlete.lastName,
+        organizationId: org.id,
+        districtId: district.id,
+        name: tenant.slug === "demo" ? "Demo High School" : tenant.name,
+        slug: tenant.slug,
       },
     });
-
-    const isAthlete = Boolean(athlete.sports && athlete.sports.trim() && !/^pe\b/i.test(athlete.sports));
-    const profile = await prisma.studentProfile.create({
-      data: {
-        userId: user.id,
-        schoolId: school.id,
-        studentNumber: `${athlete.gender}${String(studentIndex).padStart(4, "0")}`,
-        firstName: athlete.firstName,
-        lastName: athlete.lastName,
-        dateOfBirth: dob,
-        gender: athlete.gender,
-        sports: athlete.sports,
-        participationType: isAthlete ? "ATHLETE" : studentIndex % 5 === 0 ? "PE" : athlete.sports ? "ATHLETE" : "PE",
-        notes: athlete.comments,
-        anonymousId: String(2000 + studentIndex),
-      },
+    await seedKpiTargets(school.id);
+    const schoolYear = await prisma.schoolYear.create({
+      data: { schoolId: school.id, ...schoolYearData },
     });
+    const coaches = await seedCoaches(school.id, tenant.coachEmail.split("@")[1]!, hash);
 
-    await prisma.studentEnrollment.create({
-      data: {
-        studentId: profile.id,
-        schoolYearId: schoolYear.id,
-        gradeLevel: athlete.classYear,
-      },
-    });
-
-    const classId = classesByYear.get(athlete.classYear);
-    if (classId) {
-      await prisma.classEnrollment.create({
-        data: { classId, studentId: profile.id },
-      });
-    }
-
-    const hourClass = hourClasses[studentIndex % hourClasses.length]!;
-    await prisma.classEnrollment.create({
-      data: { classId: hourClass.id, studentId: profile.id },
-    });
-
-    const hasMarks = Object.keys(athlete.marks).length > 0;
-    if (hasMarks) {
-      await prisma.testingSessionStudent.create({
-        data: { sessionId: session.id, studentId: profile.id },
-      });
-    }
-
-    const ageAtTest = 14 + (12 - Math.min(12, 6 + ageOffset)) + ((studentIndex % 8) - 4) * 0.1;
-    const historyDates = [
-      new Date("2025-09-01"),
-      new Date("2025-12-04"),
-      new Date("2026-03-01"),
-    ];
-    const dirBySlug = new Map(ACTIVITIES.map((a) => [a.slug, a.dir]));
-
-    for (const [slug, value] of Object.entries(athlete.marks)) {
-      const act = actBySlug.get(slug);
-      if (!act) continue;
-      const dir = dirBySlug.get(slug) ?? "HIGHER_BETTER";
-
-      for (const [hi, histDate] of historyDates.entries()) {
-        // Older tests are worse: times slower, jumps/lifts shorter/lighter.
-        const stepsBack = historyDates.length - hi;
-        const histValue =
-          dir === "LOWER_BETTER"
-            ? Number((value * (1 + stepsBack * 0.035)).toFixed(3))
-            : Number((value * (1 - stepsBack * 0.035)).toFixed(2));
-        await prisma.performanceResult.create({
+    if (tenant.slug === "jhs") {
+      for (const n of [1, 2, 3, 4]) {
+        await prisma.class.create({
           data: {
-            studentId: profile.id,
-            activityId: act.id,
             schoolId: school.id,
-            schoolYearId: schoolYear.id,
-            organizationId: org.id,
-            gradeLevel: athlete.classYear,
-            resultValue: histValue,
-            displayValue: displayFor(slug, act.unit, histValue),
-            attemptNumber: 1,
-            isBestAttempt: true,
-            isPersonalRecord: false,
-            testingDate: histDate,
-            ageAtTest: ageAtTest - (stepsBack * 0.15),
-            weightAtTest: athlete.bodyWeight,
-            enteredById: coachUser?.id,
-            entryMethod: "IMPORT",
-            status: "COMPLETED",
-            notes: "Prior season / mid-year check",
+            coachId: coaches[(n - 1) % coaches.length]!.id,
+            name: `Period ${n} Weights`,
+            period: `Period ${n}`,
           },
         });
       }
-
-      await prisma.performanceResult.create({
-        data: {
-          studentId: profile.id,
-          activityId: act.id,
-          schoolId: school.id,
-          schoolYearId: schoolYear.id,
-          organizationId: org.id,
-          gradeLevel: athlete.classYear,
-          resultValue: value,
-          displayValue: displayFor(slug, act.unit, value),
-          attemptNumber: 1,
-          isBestAttempt: true,
-          isPersonalRecord: true,
-          testingDate,
-          ageAtTest,
-          weightAtTest: athlete.bodyWeight,
-          enteredById: coachUser?.id,
-          entryMethod: "IMPORT",
-          status: "COMPLETED",
-          testingSessionId: session.id,
-          notes: slug === "100-meter-dash" ? "Projected 100m from flying speed" : athlete.comments,
-          relativeStrength:
-            slug === "squat" || slug === "hang-clean"
-              ? athlete.marks[`${slug === "squat" ? "squat" : "hang-clean"}-relative`] ?? null
-              : slug.endsWith("-relative")
-                ? value
-                : null,
-        },
-      });
+      console.log(`JHS ready (empty roster, 4 weightlifting periods): ${tenant.coachEmail} / ${DEMO_PASSWORD}`);
+      continue;
     }
+
+    const roster = tenant.slug === "chs" ? chsRoster : demoRoster;
+    const sample = await seedRoster({
+      schoolId: school.id,
+      orgId: org.id,
+      schoolYearId: schoolYear.id,
+      coaches,
+      roster,
+      studentEmailDomain: tenant.studentEmail!.split("@")[1]!,
+      sessionName: tenant.slug === "chs" ? "CHS KPI Testing 2026" : "Demo KPI Testing 2026",
+      hash,
+      hourClasses: tenant.slug === "demo",
+      extraClasses: tenant.slug === "demo",
+    });
+    console.log(
+      `${tenant.shortName}: ${roster.length} athletes. Coach ${tenant.coachEmail} / ${DEMO_PASSWORD}. Sample student: ${sample}`
+    );
   }
 
-  const extraClasses = await Promise.all([
-    prisma.class.create({
-      data: {
-        schoolId: school.id,
-        coachId: coaches[0]!.id,
-        name: "Fall 2025 Period 5 Varsity Weights",
-        period: "Fall 2025 Period 5",
-      },
-    }),
-    prisma.class.create({
-      data: {
-        schoolId: school.id,
-        coachId: coaches[1]!.id,
-        name: "Spring 2026 Period 4 Speed Development",
-        period: "Spring 2026 Period 4",
-      },
-    }),
-  ]);
-  const allProfiles = await prisma.studentProfile.findMany({
-    where: { schoolId: school.id },
-    select: { id: true },
-    orderBy: { lastName: "asc" },
-  });
-  await prisma.classEnrollment.createMany({
-    data: [
-      ...allProfiles.slice(0, 80).map((p) => ({ classId: extraClasses[0]!.id, studentId: p.id })),
-      ...allProfiles.slice(40, 120).map((p) => ({ classId: extraClasses[1]!.id, studentId: p.id })),
-    ],
-    skipDuplicates: true,
-  });
-
   console.log("Seed complete.");
-  console.log("School:", school.name);
-  console.log("Female athletes:", females.length);
-  console.log("Male athletes (synthetic, same structure):", males.length);
-  console.log("Coach login: coach1@jhs.demo / rekcart");
-  console.log("Sample student:", sampleFemaleEmail, "/ rekcart");
+  console.log(`App admin: ${ADMIN_LOGIN.email} / ${DEMO_PASSWORD}`);
 }
 
 main()

@@ -39,3 +39,22 @@ export function syntheticName(
     lastName: last[Math.floor(i / first.length) % last.length]!,
   };
 }
+
+export function isSyntheticName(
+  firstName: string,
+  lastName: string,
+  gender?: string | null
+): boolean {
+  const knownFirst =
+    (FEMALE_FIRST as readonly string[]).includes(firstName) ||
+    (MALE_FIRST as readonly string[]).includes(firstName);
+  const knownLast =
+    (FEMALE_LAST as readonly string[]).includes(lastName) ||
+    (MALE_LAST as readonly string[]).includes(lastName);
+  if (gender === "M" || gender === "F") {
+    const firsts: readonly string[] = gender === "M" ? MALE_FIRST : FEMALE_FIRST;
+    const lasts: readonly string[] = gender === "M" ? MALE_LAST : FEMALE_LAST;
+    return firsts.includes(firstName) && lasts.includes(lastName);
+  }
+  return knownFirst && knownLast;
+}

@@ -37,8 +37,12 @@ docker compose up --build
 
 | Role | Email | Password |
 |------|--------|----------|
-| Coach | `coach1@jhs.demo` | `rekcart` |
-| Student (Kendall Leland) | `student1@jhs.demo` | `rekcart` |
+| App admin | `admin@track-tracker.demo` | `rekcart` |
+| Demo coach | `coach1@demo.local` | `rekcart` |
+| Demo student (Jane Doe) | `student1@demo.local` | `rekcart` |
+| JHS coach (empty roster) | `coach1@jhs.demo` | `rekcart` |
+| CHS coach | `coach1@chs.demo` | `rekcart` |
+| CHS student | `student1@chs.demo` | `rekcart` |
 
 ## Why refresh showed 0 athletes
 
@@ -46,8 +50,9 @@ docker compose up --build
 
 ## Data
 
-- **Girls**: imported from `prisma/data/jhs-female-athletes.csv` (class years 2026–2031).
-- **Boys**: generated with the same class years, sparsity, and events, scaled to typical male HS marks. There is no boy KPI sheet.
+- **Girls / boys (Demo)**: marks from `prisma/data/jhs-female-athletes.csv` with **synthetic names** (Jane Doe, Emma Ames, …). Boys are a same-structure analog.
+- **JHS**: empty live school. Coaches upload a roster CSV for weightlifting classes.
+- **CHS**: separate school system with a smaller test roster.
 - **KPI key**: flying 10m, broad jump, vertical, squat/BW, hang clean/BW, 20m start, and 40yd map to a likely **100m / 40-yard** time. Female 12.5 / 13.0 / 13.5s bands come from the JHS key. The 13.0s flying-10m target is **1.188s** (the source cell listed 1.879s, which was slower than the 13.5s target and treated as a typo).
 - One school year of results (2025–2026), not a multi-year history.
 

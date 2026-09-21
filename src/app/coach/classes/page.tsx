@@ -1,31 +1,39 @@
-import { redirect } from "next/navigation";
 import Link from "next/link";
 import { AppShell } from "@/components/layout/app-shell";
 import { COACH_NAV } from "@/lib/navigation";
-import { requireSession } from "@/lib/auth/session";
+import { requireSchoolSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { classYearLabel } from "@/lib/grades";
-import { CreateClassForm, ImportClassesForm } from "@/components/classes/class-forms";
+import { CreateClassForm, CreateWeightsPeriodsButton } from "@/components/classes/class-forms";
+import { ImportRosterForm } from "@/components/roster/import-roster-form";
 
 export default async function ClassesPage() {
-  const session = await requireSession(["COACH", "ADMIN"]);
-  if (!session?.schoolId) redirect("/login");
+  const session = await requireSchoolSession();
 
-  const classes = await prisma.class.findMany({
-    where: { schoolId: session.schoolId },
-    include: { _count: { select: { enrollments: true } } },
-    orderBy: [{ gradeLevel: "asc" }, { name: "asc" }],
-  });
+  const [classes, school] = await Promise.all([
+    prisma.class.findMany({
+      where: { schoolId: session.schoolId },
+      include: { _count: { select: { enrollments: true } } },
+      orderBy: [{ gradeLevel: "asc" }, { name: "asc" }],
+    }),
+    prisma.school.findUnique({ where: { id: session.schoolId }, select: { slug: true } }),
+  ]);
+
+  const showJhsHelp = school?.slug === "jhs";
 
   return (
     <AppShell title="Classes" nav={COACH_NAV}>
       <p className="mb-6 max-w-3xl text-sm text-muted">
         Create or import classes. An athlete can sit in more than one — graduating year, a weights
         period, and a speed group at the same time.
+        {showJhsHelp
+          ? " This JHS roster starts empty: add weightlifting periods, then upload a spreadsheet."
+          : null}
       </p>
       <div className="mb-8 grid gap-4 lg:grid-cols-2">
         <CreateClassForm />
-        <ImportClassesForm />
+        <ImportRosterForm />
+        <CreateWeightsPeriodsButton />
       </div>
       <ul className="space-y-2">
         {classes.map((c) => (

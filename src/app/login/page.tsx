@@ -1,21 +1,21 @@
 import { Suspense } from "react";
 import { Card } from "@/components/ui/card";
 import { loginAction } from "./actions";
+import { TenantLoginCards } from "@/components/auth/tenant-login-cards";
 
 function LoginForm({ error, next }: { error?: string; next?: string }) {
   return (
-    <div className="flex min-h-screen items-center justify-center px-4">
-      <Card className="w-full max-w-md">
+    <div className="flex min-h-screen items-center justify-center px-4 py-10">
+      <Card className="w-full max-w-3xl">
         <p className="text-xs uppercase tracking-widest text-accent">Measure → Compare → Improve</p>
         <h1 className="mt-2 text-2xl font-bold">Athletic Performance Platform</h1>
-        <p className="mt-1 text-sm text-muted">Sign in as coach or student</p>
+        <p className="mt-1 text-sm text-muted">Sign in with email, or pick a school system below.</p>
         <form action={loginAction} className="mt-6 space-y-4">
           {next ? <input type="hidden" name="next" value={next} /> : null}
           <label className="block text-sm">
             Email
             <input
               name="email"
-              defaultValue="coach1@jhs.demo"
               className="mt-1 w-full rounded-lg border border-card-border bg-background px-3 py-3"
               autoComplete="email"
             />
@@ -25,7 +25,6 @@ function LoginForm({ error, next }: { error?: string; next?: string }) {
             <input
               name="password"
               type="password"
-              defaultValue="rekcart"
               className="mt-1 w-full rounded-lg border border-card-border bg-background px-3 py-3"
               autoComplete="current-password"
             />
@@ -38,9 +37,7 @@ function LoginForm({ error, next }: { error?: string; next?: string }) {
             Sign in
           </button>
         </form>
-        <p className="mt-4 text-xs text-muted">
-          Demo: coach1@jhs.demo or student1@jhs.demo — rekcart
-        </p>
+        <TenantLoginCards />
       </Card>
     </div>
   );

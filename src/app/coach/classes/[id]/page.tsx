@@ -1,7 +1,7 @@
-import { redirect, notFound } from "next/navigation";
+import { notFound } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
 import { COACH_NAV } from "@/lib/navigation";
-import { requireSession } from "@/lib/auth/session";
+import { requireSchoolSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { classYearLabel } from "@/lib/grades";
 import { listStudents } from "@/lib/queries/coach";
@@ -13,8 +13,7 @@ export default async function ClassDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const session = await requireSession(["COACH", "ADMIN"]);
-  if (!session?.schoolId) redirect("/login");
+  const session = await requireSchoolSession();
   const { id } = await params;
 
   const cls = await prisma.class.findFirst({

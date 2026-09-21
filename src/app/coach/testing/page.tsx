@@ -1,7 +1,6 @@
-import { redirect } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
 import { COACH_NAV } from "@/lib/navigation";
-import { requireSession } from "@/lib/auth/session";
+import { requireSchoolSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { classSectionLabel } from "@/lib/periods";
 import { formatStudentName } from "@/lib/utils";
@@ -13,8 +12,7 @@ import {
 import { isWithinLiveWindow } from "@/lib/constants";
 
 export default async function TestingSessionsPage() {
-  const session = await requireSession(["COACH", "ADMIN"]);
-  if (!session?.schoolId) redirect("/login");
+  const session = await requireSchoolSession();
 
   const today = new Date();
   const dayStart = new Date(today.toISOString().slice(0, 10) + "T00:00:00");

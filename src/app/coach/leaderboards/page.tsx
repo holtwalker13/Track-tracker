@@ -1,7 +1,6 @@
-import { redirect } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
 import { COACH_NAV } from "@/lib/navigation";
-import { requireSession } from "@/lib/auth/session";
+import { requireSchoolSession } from "@/lib/auth/session";
 import { getLeaderboardGrid } from "@/lib/queries/leaderboard-grid";
 import { LeaderboardGrid } from "@/components/leaderboards/leaderboard-grid";
 import { GradePills } from "@/components/ui/filter-pills";
@@ -14,8 +13,7 @@ export default async function CoachLeaderboardsPage({
 }: {
   searchParams: Promise<{ grade?: string; grades?: string; gender?: string }>;
 }) {
-  const session = await requireSession(["COACH", "ADMIN"]);
-  if (!session?.schoolId) redirect("/login");
+  const session = await requireSchoolSession();
   const sp = await searchParams;
   const grades = gradesFromSearch(sp);
   const gender = parseGenderParam(sp.gender);

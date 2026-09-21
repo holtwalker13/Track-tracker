@@ -1,7 +1,6 @@
-import { redirect } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
 import { COACH_NAV } from "@/lib/navigation";
-import { requireSession } from "@/lib/auth/session";
+import { requireSchoolSession } from "@/lib/auth/session";
 import { GradePills } from "@/components/ui/filter-pills";
 import { GenderToggle } from "@/components/ui/gender-toggle";
 import { gradesFromSearch, gradesLabel, isAllGrades } from "@/lib/grades";
@@ -10,6 +9,8 @@ import { getClassRoster, listSchoolClasses } from "@/lib/queries/roster";
 import { RosterTable } from "@/components/athletes/roster-table";
 import { AddStudentForm } from "@/components/athletes/add-student-form";
 import { ClassHourPills, ParticipationPills } from "@/components/athletes/roster-filters";
+import { ImportRosterForm } from "@/components/roster/import-roster-form";
+import { prisma } from "@/lib/db";
 
 export default async function StudentsPage({
   searchParams,
@@ -23,8 +24,7 @@ export default async function StudentsPage({
     type?: string;
   }>;
 }) {
-  const session = await requireSession(["COACH", "ADMIN"]);
-  if (!session?.schoolId) redirect("/login");
+  const session = await requireSchoolSession();
   const sp = await searchParams;
   const grades = gradesFromSearch(sp);
   const gender = parseGenderParam(sp.gender);
@@ -35,6 +35,10 @@ export default async function StudentsPage({
   const roster = await getClassRoster(session.schoolId, grades, gender, {
     classId: sp.classId,
     participationType,
+  });
+  const school = await prisma.school.findUnique({
+    where: { id: session.schoolId },
+    select: { slug: true },
   });
 
   const q = sp.q?.trim().toLowerCase();
@@ -47,6 +51,7 @@ export default async function StudentsPage({
           (a.className ?? "").toLowerCase().includes(q)
       )
     : roster;
+  const emptyRoster = athletes.length === 0 && !q && !sp.classId && !participationType;
 
   return (
     <AppShell title="Roster" nav={COACH_NAV}>
@@ -99,7 +104,17 @@ export default async function StudentsPage({
       </div>
 
       <RosterTable athletes={athletes} showClass={!isAllGrades(grades) ? grades.length > 1 : true} />
-      {athletes.length === 0 && (
+      {emptyRoster && (
+        <div className="mt-6 max-w-2xl">
+          <p className="mb-3 text-sm text-muted">
+            {school?.slug === "jhs"
+              ? "JHS has no students yet. Upload a spreadsheet to load weightlifting class rosters."
+              : "No students on this roster yet. Add one above or import a spreadsheet."}
+          </p>
+          <ImportRosterForm />
+        </div>
+      )}
+      {!emptyRoster && athletes.length === 0 && (
         <p className="mt-4 max-w-xl text-sm text-muted">
           No students match these filters. Add a student above, or clear the hour / type filters.
         </p>

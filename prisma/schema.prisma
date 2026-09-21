@@ -47,6 +47,7 @@ model School {
   districtId     String?
   district       District? @relation(fields: [districtId], references: [id])
   name           String
+  slug           String?  @unique
   createdAt      DateTime @default(now())
 
   schoolYears    SchoolYear[]

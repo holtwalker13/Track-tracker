@@ -36,6 +36,11 @@ export const COACH_NAV: NavItem[] = [
   { href: "/coach", label: "Dashboard", icon: "dashboard" },
 ];
 
+export const ADMIN_NAV: NavItem[] = [
+  { href: "/admin", label: "Schools", icon: "classes" },
+  ...COACH_NAV,
+];
+
 export const STUDENT_NAV: NavItem[] = [
   { href: "/student", label: "Dashboard", icon: "dashboard" },
   { href: "/student/performance", label: "My Performance", icon: "gauge" },

@@ -1,8 +1,7 @@
-import { redirect } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
 import { Card, CardTitle } from "@/components/ui/card";
 import { COACH_NAV } from "@/lib/navigation";
-import { requireSession } from "@/lib/auth/session";
+import { requireSchoolSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { calculateCategoryScores } from "@/lib/services/category-score";
 import type { ScoringDirection } from "@/lib/constants";
@@ -27,8 +26,7 @@ export default async function AnalyticsPage({
 }: {
   searchParams: Promise<{ grade?: string; grades?: string; gender?: string }>;
 }) {
-  const session = await requireSession(["COACH", "ADMIN"]);
-  if (!session?.schoolId) redirect("/login");
+  const session = await requireSchoolSession();
   const sp = await searchParams;
   const grade = singleGradeFromSearch(sp);
   const grades = [grade];

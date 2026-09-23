@@ -4,6 +4,7 @@ import Link from "next/link";
 import {
   BarChart3,
   ClipboardList,
+  Dumbbell,
   GitCompare,
   Gauge,
   LayoutDashboard,
@@ -24,6 +25,7 @@ const NAV_ICONS: Record<NavIconKey, LucideIcon> = {
   dashboard: LayoutDashboard,
   users: Users,
   clipboard: ClipboardList,
+  workout: Dumbbell,
   trophy: Trophy,
   chart: BarChart3,
   target: Target,

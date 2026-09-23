@@ -17,6 +17,9 @@ export const LIFTING_SESSION_ACTIVITIES: LiftingSessionActivityMeta[] = [
 
 export const LIFTING_SESSION_SLUGS = LIFTING_SESSION_ACTIVITIES.map((a) => a.slug);
 
+/** Absolute lifts for daily workout logging (no × BW). */
+export const LIFTING_WORKOUT_SLUGS = ["squat", "hang-clean", "bench-press", "pull-ups"] as const;
+
 export function isWeightliftingClassName(name: string): boolean {
   return /weights?|weightlifting|weight room/i.test(name);
 }

@@ -58,7 +58,8 @@ UI: Coach “Programs” + “Today’s workout”; Student “Log workout” (m
 
 1. **Requirements doc** (this file).
 2. **Weightlifting session preset** when creating a live session for a `*Weights*` class (strength events pre-selected; sensible default session name).
-3. **Next PR**: Prisma models above + minimal coach template editor (no generator yet).
+3. **Phase 2 (shipped on `weight-lifting`)**: Prisma models + coach **Programs** page (templates, assign by class/date) + student **Log workout** (sets, weight, reps, RPE, draft/submit).
+4. **Next**: auto-generated workouts (Phase 2b) and RPE progression (Phase 3).
 
 ## Open product questions
 

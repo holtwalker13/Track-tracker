@@ -14,7 +14,7 @@
 
 See [WEIGHT_LIFTING.md](./WEIGHT_LIFTING.md) for competitor questionnaire mapping, gaps (workouts, sets/reps, RPE progression), and phased build plan.
 
-**On branch `weight-lifting`**: strength-only session preset for `*Weights*` classes; full program builder is Phase 2.
+**On branch `weight-lifting`**: strength-only testing preset, workout programs (templates + assign), student set/RPE logging. Auto-generator and load progression remain Phase 2b/3.
 
 ## Recommended next iterations
 

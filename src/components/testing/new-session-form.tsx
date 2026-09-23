@@ -6,6 +6,11 @@ import { useRouter } from "next/navigation";
 import { ActivityIcon } from "@/lib/activity-icons";
 import { KPI_METRIC_META } from "@/lib/kpi-targets";
 import {
+  defaultSessionNameForClass,
+  isWeightliftingClassName,
+  LIFTING_SESSION_ACTIVITIES,
+} from "@/lib/lifting";
+import {
   classSectionLabel,
   findClassForPeriod,
   isGraduatingClassName,
@@ -33,8 +38,21 @@ export function NewTestingSessionForm({
     [sectionClasses]
   );
 
-  const defaultName =
-    sameDayCount > 0 ? `Performance Test (${sameDayCount + 1})` : "Performance Test";
+  const [classId, setClassId] = useState(defaultClassId);
+
+  const selectedClass = useMemo(
+    () => sectionClasses.find((c) => c.id === classId),
+    [sectionClasses, classId]
+  );
+
+  const liftingOnly = selectedClass ? isWeightliftingClassName(selectedClass.name) : false;
+
+  const sessionActivities = liftingOnly ? LIFTING_SESSION_ACTIVITIES : KPI_METRIC_META;
+
+  const defaultName = defaultSessionNameForClass(
+    selectedClass?.name ?? "Performance Test",
+    sameDayCount
+  );
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -96,7 +114,8 @@ export function NewTestingSessionForm({
           <select
             required
             name="classId"
-            defaultValue={defaultClassId}
+            value={classId}
+            onChange={(e) => setClassId(e.target.value)}
             className="mt-1 w-full rounded-lg border border-card-border bg-background px-3 py-2"
           >
             <option value="" disabled>
@@ -116,10 +135,18 @@ export function NewTestingSessionForm({
           under Classes first.
         </p>
       )}
+      {liftingOnly && (
+        <p className="text-sm text-muted">
+          Strength-only preset for this weight room section. Speed and jump KPIs stay available in
+          other class sessions.
+        </p>
+      )}
       <fieldset>
-        <legend className="text-sm font-medium text-muted">Events</legend>
+        <legend className="text-sm font-medium text-muted">
+          {liftingOnly ? "Lifts" : "Events"}
+        </legend>
         <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
-          {KPI_METRIC_META.map((m) => (
+          {sessionActivities.map((m) => (
             <label
               key={m.slug}
               className="group relative flex cursor-pointer flex-col items-start gap-2 rounded-2xl border border-card-border bg-background/50 px-3.5 py-3.5 text-left transition duration-150 hover:-translate-y-0.5 hover:border-sky-400/50 hover:bg-sky-400/10 hover:shadow-[0_8px_24px_rgba(56,189,248,0.12)] active:translate-y-0 active:scale-[0.97] has-[:checked]:border-sky-400/70 has-[:checked]:bg-sky-500/15 has-[:checked]:shadow-[0_0_20px_rgba(56,189,248,0.16)] has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-sky-400"

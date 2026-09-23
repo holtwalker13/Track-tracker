@@ -42,11 +42,21 @@ APIs: CRUD templates, assign to class, student completes sets, coach edits.
 
 UI: Coach “Programs” + “Today’s workout”; Student “Log workout” (mobile-first).
 
-### Phase 3 — Progression engine
+### Phase 2b — Auto-generate (shipped)
 
-- Inputs: last N sessions per lift, logged RPE, optional training max.
-- Outputs: next-session prescribed load/reps; flag outliers (RPE 10 at low reps vs reported easy RPE).
-- Coach toggles: auto-apply vs suggest-only; block auto for injured/DNP athletes (`PerformanceResult.status` pattern).
+- **Linear 5×5 (Mon/Wed/Fri)**: 4-week block by default; week 4 deload (3×5, notes). Creates templates + dated assignments + roster sessions.
+- API: `POST /api/workouts/generate`. UI: **Programs → Auto-generate block**.
+
+### Phase 3 — Progression engine (shipped, suggest-only)
+
+- Epley e1RM + RPE adjustment from last **completed** workout sets.
+- **Suggested weight** on student/coach log UI (prefills set 1); not auto-written until athlete/coach saves.
+- Future: coach toggle auto-apply, outlier flags, training-max cap.
+
+### Coach logs & CSV export (shipped)
+
+- **Programs → Workout logs**: filter by date/class, open athlete session, submit on their behalf.
+- **Download CSV**: `/api/workouts/logs/export?date=YYYY-MM-DD&classId=…` — one row per set (full roster even if not started).
 
 ### Phase 4 — Lifting-only school profile
 

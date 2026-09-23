@@ -1,8 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { LIFTING_WORKOUT_SLUGS } from "@/lib/lifting";
+import { WORKOUT_GENERATORS } from "@/lib/services/workout-generator";
 
 type TemplateRow = {
   id: string;
@@ -38,6 +40,11 @@ export function WorkoutProgramsPanel({
   const [assignTemplateId, setAssignTemplateId] = useState(initialTemplates[0]?.id ?? "");
   const [assignClassId, setAssignClassId] = useState(classes[0]?.id ?? "");
   const [assignDate, setAssignDate] = useState(new Date().toISOString().slice(0, 10));
+
+  const [genClassId, setGenClassId] = useState(classes[0]?.id ?? "");
+  const [genStartDate, setGenStartDate] = useState(new Date().toISOString().slice(0, 10));
+  const [genBlockName, setGenBlockName] = useState("Fall linear block");
+  const [genWeeks, setGenWeeks] = useState(4);
 
   const defaultLiftState = () =>
     LIFTING_WORKOUT_SLUGS.map((slug) => {
@@ -110,10 +117,106 @@ export function WorkoutProgramsPanel({
     router.refresh();
   }
 
+  async function generateBlock(e: React.FormEvent) {
+    e.preventDefault();
+    setPending(true);
+    setError(null);
+    setMsg(null);
+    const res = await fetch("/api/workouts/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        generatorKey: "linear-5x5-mwf",
+        classId: genClassId,
+        startDate: genStartDate,
+        blockName: genBlockName,
+        weeks: genWeeks,
+      }),
+    });
+    const data = await res.json();
+    setPending(false);
+    if (!res.ok) {
+      setError(data.error ?? "Could not generate block");
+      return;
+    }
+    setMsg(
+      `Generated ${data.assignmentsCreated} workouts (${data.generatorLabel}). Athletes see them on matching dates.`
+    );
+    router.refresh();
+  }
+
   return (
     <div className="space-y-8">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm text-muted">
+          Review submissions and export CSV from{" "}
+          <Link href="/coach/programs/logs" className="text-accent hover:underline">
+            Workout logs
+          </Link>
+          .
+        </p>
+      </div>
       {msg && <p className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm">{msg}</p>}
       {error && <p className="text-sm text-sport-red">{error}</p>}
+
+      <form onSubmit={generateBlock} className="space-y-3 rounded-2xl border border-card-border bg-card p-4">
+        <h2 className="font-semibold">Auto-generate block</h2>
+        <p className="text-sm text-muted">{WORKOUT_GENERATORS["linear-5x5-mwf"].description}</p>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <label className="block text-sm sm:col-span-2">
+            Block name
+            <input
+              required
+              value={genBlockName}
+              onChange={(e) => setGenBlockName(e.target.value)}
+              className="mt-1 w-full rounded-lg border border-card-border bg-background px-3 py-2"
+            />
+          </label>
+          <label className="block text-sm">
+            Class section
+            <select
+              required
+              value={genClassId}
+              onChange={(e) => setGenClassId(e.target.value)}
+              className="mt-1 w-full rounded-lg border border-card-border bg-background px-3 py-2"
+            >
+              {classes.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.period ? `${c.period} — ${c.name}` : c.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="block text-sm">
+            Start date
+            <input
+              required
+              type="date"
+              value={genStartDate}
+              onChange={(e) => setGenStartDate(e.target.value)}
+              className="mt-1 w-full rounded-lg border border-card-border bg-background px-3 py-2"
+            />
+          </label>
+          <label className="block text-sm">
+            Weeks
+            <input
+              type="number"
+              min={1}
+              max={12}
+              value={genWeeks}
+              onChange={(e) => setGenWeeks(Number(e.target.value))}
+              className="mt-1 w-full rounded-lg border border-card-border bg-background px-3 py-2"
+            />
+          </label>
+        </div>
+        <button
+          type="submit"
+          disabled={pending || classes.length === 0}
+          className="rounded-lg bg-accent px-4 py-2 font-medium text-background disabled:opacity-50"
+        >
+          {pending ? "Generating…" : "Generate Mon / Wed / Fri plan"}
+        </button>
+      </form>
 
       <form onSubmit={createProgram} className="space-y-4 rounded-2xl border border-card-border bg-card p-4">
         <h2 className="font-semibold">New workout program</h2>

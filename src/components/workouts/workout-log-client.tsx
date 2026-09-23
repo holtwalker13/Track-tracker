@@ -32,6 +32,7 @@ type Payload = {
     completedAt: string | null;
     setLogs: SetLog[];
   } | null;
+  suggestedWeightLb?: Record<string, number | null>;
 };
 
 type CellState = {
@@ -45,14 +46,21 @@ function cellKey(exerciseId: string, setNumber: number) {
   return `${exerciseId}:${setNumber}`;
 }
 
-function buildInitialCells(exercises: Exercise[], logs: SetLog[]): Map<string, CellState> {
+function buildInitialCells(
+  exercises: Exercise[],
+  logs: SetLog[],
+  suggestedWeightLb?: Record<string, number | null>
+): Map<string, CellState> {
   const map = new Map<string, CellState>();
   for (const ex of exercises) {
+    const suggestion = suggestedWeightLb?.[ex.id];
     for (let n = 1; n <= ex.defaultSets; n++) {
       const log = logs.find((l) => l.templateExerciseId === ex.id && l.setNumber === n);
+      let weight = log?.weightLb != null ? String(log.weightLb) : "";
+      if (!weight && n === 1 && suggestion != null) weight = String(suggestion);
       map.set(cellKey(ex.id, n), {
-        weightLb: log?.weightLb != null ? String(log.weightLb) : "",
-        reps: log?.reps != null ? String(log.reps) : log ? String(ex.defaultReps) : String(ex.defaultReps),
+        weightLb: weight,
+        reps: log?.reps != null ? String(log.reps) : String(ex.defaultReps),
         rpe: log?.rpe != null ? String(log.rpe) : "",
         skipped: log?.skipped ?? false,
       });
@@ -61,11 +69,21 @@ function buildInitialCells(exercises: Exercise[], logs: SetLog[]): Map<string, C
   return map;
 }
 
-export function WorkoutLogClient({ initial }: { initial: Payload }) {
+export function WorkoutLogClient({
+  initial,
+  coachMeta,
+}: {
+  initial: Payload;
+  coachMeta?: { studentName: string; studentNumber: string };
+}) {
   const [data, setData] = useState(initial);
   const [cells, setCells] = useState(() =>
     initial.assignment && initial.session
-      ? buildInitialCells(initial.assignment.template.exercises, initial.session.setLogs)
+      ? buildInitialCells(
+          initial.assignment.template.exercises,
+          initial.session.setLogs,
+          initial.suggestedWeightLb
+        )
       : new Map()
   );
   const [pending, setPending] = useState(false);
@@ -188,6 +206,7 @@ export function WorkoutLogClient({ initial }: { initial: Payload }) {
       <div>
         <h1 className="text-xl font-semibold">{data.assignment.template.name}</h1>
         <p className="text-sm text-muted">
+          {coachMeta ? `${coachMeta.studentName} (#${coachMeta.studentNumber}) · ` : ""}
           {data.date}
           {data.assignment.className ? ` · ${data.assignment.className}` : ""}
           {readOnly ? " · Submitted" : ""}
@@ -204,6 +223,9 @@ export function WorkoutLogClient({ initial }: { initial: Payload }) {
           <h2 className="font-semibold">{ex.activity.name}</h2>
           <p className="text-sm text-muted">
             Target {ex.defaultSets}×{ex.defaultReps}
+            {data.suggestedWeightLb?.[ex.id] != null
+              ? ` · Suggested ${data.suggestedWeightLb[ex.id]} lb (from last logs @ RPE 8)`
+              : ""}
             {ex.notes ? ` · ${ex.notes}` : ""}
           </p>
           <div className="mt-3 space-y-2">
@@ -289,7 +311,7 @@ export function WorkoutLogClient({ initial }: { initial: Payload }) {
             onClick={() => void submitWorkout()}
             className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-background disabled:opacity-50"
           >
-            {pending ? "Submitting…" : "Submit workout"}
+            {pending ? "Submitting…" : coachMeta ? "Submit for athlete" : "Submit workout"}
           </button>
         </div>
       )}

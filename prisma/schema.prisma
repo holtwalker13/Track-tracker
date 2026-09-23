@@ -250,6 +250,10 @@ model WorkoutTemplate {
   schoolId    String
   school      School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   name        String
+  // MANUAL | GENERATED (see generatorKey on generated rows)
+  sourceType  String   @default("MANUAL")
+  generatorKey String?
+  generatorBlockId String?
   createdById String?
   createdBy   User?    @relation("WorkoutTemplateCreatedBy", fields: [createdById], references: [id])
   createdAt   DateTime @default(now())
@@ -259,6 +263,7 @@ model WorkoutTemplate {
   assignments WorkoutAssignment[]
 
   @@index([schoolId])
+  @@index([generatorBlockId])
 }
 
 model WorkoutTemplateExercise {
@@ -288,6 +293,7 @@ model WorkoutAssignment {
   studentId     String?
   student       StudentProfile? @relation(fields: [studentId], references: [id], onDelete: Cascade)
   scheduledDate DateTime
+  generatorBlockId String?
   createdById   String?
   createdBy     User?           @relation("WorkoutAssignmentCreatedBy", fields: [createdById], references: [id])
   createdAt     DateTime        @default(now())
@@ -297,6 +303,7 @@ model WorkoutAssignment {
   @@index([schoolId, scheduledDate])
   @@index([classId, scheduledDate])
   @@index([studentId, scheduledDate])
+  @@index([generatorBlockId])
 }
 
 model WorkoutSession {

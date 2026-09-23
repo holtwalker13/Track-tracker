@@ -51,9 +51,33 @@ export async function POST(request: Request) {
     },
     include: {
       template: { select: { name: true } },
-      class: { select: { name: true, period: true } },
+      class: {
+        select: {
+          name: true,
+          period: true,
+          enrollments: { select: { studentId: true } },
+        },
+      },
     },
   });
 
-  return NextResponse.json({ assignment: rec });
+  const studentIds = rec.class?.enrollments.map((e) => e.studentId) ?? [];
+  if (studentIds.length > 0) {
+    await prisma.workoutSession.createMany({
+      data: studentIds.map((studentId) => ({
+        assignmentId: rec.id,
+        studentId,
+        status: "IN_PROGRESS",
+      })),
+      skipDuplicates: true,
+    });
+  }
+
+  return NextResponse.json({
+    assignment: {
+      id: rec.id,
+      template: rec.template,
+      class: { name: rec.class?.name, period: rec.class?.period },
+    },
+  });
 }

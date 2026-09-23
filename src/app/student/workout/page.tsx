@@ -3,6 +3,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { WorkoutLogClient } from "@/components/workouts/workout-log-client";
 import { STUDENT_NAV } from "@/lib/navigation";
 import { requireSession } from "@/lib/auth/session";
+import { suggestWeightsForExercises } from "@/lib/queries/workout-logs";
 import {
   findStudentAssignmentForDate,
   getOrCreateWorkoutSession,
@@ -46,10 +47,15 @@ export default async function StudentWorkoutPage() {
         skipped: boolean;
       }[];
     } | null;
+    suggestedWeightLb?: Record<string, number | null>;
   } = { date: dateStr, assignment: null, session: null };
 
   if (assignment) {
     const workoutSession = await getOrCreateWorkoutSession(assignment.id, session.studentId);
+    const suggestedWeightLb = await suggestWeightsForExercises(
+      session.studentId,
+      assignment.template.exercises
+    );
     payload = {
       date: dateStr,
       assignment: {
@@ -84,6 +90,7 @@ export default async function StudentWorkoutPage() {
           skipped: l.skipped,
         })),
       },
+      suggestedWeightLb,
     };
   }
 

@@ -1,14 +1,15 @@
 import { AppShell } from "@/components/layout/app-shell";
 import { COACH_NAV } from "@/lib/navigation";
 import { requireSchoolSession } from "@/lib/auth/session";
-import { GradePills } from "@/components/ui/filter-pills";
-import { GenderToggle } from "@/components/ui/gender-toggle";
-import { gradesFromSearch, gradesLabel, isAllGrades } from "@/lib/grades";
-import { parseGenderParam, genderFullLabel } from "@/lib/gender";
+import { gradesFromSearch, isAllGrades } from "@/lib/grades";
+import { parseGenderParam } from "@/lib/gender";
 import { getClassRoster, listSchoolClasses } from "@/lib/queries/roster";
 import { RosterTable } from "@/components/athletes/roster-table";
 import { AddStudentForm } from "@/components/athletes/add-student-form";
-import { ClassHourPills, ParticipationPills } from "@/components/athletes/roster-filters";
+import {
+  RosterFiltersDesktop,
+  RosterToolbar,
+} from "@/components/athletes/roster-toolbar";
 import { ImportRosterForm } from "@/components/roster/import-roster-form";
 import { prisma } from "@/lib/db";
 
@@ -53,55 +54,40 @@ export default async function StudentsPage({
     : roster;
   const emptyRoster = athletes.length === 0 && !q && !sp.classId && !participationType;
 
+  const searchPool = roster.map((a) => ({
+    studentId: a.studentId,
+    fullName: a.fullName,
+    studentNumber: a.studentNumber,
+    sports: a.sports,
+    className: a.className,
+    classYear: a.classYear,
+  }));
+
+  const classOptions = hourClasses.length ? hourClasses : classes;
+
   return (
     <AppShell title="Roster" nav={COACH_NAV}>
-      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <form className="flex flex-1 justify-center sm:justify-start">
-          {sp.gender && <input type="hidden" name="gender" value={sp.gender} />}
-          {sp.grades && <input type="hidden" name="grades" value={sp.grades} />}
-          {sp.grade && <input type="hidden" name="grade" value={sp.grade} />}
-          {sp.classId && <input type="hidden" name="classId" value={sp.classId} />}
-          {sp.type && <input type="hidden" name="type" value={sp.type} />}
-          <input
-            name="q"
-            placeholder="Search name, ID, sport, or class"
-            defaultValue={sp.q}
-            className="w-full max-w-md rounded-lg border border-card-border bg-background px-3 py-2"
-          />
-        </form>
-        <AddStudentForm classes={hourClasses.length ? hourClasses : classes} />
+      <div className="mb-4 md:mb-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0 flex-1 sm:max-w-md">
+            <RosterToolbar
+              searchPool={searchPool}
+              hourClasses={classOptions}
+              resultCount={athletes.length}
+            />
+          </div>
+          <div className="hidden shrink-0 sm:block">
+            <AddStudentForm classes={classOptions} />
+          </div>
+        </div>
       </div>
 
-      <div className="mb-8 space-y-5">
-        <div>
-          <p className="mb-2 text-center text-[11px] font-semibold uppercase tracking-[0.2em] text-muted">
-            Graduating class
-          </p>
-          <div className="flex justify-center">
-            <GradePills />
-          </div>
-        </div>
-        <div>
-          <p className="mb-2 text-center text-[11px] font-semibold uppercase tracking-[0.2em] text-muted">
-            Class hour / semester section
-          </p>
-          <div className="flex justify-center">
-            <ClassHourPills classes={hourClasses.length ? hourClasses : classes} />
-          </div>
-        </div>
-        <div>
-          <p className="mb-2 text-center text-[11px] font-semibold uppercase tracking-[0.2em] text-muted">
-            Tracking type
-          </p>
-          <div className="flex justify-center">
-            <ParticipationPills />
-          </div>
-        </div>
-        <GenderToggle />
-        <p className="text-center text-sm text-muted">
-          {gradesLabel(grades)} · {genderFullLabel(gender)} · {athletes.length} students
-        </p>
-      </div>
+      <RosterFiltersDesktop
+        hourClasses={classOptions}
+        resultCount={athletes.length}
+        grades={grades}
+        gender={gender}
+      />
 
       <RosterTable athletes={athletes} showClass={!isAllGrades(grades) ? grades.length > 1 : true} />
       {emptyRoster && (

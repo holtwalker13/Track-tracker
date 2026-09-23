@@ -59,6 +59,8 @@ model School {
   kpiTargets         SchoolKpiTarget[]
   customActivities   Activity[]
   hiddenKpis         SchoolHiddenKpi[]
+  workoutTemplates   WorkoutTemplate[]
+  workoutAssignments WorkoutAssignment[]
 
   @@index([organizationId])
   @@index([districtId])
@@ -120,6 +122,8 @@ model User {
   coachProfile   CoachProfile?
   studentProfile StudentProfile?
   enteredResults PerformanceResult[] @relation("EnteredBy")
+  workoutTemplatesCreated WorkoutTemplate[] @relation("WorkoutTemplateCreatedBy")
+  workoutAssignmentsCreated WorkoutAssignment[] @relation("WorkoutAssignmentCreatedBy")
 }
 
 model CoachProfile {
@@ -158,6 +162,8 @@ model StudentProfile {
   sessionStudents    TestingSessionStudent[]
   performanceResults PerformanceResult[]
   achievements       StudentAchievement[]
+  workoutSessions    WorkoutSession[]
+  workoutAssignments WorkoutAssignment[]
 
   @@unique([schoolId, studentNumber])
   @@index([schoolId])
@@ -188,6 +194,7 @@ model Class {
 
   enrollments ClassEnrollment[]
   sessions    TestingSession[]
+  workoutAssignments WorkoutAssignment[]
 }
 
 model ClassEnrollment {
@@ -233,8 +240,104 @@ model Activity {
   sessionActivities TestingSessionActivity[]
   results           PerformanceResult[]
   benchmarkValues   BenchmarkValue[]
+  templateExercises WorkoutTemplateExercise[]
 
   @@index([schoolId])
+}
+
+model WorkoutTemplate {
+  id          String   @id @default(cuid())
+  schoolId    String
+  school      School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  name        String
+  // MANUAL | GENERATED (see generatorKey on generated rows)
+  sourceType  String   @default("MANUAL")
+  generatorKey String?
+  generatorBlockId String?
+  createdById String?
+  createdBy   User?    @relation("WorkoutTemplateCreatedBy", fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  exercises   WorkoutTemplateExercise[]
+  assignments WorkoutAssignment[]
+
+  @@index([schoolId])
+  @@index([generatorBlockId])
+}
+
+model WorkoutTemplateExercise {
+  id           String          @id @default(cuid())
+  templateId   String
+  template     WorkoutTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  activityId   String
+  activity     Activity        @relation(fields: [activityId], references: [id])
+  defaultSets  Int             @default(3)
+  defaultReps  Int             @default(5)
+  notes        String?
+  sortOrder    Int             @default(0)
+
+  setLogs WorkoutSetLog[]
+
+  @@index([templateId])
+}
+
+model WorkoutAssignment {
+  id            String          @id @default(cuid())
+  schoolId      String
+  school        School          @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  templateId    String
+  template      WorkoutTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  classId       String?
+  class         Class?          @relation(fields: [classId], references: [id], onDelete: SetNull)
+  studentId     String?
+  student       StudentProfile? @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  scheduledDate DateTime
+  generatorBlockId String?
+  createdById   String?
+  createdBy     User?           @relation("WorkoutAssignmentCreatedBy", fields: [createdById], references: [id])
+  createdAt     DateTime        @default(now())
+
+  sessions WorkoutSession[]
+
+  @@index([schoolId, scheduledDate])
+  @@index([classId, scheduledDate])
+  @@index([studentId, scheduledDate])
+  @@index([generatorBlockId])
+}
+
+model WorkoutSession {
+  id           String            @id @default(cuid())
+  assignmentId String
+  assignment   WorkoutAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  studentId    String
+  student      StudentProfile    @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  status       String            @default("IN_PROGRESS")
+  completedAt  DateTime?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  setLogs WorkoutSetLog[]
+
+  @@unique([assignmentId, studentId])
+  @@index([studentId])
+}
+
+model WorkoutSetLog {
+  id                 String                  @id @default(cuid())
+  sessionId          String
+  session            WorkoutSession          @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  templateExerciseId String
+  templateExercise   WorkoutTemplateExercise @relation(fields: [templateExerciseId], references: [id], onDelete: Cascade)
+  setNumber          Int
+  weightLb           Float?
+  reps               Int?
+  rpe                Float?
+  skipped            Boolean                 @default(false)
+  updatedAt          DateTime                @updatedAt
+
+  @@unique([sessionId, templateExerciseId, setNumber])
+  @@index([sessionId])
 }
 
 model TestingSession {

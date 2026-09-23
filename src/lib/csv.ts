@@ -40,6 +40,15 @@ export function normalizeHeader(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9]/g, "");
 }
 
+export function csvCell(value: string): string {
+  if (/[",\n\r]/.test(value)) return `"${value.replace(/"/g, '""')}"`;
+  return value;
+}
+
+export function serializeCsv(rows: string[][]): string {
+  return `${rows.map((r) => r.map(csvCell).join(",")).join("\n")}\n`;
+}
+
 export function headerIndex(header: string[], aliases: string[]): number {
   const normalized = header.map(normalizeHeader);
   const wanted = aliases.map(normalizeHeader);

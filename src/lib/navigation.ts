@@ -10,7 +10,8 @@ export type NavIconKey =
   | "gauge"
   | "trending"
   | "projection"
-  | "classes";
+  | "classes"
+  | "workout";
 
 export type NavItem = {
   href: string;
@@ -29,6 +30,7 @@ export const COACH_NAV: NavItem[] = [
   { href: "/coach/leaderboards", label: "Leaderboards", icon: "trophy" },
   { href: "/coach/students", label: "Roster", icon: "users" },
   { href: "/coach/testing", label: "Testing", icon: "clipboard" },
+  { href: "/coach/programs", label: "Programs", icon: "workout" },
   { href: "/coach/classes", label: "Classes", icon: "classes" },
   { href: "/coach/analytics", label: "Analytics", icon: "chart" },
   { href: "/coach/benchmarks", label: "KPI targets", icon: "target" },
@@ -43,6 +45,7 @@ export const ADMIN_NAV: NavItem[] = [
 
 export const STUDENT_NAV: NavItem[] = [
   { href: "/student", label: "Dashboard", icon: "dashboard" },
+  { href: "/student/workout", label: "Log workout", icon: "workout" },
   { href: "/student/performance", label: "My Performance", icon: "gauge" },
   { href: "/student/progress", label: "Progress", icon: "trending" },
   { href: "/student/leaderboards", label: "Leaderboards", icon: "trophy" },

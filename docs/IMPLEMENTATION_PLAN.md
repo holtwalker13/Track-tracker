@@ -10,6 +10,12 @@
 - **Phase F**: Coach dashboard, directory, grade analytics, testing coverage bars.
 - **Phase G**: Projection service + student UI with disclaimer.
 
+## Weight lifting (coach parity)
+
+See [WEIGHT_LIFTING.md](./WEIGHT_LIFTING.md) for competitor questionnaire mapping, gaps (workouts, sets/reps, RPE progression), and phased build plan.
+
+**On branch `weight-lifting`**: strength-only testing preset, workout programs (templates + assign), student set/RPE logging. Auto-generator and load progression remain Phase 2b/3.
+
 ## Recommended next iterations
 
 1. **Auth hardening**: Admin UI, password reset, email verification.

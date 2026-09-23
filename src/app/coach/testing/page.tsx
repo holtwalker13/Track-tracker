@@ -4,7 +4,7 @@ import { requireSchoolSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { classSectionLabel } from "@/lib/periods";
 import { formatStudentName } from "@/lib/utils";
-import { NewTestingSessionForm } from "@/components/testing/new-session-form";
+import { TestingPageActions } from "@/components/testing/testing-page-actions";
 import { liftsForTestingSession, listSchoolLifts } from "@/lib/queries/lifts";
 import {
   SessionResultsAccordion,
@@ -69,12 +69,18 @@ export default async function TestingSessionsPage() {
 
   return (
     <AppShell title="Testing" nav={COACH_NAV}>
-      <NewTestingSessionForm
+      <TestingPageActions
         classes={classes}
         sameDayCount={sameDayCount}
         strengthActivities={strengthActivities}
       />
       <div className="space-y-3">
+        {sessions.length === 0 ? (
+          <p className="text-sm text-muted">
+            No testing sessions yet. Tap <span className="font-medium text-foreground">Create test</span> to
+            schedule or start a live session.
+          </p>
+        ) : null}
         {sessions.map((s) => {
           const athletes = [...s.students]
             .map((ss) => ({

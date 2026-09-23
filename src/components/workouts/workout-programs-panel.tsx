@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { LIFTING_WORKOUT_SLUGS } from "@/lib/lifting";
+import { useEffect, useState } from "react";
 import { WORKOUT_GENERATORS } from "@/lib/services/workout-generator";
+import type { SchoolLiftRow } from "@/lib/queries/lifts";
 
 type TemplateRow = {
   id: string;
@@ -24,11 +24,11 @@ type ClassOption = { id: string; name: string; period: string | null };
 export function WorkoutProgramsPanel({
   templates: initialTemplates,
   classes,
-  liftOptions,
+  workoutLifts,
 }: {
   templates: TemplateRow[];
   classes: ClassOption[];
-  liftOptions: { slug: string; name: string }[];
+  workoutLifts: SchoolLiftRow[];
 }) {
   const router = useRouter();
   const [templates, setTemplates] = useState(initialTemplates);
@@ -47,18 +47,27 @@ export function WorkoutProgramsPanel({
   const [genWeeks, setGenWeeks] = useState(4);
 
   const defaultLiftState = () =>
-    LIFTING_WORKOUT_SLUGS.map((slug) => {
-      const meta = liftOptions.find((l) => l.slug === slug);
-      return {
-        slug,
-        name: meta?.name ?? slug,
+    workoutLifts.map((l) => ({
+      slug: l.slug,
+      name: l.name,
+      enabled: true,
+      sets: 3,
+      reps: 5,
+    }));
+
+  const [lifts, setLifts] = useState(defaultLiftState);
+
+  useEffect(() => {
+    setLifts(
+      workoutLifts.map((l) => ({
+        slug: l.slug,
+        name: l.name,
         enabled: true,
         sets: 3,
         reps: 5,
-      };
-    });
-
-  const [lifts, setLifts] = useState(defaultLiftState);
+      }))
+    );
+  }, [workoutLifts]);
 
   async function createProgram(e: React.FormEvent) {
     e.preventDefault();

@@ -9,6 +9,7 @@ import {
   defaultSessionNameForClass,
   isWeightliftingClassName,
   LIFTING_SESSION_ACTIVITIES,
+  type LiftingSessionActivityMeta,
 } from "@/lib/lifting";
 import {
   classSectionLabel,
@@ -19,9 +20,12 @@ import {
 export function NewTestingSessionForm({
   classes,
   sameDayCount = 0,
+  strengthActivities,
 }: {
   classes: { id: string; name: string; period: string | null }[];
   sameDayCount?: number;
+  /** School lift library (catalog + custom). Used for weight room sections. */
+  strengthActivities?: LiftingSessionActivityMeta[];
 }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
@@ -47,7 +51,11 @@ export function NewTestingSessionForm({
 
   const liftingOnly = selectedClass ? isWeightliftingClassName(selectedClass.name) : false;
 
-  const sessionActivities = liftingOnly ? LIFTING_SESSION_ACTIVITIES : KPI_METRIC_META;
+  const liftCatalog =
+    strengthActivities && strengthActivities.length > 0
+      ? strengthActivities
+      : LIFTING_SESSION_ACTIVITIES;
+  const sessionActivities = liftingOnly ? liftCatalog : KPI_METRIC_META;
 
   const defaultName = defaultSessionNameForClass(
     selectedClass?.name ?? "Performance Test",

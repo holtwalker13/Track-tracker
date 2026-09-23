@@ -3,13 +3,14 @@ import { WorkoutProgramsPanel } from "@/components/workouts/workout-programs-pan
 import { COACH_NAV } from "@/lib/navigation";
 import { requireSchoolSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
-import { LIFTING_WORKOUT_SLUGS } from "@/lib/lifting";
+import { SchoolLiftsPanel } from "@/components/lifts/school-lifts-panel";
+import { liftsForWorkoutPrograms, listSchoolLifts } from "@/lib/queries/lifts";
 import { isGraduatingClassName } from "@/lib/periods";
 
 export default async function CoachProgramsPage() {
   const session = await requireSchoolSession();
 
-  const [templates, classes, activities] = await Promise.all([
+  const [templates, classes, schoolLifts] = await Promise.all([
     prisma.workoutTemplate.findMany({
       where: { schoolId: session.schoolId },
       orderBy: { updatedAt: "desc" },
@@ -26,11 +27,10 @@ export default async function CoachProgramsPage() {
       orderBy: [{ period: "asc" }, { name: "asc" }],
       select: { id: true, name: true, period: true },
     }),
-    prisma.activity.findMany({
-      where: { slug: { in: [...LIFTING_WORKOUT_SLUGS] } },
-      select: { slug: true, name: true },
-    }),
+    listSchoolLifts(session.schoolId),
   ]);
+
+  const workoutLifts = liftsForWorkoutPrograms(schoolLifts);
 
   const sectionClasses = classes.filter((c) => !isGraduatingClassName(c.name));
 
@@ -40,13 +40,16 @@ export default async function CoachProgramsPage() {
         Build reusable lifting templates and assign them to a class by date. Athletes log each set with
         weight, reps, and RPE from their Log workout screen.
       </p>
+      <div className="mb-8">
+        <SchoolLiftsPanel lifts={schoolLifts} />
+      </div>
       <WorkoutProgramsPanel
         templates={templates.map((t) => ({
           ...t,
           updatedAt: t.updatedAt.toISOString(),
         }))}
         classes={sectionClasses}
-        liftOptions={activities}
+        workoutLifts={workoutLifts}
       />
     </AppShell>
   );

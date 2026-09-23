@@ -6,17 +6,12 @@ import {
   AGE_BRACKETS,
   DEFAULT_AGE_BRACKET,
   isAgeBracketId,
-  KPI_CATEGORIES,
   KPI_UNITS,
 } from "@/lib/age-brackets";
-
-function slugify(name: string) {
-  return name
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "")
-    .slice(0, 40);
-}
+import {
+  createSchoolActivity,
+  deleteSchoolCustomActivity,
+} from "@/lib/services/school-activity-create";
 
 /** Save target cells (existing + custom metrics). */
 export async function POST(request: Request) {
@@ -44,9 +39,6 @@ export async function POST(request: Request) {
     if (!title) {
       return NextResponse.json({ error: "Title is required" }, { status: 400 });
     }
-    if (!KPI_CATEGORIES.some((c) => c.slug === categorySlug)) {
-      return NextResponse.json({ error: "Invalid category" }, { status: 400 });
-    }
     if (!KPI_UNITS.some((u) => u.id === unit)) {
       return NextResponse.json({ error: "Invalid unit" }, { status: 400 });
     }
@@ -54,75 +46,29 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Pick at least one age band" }, { status: 400 });
     }
 
-    let category = await prisma.activityCategory.findUnique({
-      where: { slug: categorySlug },
-    });
-    if (!category) {
-      category = await prisma.activityCategory.create({
-        data: {
-          slug: categorySlug,
-          name: KPI_CATEGORIES.find((c) => c.slug === categorySlug)?.name ?? categorySlug,
-          sortOrder: 50,
-        },
-      });
-    }
-
-    const base = slugify(title) || "custom-kpi";
-    let slug = `school-${session.schoolId.slice(-6)}-${base}`;
-    let n = 1;
-    while (await prisma.activity.findUnique({ where: { slug } })) {
-      slug = `school-${session.schoolId.slice(-6)}-${base}-${n++}`;
-    }
-
-    const activity = await prisma.activity.create({
-      data: {
-        slug,
-        name: title,
-        categoryId: category.id,
-        unit,
-        scoringDirection: direction,
-        acceptsDecimals: unit !== "reps",
+    try {
+      const activity = await createSchoolActivity({
         schoolId: session.schoolId,
-        genderInfluenced: true,
-        ageInfluenced: true,
-      },
-    });
-
-    const medals = body.targets as
-      | Record<string, Record<string, Record<string, number>>>
-      | undefined;
-    // targets[ageBracket][gender][medal] = number
-    if (medals) {
-      const rows: {
-        schoolId: string;
-        gender: string;
-        medal: string;
-        metricSlug: string;
-        target: number;
-        ageBracket: string;
-      }[] = [];
-      for (const bracket of ageBrackets) {
-        for (const gender of genders) {
-          for (const medal of MEDALS) {
-            const target = Number(medals?.[bracket]?.[gender]?.[medal]);
-            if (!Number.isFinite(target)) continue;
-            rows.push({
-              schoolId: session.schoolId,
-              gender,
-              medal,
-              metricSlug: activity.slug,
-              target,
-              ageBracket: bracket,
-            });
-          }
-        }
-      }
-      if (rows.length) {
-        await prisma.schoolKpiTarget.createMany({ data: rows, skipDuplicates: true });
-      }
+        title,
+        categorySlug,
+        unit,
+        direction,
+        ageBrackets,
+        genders: genders as Array<"F" | "M">,
+        targets: body.targets as
+          | Record<string, Record<string, Record<string, number>>>
+          | undefined,
+      });
+      return NextResponse.json({
+        ok: true,
+        activity: { id: activity.id, slug: activity.slug, name: activity.name },
+      });
+    } catch (e) {
+      return NextResponse.json(
+        { error: e instanceof Error ? e.message : "Could not create KPI" },
+        { status: 400 }
+      );
     }
-
-    return NextResponse.json({ ok: true, activity: { id: activity.id, slug: activity.slug, name: activity.name } });
   }
 
   // Bulk save target cells
@@ -188,18 +134,7 @@ export async function DELETE(request: Request) {
   });
 
   if (custom) {
-    await prisma.$transaction([
-      prisma.schoolKpiTarget.deleteMany({
-        where: { schoolId: session.schoolId, metricSlug: slug },
-      }),
-      prisma.schoolHiddenKpi.deleteMany({
-        where: { schoolId: session.schoolId, metricSlug: slug },
-      }),
-      prisma.testingSessionActivity.deleteMany({ where: { activityId: custom.id } }),
-      prisma.benchmarkValue.deleteMany({ where: { activityId: custom.id } }),
-      prisma.performanceResult.deleteMany({ where: { activityId: custom.id } }),
-      prisma.activity.delete({ where: { id: custom.id } }),
-    ]);
+    await deleteSchoolCustomActivity(session.schoolId, slug);
     return NextResponse.json({ ok: true });
   }
 

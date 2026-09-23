@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Plus, Pencil, Trash2, X } from "lucide-react";
+import { Dumbbell, Plus, Pencil, Trash2, X } from "lucide-react";
+import { LiftBuilderModal } from "@/components/lifts/lift-builder-modal";
 import { MEDAL_LABELS, MEDALS, type Medal } from "@/lib/kpi-targets";
 import {
   AGE_BRACKETS,
@@ -43,6 +45,8 @@ export function KpiTargetsEditor({
   const [gender, setGender] = useState<"F" | "M">("F");
   const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [builderOpen, setBuilderOpen] = useState(false);
+  const [kpiBuilderDefaults, setKpiBuilderDefaults] = useState<KpiBuilderDefaults | undefined>();
+  const [liftBuilderOpen, setLiftBuilderOpen] = useState(false);
   const [editing, setEditing] = useState<MetricInfo | null>(null);
 
   useEffect(() => setCells(initial), [initial]);
@@ -141,18 +145,36 @@ export function KpiTargetsEditor({
     <div>
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <p className="max-w-2xl text-sm text-muted">
-          Set Gold / Silver / Bronze by gender and age band. Build PE metrics (sit-and-reach,
-          pull-ups, etc.) with the KPI builder — units can be seconds, inches, pounds, meters, or
-          reps.
+          Set Gold / Silver / Bronze by gender and age band. Build PE metrics with{" "}
+          <strong className="font-medium text-foreground">Build KPI</strong>, or add weight-room lifts
+          (lb / reps / × BW) with <strong className="font-medium text-foreground">Build lift</strong>{" "}
+          — same targets here, programs on{" "}
+          <Link href="/coach/programs" className="text-accent hover:underline">
+            Workout programs
+          </Link>
+          .
         </p>
-        <button
-          type="button"
-          onClick={() => setBuilderOpen(true)}
-          className="inline-flex items-center justify-center gap-2 rounded-lg bg-sky-400/20 px-4 py-2.5 text-sm font-semibold text-sky-300 ring-1 ring-sky-400/40"
-        >
-          <Plus className="h-4 w-4" />
-          Build KPI
-        </button>
+        <div className="flex shrink-0 flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              setKpiBuilderDefaults(undefined);
+              setBuilderOpen(true);
+            }}
+            className="inline-flex items-center justify-center gap-2 rounded-lg bg-sky-400/20 px-4 py-2.5 text-sm font-semibold text-sky-300 ring-1 ring-sky-400/40"
+          >
+            <Plus className="h-4 w-4" />
+            Build KPI
+          </button>
+          <button
+            type="button"
+            onClick={() => setLiftBuilderOpen(true)}
+            className="inline-flex items-center justify-center gap-2 rounded-lg bg-sky-400/20 px-4 py-2.5 text-sm font-semibold text-sky-300 ring-1 ring-sky-400/40"
+          >
+            <Dumbbell className="h-4 w-4" />
+            Build lift
+          </button>
+        </div>
       </div>
 
       <div className="mb-4 space-y-3">
@@ -281,10 +303,31 @@ export function KpiTargetsEditor({
 
       {builderOpen && (
         <KpiBuilderModal
+          defaults={kpiBuilderDefaults}
           onClose={() => setBuilderOpen(false)}
           onCreated={(m) => {
             setMetricList((prev) => [...prev, m]);
             setBuilderOpen(false);
+            router.refresh();
+          }}
+        />
+      )}
+
+      {liftBuilderOpen && (
+        <LiftBuilderModal
+          onClose={() => setLiftBuilderOpen(false)}
+          onCreated={(lift) => {
+            setMetricList((prev) => [
+              ...prev,
+              {
+                slug: lift.slug,
+                name: lift.name,
+                unit: lift.unit,
+                categorySlug: "strength",
+                custom: true,
+              },
+            ]);
+            setLiftBuilderOpen(false);
             router.refresh();
           }}
         />
@@ -376,18 +419,30 @@ function KpiRenameModal({
   );
 }
 
+type KpiBuilderDefaults = {
+  categorySlug?: string;
+  unit?: string;
+  ageBrackets?: AgeBracketId[];
+};
+
+const LIFT_UNIT_IDS = new Set(["lb", "reps", "x BW"]);
+
 function KpiBuilderModal({
   onClose,
   onCreated,
+  defaults,
 }: {
   onClose: () => void;
   onCreated: (m: MetricInfo) => void;
+  defaults?: KpiBuilderDefaults;
 }) {
   const [title, setTitle] = useState("");
-  const [categorySlug, setCategorySlug] = useState<string>("flexibility");
-  const [unit, setUnit] = useState("reps");
+  const [categorySlug, setCategorySlug] = useState<string>(defaults?.categorySlug ?? "flexibility");
+  const [unit, setUnit] = useState(defaults?.unit ?? "reps");
   const [direction, setDirection] = useState<"HIGHER_BETTER" | "LOWER_BETTER">("HIGHER_BETTER");
-  const [brackets, setBrackets] = useState<AgeBracketId[]>(["elem-3-5", "middle-6-8"]);
+  const [brackets, setBrackets] = useState<AgeBracketId[]>(
+    defaults?.ageBrackets ?? ["elem-3-5", "middle-6-8"]
+  );
   const [genders, setGenders] = useState<Array<"F" | "M">>(["F", "M"]);
   const [targets, setTargets] = useState<
     Record<string, Record<string, Record<string, string>>>
@@ -395,10 +450,23 @@ function KpiBuilderModal({
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
+  const unitOptions = useMemo(() => {
+    if (categorySlug === "strength") {
+      return KPI_UNITS.filter((u) => LIFT_UNIT_IDS.has(u.id));
+    }
+    return KPI_UNITS;
+  }, [categorySlug]);
+
   useEffect(() => {
     const unitMeta = KPI_UNITS.find((u) => u.id === unit);
     if (unitMeta) setDirection(unitMeta.directionDefault);
   }, [unit]);
+
+  useEffect(() => {
+    if (categorySlug === "strength" && !LIFT_UNIT_IDS.has(unit)) {
+      setUnit("lb");
+    }
+  }, [categorySlug, unit]);
 
   function toggleBracket(id: AgeBracketId) {
     setBrackets((prev) =>
@@ -503,12 +571,18 @@ function KpiBuilderModal({
         </div>
 
         <div className="space-y-4 overflow-y-auto px-4 py-4 sm:px-5">
+          {categorySlug === "strength" ? (
+            <p className="text-sm text-muted">
+              Strength category — use lb, reps, or × BW. For the dedicated lift flow (same API), you
+              can also close this and click <strong className="font-medium">Build lift</strong>.
+            </p>
+          ) : null}
           <label className="block text-sm">
             Title
             <input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="V-sit and reach"
+              placeholder={categorySlug === "strength" ? "Trap bar deadlift" : "V-sit and reach"}
               className="mt-1 w-full rounded-lg border border-card-border bg-background px-3 py-2.5"
             />
           </label>
@@ -535,7 +609,7 @@ function KpiBuilderModal({
               onChange={(e) => setUnit(e.target.value)}
               className="mt-1 w-full rounded-lg border border-card-border bg-background px-3 py-2.5"
             >
-              {KPI_UNITS.map((u) => (
+              {unitOptions.map((u) => (
                 <option key={u.id} value={u.id}>
                   {u.label}
                 </option>

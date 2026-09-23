@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { classSectionLabel } from "@/lib/periods";
 import { formatStudentName } from "@/lib/utils";
 import { NewTestingSessionForm } from "@/components/testing/new-session-form";
+import { liftsForTestingSession, listSchoolLifts } from "@/lib/queries/lifts";
 import {
   SessionResultsAccordion,
   type SessionActivitySummary,
@@ -18,7 +19,7 @@ export default async function TestingSessionsPage() {
   const dayStart = new Date(today.toISOString().slice(0, 10) + "T00:00:00");
   const dayEnd = new Date(today.toISOString().slice(0, 10) + "T23:59:59.999");
 
-  const [sessions, classes, sameDayCount] = await Promise.all([
+  const [sessions, classes, sameDayCount, schoolLifts] = await Promise.all([
     prisma.testingSession.findMany({
       where: { schoolId: session.schoolId },
       include: {
@@ -58,11 +59,21 @@ export default async function TestingSessionsPage() {
         testingDate: { gte: dayStart, lte: dayEnd },
       },
     }),
+    listSchoolLifts(session.schoolId),
   ]);
+
+  const strengthActivities = liftsForTestingSession(schoolLifts).map((l) => ({
+    slug: l.slug,
+    name: l.name,
+  }));
 
   return (
     <AppShell title="Testing" nav={COACH_NAV}>
-      <NewTestingSessionForm classes={classes} sameDayCount={sameDayCount} />
+      <NewTestingSessionForm
+        classes={classes}
+        sameDayCount={sameDayCount}
+        strengthActivities={strengthActivities}
+      />
       <div className="space-y-3">
         {sessions.map((s) => {
           const athletes = [...s.students]

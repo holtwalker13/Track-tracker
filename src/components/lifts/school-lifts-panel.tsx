@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -62,7 +63,12 @@ export function SchoolLiftsPanel({
         <div>
           <h2 className="font-semibold">School lift library</h2>
           <p className="text-sm text-muted">
-            Built-in and custom strength events for programs and testing. Build new lifts like KPIs.
+            Built-in and custom strength events for programs and testing. Gold / silver / bronze
+            targets are edited on{" "}
+            <Link href="/coach/benchmarks" className="text-accent hover:underline">
+              KPI targets
+            </Link>{" "}
+            (Build lift there too).
           </p>
         </div>
         <button

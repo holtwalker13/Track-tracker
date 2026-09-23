@@ -14,6 +14,12 @@ Source: questionnaire from a long-time user of a dedicated lifting program (~$2,
 | Leaderboards | No in-app ranks; **analytics export** for coach-built boards | Built-in leaderboards (coach named, student anonymous option) + analytics/box scores | **Default for lifting coaches**: coach-facing analytics + CSV/export; optional **hide student leaderboards** per school (already have `nameHidden` / org settings — extend to disable student leaderboard nav for lifting-only schools). |
 | Pain point | Accuracy depends on athletes logging every set with correct weight/reps/RPE | Same risk for live testing; station flow helps on test day | Workout UX: required fields, set-level validation, coach review queue, reminders; tie formal PRs to coach-verified test sessions. |
 
+## School lift library (like KPI builder)
+
+- **Programs → School lift library → Build lift**: same flow as KPI builder (title, lb/reps/× BW, optional gold/silver/bronze targets).
+- Custom lifts are `Activity` rows in the **strength** category; they appear in **Programs**, **Testing** (weight room preset), and **KPI targets**.
+- Removing a built-in lift **hides** it for the school (`SchoolHiddenLift`); custom lifts are **deleted** (same as custom KPIs).
+
 ## What we already satisfy (lifting coach)
 
 - **Roster by weight room period** (`Period N Weights`), CSV import, multi-class enrollment.

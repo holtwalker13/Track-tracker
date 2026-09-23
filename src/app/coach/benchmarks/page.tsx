@@ -59,13 +59,15 @@ export default async function BenchmarksPage() {
         custom: false as const,
       };
     }),
-    ...customActivities.map((a) => ({
-      slug: a.slug,
-      name: a.name,
-      unit: a.unit,
-      categorySlug: a.category.slug,
-      custom: true as const,
-    })),
+    ...customActivities
+      .filter((a) => !hiddenSet.has(a.slug))
+      .map((a) => ({
+        slug: a.slug,
+        name: a.name,
+        unit: a.unit,
+        categorySlug: a.category.slug,
+        custom: true as const,
+      })),
   ];
 
   return (

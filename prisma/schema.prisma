@@ -61,9 +61,21 @@ model School {
   hiddenKpis         SchoolHiddenKpi[]
   workoutTemplates   WorkoutTemplate[]
   workoutAssignments WorkoutAssignment[]
+  hiddenLifts        SchoolHiddenLift[]
 
   @@index([organizationId])
   @@index([districtId])
+}
+
+// Built-in lifts a coach removed from their school's lift library (workouts + testing presets).
+model SchoolHiddenLift {
+  id           String @id @default(cuid())
+  schoolId     String
+  school       School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  activitySlug String
+
+  @@unique([schoolId, activitySlug])
+  @@index([schoolId])
 }
 
 model SchoolKpiTarget {

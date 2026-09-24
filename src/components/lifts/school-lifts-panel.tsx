@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { Loader2, Pencil, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
-import type { SchoolLiftRow } from "@/lib/queries/lifts";
+import type { SchoolLiftEditDetails, SchoolLiftRow } from "@/lib/queries/lifts";
 import { LiftBuilderModal } from "@/components/lifts/lift-builder-modal";
 
 export function SchoolLiftsPanel({
@@ -15,46 +15,19 @@ export function SchoolLiftsPanel({
   const router = useRouter();
   const [lifts, setLifts] = useState(initialLifts);
   const [builderOpen, setBuilderOpen] = useState(false);
-  const [editing, setEditing] = useState<SchoolLiftRow | null>(null);
-  const [editName, setEditName] = useState("");
+  const [editingLift, setEditingLift] = useState<SchoolLiftEditDetails | null>(null);
+  const [editLoadingSlug, setEditLoadingSlug] = useState<string | null>(null);
 
-  async function deleteLift(slug: string, name: string) {
-    if (
-      !window.confirm(
-        `Remove "${name}" from your school? Custom lifts are deleted. Built-in lifts are hidden (like KPIs).`
-      )
-    ) {
-      return;
-    }
-    const res = await fetch("/api/lifts", {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ slug }),
-    });
+  async function openEdit(l: SchoolLiftRow) {
+    setEditLoadingSlug(l.slug);
+    const res = await fetch(`/api/lifts?slug=${encodeURIComponent(l.slug)}`);
+    setEditLoadingSlug(null);
     if (!res.ok) {
-      window.alert("Could not remove lift.");
+      window.alert("Could not load lift details.");
       return;
     }
-    setLifts((prev) => prev.filter((l) => l.slug !== slug));
-    router.refresh();
-  }
-
-  async function saveRename() {
-    if (!editing || !editName.trim()) return;
-    const res = await fetch("/api/lifts", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ slug: editing.slug, name: editName.trim() }),
-    });
-    if (!res.ok) {
-      window.alert("Could not rename.");
-      return;
-    }
-    setLifts((prev) =>
-      prev.map((l) => (l.slug === editing.slug ? { ...l, name: editName.trim() } : l))
-    );
-    setEditing(null);
-    router.refresh();
+    const data = (await res.json()) as { lift: SchoolLiftEditDetails };
+    setEditingLift(data.lift);
   }
 
   return (
@@ -92,27 +65,19 @@ export function SchoolLiftsPanel({
                 {!l.forWorkouts ? " · testing only (× BW)" : ""}
               </span>
             </div>
-            <div className="flex items-center gap-0.5">
-              <button
-                type="button"
-                onClick={() => {
-                  setEditing(l);
-                  setEditName(l.name);
-                }}
-                className="rounded-md p-1.5 text-muted hover:bg-sky-400/10 hover:text-sky-300"
-                aria-label={`Rename ${l.name}`}
-              >
+            <button
+              type="button"
+              onClick={() => void openEdit(l)}
+              disabled={editLoadingSlug === l.slug}
+              className="rounded-md p-1.5 text-muted hover:bg-sky-400/10 hover:text-sky-300 disabled:opacity-50"
+              aria-label={`Edit ${l.name}`}
+            >
+              {editLoadingSlug === l.slug ? (
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+              ) : (
                 <Pencil className="h-4 w-4" />
-              </button>
-              <button
-                type="button"
-                onClick={() => void deleteLift(l.slug, l.name)}
-                className="rounded-md p-1.5 text-muted hover:bg-sport-red/10 hover:text-sport-red"
-                aria-label={`Remove ${l.name}`}
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
-            </div>
+              )}
+            </button>
           </li>
         ))}
       </ul>
@@ -128,39 +93,21 @@ export function SchoolLiftsPanel({
         />
       )}
 
-      {editing && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <button
-            type="button"
-            aria-label="Close"
-            className="absolute inset-0 bg-black/60"
-            onClick={() => setEditing(null)}
-          />
-          <div className="relative z-10 w-full max-w-sm rounded-2xl border border-card-border bg-card p-4">
-            <h3 className="font-semibold">Rename lift</h3>
-            <input
-              value={editName}
-              onChange={(e) => setEditName(e.target.value)}
-              className="mt-2 w-full rounded-lg border border-card-border bg-background px-3 py-2"
-            />
-            <div className="mt-3 flex gap-2">
-              <button
-                type="button"
-                onClick={() => setEditing(null)}
-                className="flex-1 rounded-lg border border-card-border py-2 text-sm"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={() => void saveRename()}
-                className="flex-1 rounded-lg bg-accent py-2 text-sm font-medium text-background"
-              >
-                Save
-              </button>
-            </div>
-          </div>
-        </div>
+      {editingLift && (
+        <LiftBuilderModal
+          initialLift={editingLift}
+          onClose={() => setEditingLift(null)}
+          onUpdated={(lift) => {
+            setLifts((prev) => prev.map((row) => (row.slug === lift.slug ? lift : row)));
+            setEditingLift(null);
+            router.refresh();
+          }}
+          onDeleted={(slug) => {
+            setLifts((prev) => prev.filter((row) => row.slug !== slug));
+            setEditingLift(null);
+            router.refresh();
+          }}
+        />
       )}
     </section>
   );

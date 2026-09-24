@@ -5,7 +5,7 @@ import { X } from "lucide-react";
 import { MEDAL_LABELS, MEDALS } from "@/lib/kpi-targets";
 import { AGE_BRACKETS, type AgeBracketId } from "@/lib/age-brackets";
 import { cn } from "@/lib/utils";
-import type { SchoolLiftRow } from "@/lib/queries/lifts";
+import type { SchoolLiftEditDetails, SchoolLiftRow } from "@/lib/queries/lifts";
 
 const LIFT_UNITS = [
   { id: "lb", label: "Pounds (lb)" },
@@ -16,20 +16,45 @@ const LIFT_UNITS = [
 export function LiftBuilderModal({
   onClose,
   onCreated,
+  initialLift,
+  onUpdated,
+  onDeleted,
 }: {
   onClose: () => void;
-  onCreated: (lift: SchoolLiftRow) => void;
+  onCreated?: (lift: SchoolLiftRow) => void;
+  /** When set, modal edits an existing lift (full builder + delete). */
+  initialLift?: SchoolLiftEditDetails | null;
+  onUpdated?: (lift: SchoolLiftRow) => void;
+  onDeleted?: (slug: string) => void;
 }) {
-  const [title, setTitle] = useState("");
-  const [unit, setUnit] = useState("lb");
-  const [direction, setDirection] = useState<"HIGHER_BETTER" | "LOWER_BETTER">("HIGHER_BETTER");
-  const [brackets, setBrackets] = useState<AgeBracketId[]>(["high-9-12"]);
-  const [genders, setGenders] = useState<Array<"F" | "M">>(["F", "M"]);
+  const isEdit = Boolean(initialLift?.slug);
+
+  const [title, setTitle] = useState(initialLift?.name ?? "");
+  const [unit, setUnit] = useState(initialLift?.unit ?? "lb");
+  const [direction, setDirection] = useState<"HIGHER_BETTER" | "LOWER_BETTER">(
+    initialLift?.direction ?? "HIGHER_BETTER"
+  );
+  const [brackets, setBrackets] = useState<AgeBracketId[]>(
+    initialLift?.ageBrackets ?? ["high-9-12"]
+  );
+  const [genders, setGenders] = useState<Array<"F" | "M">>(initialLift?.genders ?? ["F", "M"]);
   const [targets, setTargets] = useState<
     Record<string, Record<string, Record<string, string>>>
-  >({});
+  >(initialLift?.targets ?? {});
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  useEffect(() => {
+    if (!initialLift) return;
+    setTitle(initialLift.name);
+    setUnit(initialLift.unit);
+    setDirection(initialLift.direction);
+    setBrackets(initialLift.ageBrackets);
+    setGenders(initialLift.genders);
+    setTargets(initialLift.targets);
+    setError("");
+  }, [initialLift]);
 
   useEffect(() => {
     setDirection(unit === "seconds" ? "LOWER_BETTER" : "HIGHER_BETTER");
@@ -60,9 +85,7 @@ export function LiftBuilderModal({
     }));
   }
 
-  async function onSave() {
-    setSaving(true);
-    setError("");
+  function buildNumericTargets() {
     const numericTargets: Record<string, Record<string, Record<string, number>>> = {};
     for (const b of brackets) {
       numericTargets[b] = {};
@@ -76,33 +99,73 @@ export function LiftBuilderModal({
         }
       }
     }
+    return numericTargets;
+  }
+
+  async function onSave() {
+    setSaving(true);
+    setError("");
+    const numericTargets = buildNumericTargets();
+    const payload = {
+      title,
+      unit,
+      direction,
+      ageBrackets: brackets,
+      genders,
+      targets: numericTargets,
+    };
 
     const res = await fetch("/api/lifts", {
-      method: "POST",
+      method: isEdit ? "PATCH" : "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "create",
-        title,
-        unit,
-        direction,
-        ageBrackets: brackets,
-        genders,
-        targets: numericTargets,
-      }),
+      body: JSON.stringify(
+        isEdit
+          ? { slug: initialLift!.slug, ...payload }
+          : { action: "create", ...payload }
+      ),
     });
     setSaving(false);
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
-      setError(data.error ?? "Could not create lift");
+      setError(data.error ?? (isEdit ? "Could not update lift" : "Could not create lift"));
       return;
     }
-    onCreated({
-      slug: data.activity.slug,
-      name: data.activity.name,
-      unit,
-      custom: true,
-      forWorkouts: unit === "lb" || unit === "reps",
+
+    const row: SchoolLiftRow = {
+      slug: isEdit ? initialLift!.slug : data.activity.slug,
+      name: data.activity?.name ?? title.trim(),
+      unit: data.activity?.unit ?? unit,
+      custom: isEdit ? initialLift!.custom : true,
+      forWorkouts:
+        data.activity?.forWorkouts ?? (unit === "lb" || unit === "reps"),
+    };
+
+    if (isEdit) onUpdated?.(row);
+    else onCreated?.(row);
+  }
+
+  async function onDelete() {
+    if (!initialLift) return;
+    if (
+      !window.confirm(
+        `Remove "${initialLift.name}" from your school? Custom lifts are deleted. Built-in lifts are hidden (like KPIs).`
+      )
+    ) {
+      return;
+    }
+    setDeleting(true);
+    setError("");
+    const res = await fetch("/api/lifts", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ slug: initialLift.slug }),
     });
+    setDeleting(false);
+    if (!res.ok) {
+      setError("Could not remove lift.");
+      return;
+    }
+    onDeleted?.(initialLift.slug);
   }
 
   return (
@@ -116,7 +179,7 @@ export function LiftBuilderModal({
       <div
         role="dialog"
         aria-modal="true"
-        aria-label="Build lift"
+        aria-label={isEdit ? "Edit lift" : "Build lift"}
         className="relative z-10 flex max-h-[92vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-card-border bg-card shadow-2xl"
       >
         <div className="flex items-center justify-between border-b border-card-border px-4 py-3 sm:px-5">
@@ -124,7 +187,9 @@ export function LiftBuilderModal({
             <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-sky-300/80">
               Lift builder
             </p>
-            <h2 className="text-lg font-semibold">New school lift</h2>
+            <h2 className="text-lg font-semibold">
+              {isEdit ? "Edit school lift" : "New school lift"}
+            </h2>
           </div>
           <button
             type="button"
@@ -279,22 +344,34 @@ export function LiftBuilderModal({
           {error && <p className="text-sm text-red-400">{error}</p>}
         </div>
 
-        <div className="flex gap-2 border-t border-card-border p-4 sm:px-5">
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex-1 rounded-lg border border-card-border py-2.5 text-sm font-medium text-muted"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={onSave}
-            disabled={saving || !title.trim() || brackets.length === 0}
-            className="flex-1 rounded-lg bg-accent py-2.5 text-sm font-semibold text-background disabled:opacity-50"
-          >
-            {saving ? "Saving…" : "Save lift"}
-          </button>
+        <div className="space-y-2 border-t border-card-border p-4 sm:px-5">
+          {isEdit && (
+            <button
+              type="button"
+              onClick={() => void onDelete()}
+              disabled={deleting || saving}
+              className="w-full rounded-lg border border-sport-red/40 py-2.5 text-sm font-medium text-sport-red disabled:opacity-50"
+            >
+              {deleting ? "Removing…" : "Remove from school"}
+            </button>
+          )}
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 rounded-lg border border-card-border py-2.5 text-sm font-medium text-muted"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => void onSave()}
+              disabled={saving || deleting || !title.trim() || brackets.length === 0}
+              className="flex-1 rounded-lg bg-accent py-2.5 text-sm font-semibold text-background disabled:opacity-50"
+            >
+              {saving ? "Saving…" : isEdit ? "Save changes" : "Save lift"}
+            </button>
+          </div>
         </div>
       </div>
     </div>

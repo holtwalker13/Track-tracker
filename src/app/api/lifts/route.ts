@@ -7,12 +7,12 @@ import {
   KPI_UNITS,
   isAgeBracketId,
 } from "@/lib/age-brackets";
-import { MEDALS, type Medal } from "@/lib/kpi-targets";
 import {
   createSchoolActivity,
   deleteSchoolCustomActivity,
 } from "@/lib/services/school-activity-create";
-import { listSchoolLifts } from "@/lib/queries/lifts";
+import { getSchoolLiftEditDetails, listSchoolLifts } from "@/lib/queries/lifts";
+import { syncSchoolLiftTargets } from "@/lib/services/school-lift-update";
 
 const LIFT_UNITS = KPI_UNITS.filter((u) => ["lb", "reps", "x BW"].includes(u.id));
 
@@ -77,10 +77,19 @@ export async function POST(request: Request) {
   return NextResponse.json({ error: "Unknown action" }, { status: 400 });
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   const session = await requireSession(["COACH", "ADMIN"]);
   if (!session?.schoolId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const slug = new URL(request.url).searchParams.get("slug")?.trim();
+  if (slug) {
+    const lift = await getSchoolLiftEditDetails(session.schoolId, slug);
+    if (!lift) {
+      return NextResponse.json({ error: "Lift not found" }, { status: 404 });
+    }
+    return NextResponse.json({ lift });
   }
 
   const lifts = await listSchoolLifts(session.schoolId);
@@ -138,9 +147,8 @@ export async function PATCH(request: Request) {
 
   const body = await request.json();
   const slug = String(body.slug ?? "").trim();
-  const name = String(body.name ?? "").trim();
-  if (!slug || !name) {
-    return NextResponse.json({ error: "slug and name required" }, { status: 400 });
+  if (!slug) {
+    return NextResponse.json({ error: "slug required" }, { status: 400 });
   }
 
   const activity = await prisma.activity.findFirst({
@@ -154,10 +162,63 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: "Lift not found" }, { status: 404 });
   }
 
+  const title = String(body.title ?? body.name ?? activity.name).trim();
+  if (!title) {
+    return NextResponse.json({ error: "Title is required" }, { status: 400 });
+  }
+
+  const unit = body.unit != null ? String(body.unit).trim() : activity.unit;
+  if (body.unit != null && !LIFT_UNITS.some((u) => u.id === unit)) {
+    return NextResponse.json({ error: "Invalid unit for a lift" }, { status: 400 });
+  }
+
+  const direction =
+    body.direction === "LOWER_BETTER"
+      ? "LOWER_BETTER"
+      : body.direction === "HIGHER_BETTER"
+        ? "HIGHER_BETTER"
+        : activity.scoringDirection === "LOWER_BETTER"
+          ? "LOWER_BETTER"
+          : "HIGHER_BETTER";
+
+  const ageBrackets = Array.isArray(body.ageBrackets)
+    ? body.ageBrackets.filter((b: string) => isAgeBracketId(String(b)))
+    : undefined;
+  const genders = Array.isArray(body.genders)
+    ? (body.genders.filter((g: string) => g === "F" || g === "M") as Array<"F" | "M">)
+    : undefined;
+
   await prisma.activity.update({
     where: { id: activity.id },
-    data: { name },
+    data: {
+      name: title,
+      unit,
+      scoringDirection: direction,
+      bodyweightInfluenced: unit === "x BW",
+      acceptsDecimals: unit !== "reps",
+    },
   });
 
-  return NextResponse.json({ ok: true, name });
+  if (body.targets != null) {
+    await syncSchoolLiftTargets({
+      schoolId: session.schoolId,
+      metricSlug: slug,
+      ageBrackets: ageBrackets?.length ? ageBrackets : [DEFAULT_AGE_BRACKET],
+      genders: genders?.length ? genders : ["F", "M"],
+      targets: body.targets as
+        | Record<string, Record<string, Record<string, number>>>
+        | undefined,
+    });
+  }
+
+  return NextResponse.json({
+    ok: true,
+    activity: {
+      slug: activity.slug,
+      name: title,
+      unit,
+      custom: activity.schoolId != null,
+      forWorkouts: unit === "lb" || unit === "reps",
+    },
+  });
 }

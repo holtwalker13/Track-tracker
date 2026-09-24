@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { syncWorkoutSessionToPerformance } from "@/lib/services/workout-performance-sync";
 
 export async function validateWorkoutSessionComplete(sessionId: string): Promise<string | null> {
   const workoutSession = await prisma.workoutSession.findUnique({
@@ -30,9 +31,14 @@ export async function validateWorkoutSessionComplete(sessionId: string): Promise
   return null;
 }
 
-export async function markWorkoutSessionComplete(sessionId: string) {
-  return prisma.workoutSession.update({
+export async function markWorkoutSessionComplete(
+  sessionId: string,
+  options?: { enteredById?: string }
+) {
+  const updated = await prisma.workoutSession.update({
     where: { id: sessionId },
     data: { status: "COMPLETED", completedAt: new Date() },
   });
+  await syncWorkoutSessionToPerformance(sessionId, options);
+  return updated;
 }

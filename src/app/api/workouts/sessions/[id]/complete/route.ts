@@ -37,6 +37,8 @@ export async function POST(
     return NextResponse.json({ error: validationError }, { status: 400 });
   }
 
-  const updated = await markWorkoutSessionComplete(sessionId);
+  const updated = await markWorkoutSessionComplete(sessionId, {
+    enteredById: session.userId,
+  });
   return NextResponse.json({ session: updated });
 }

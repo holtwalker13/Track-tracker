@@ -2,8 +2,20 @@ import { Suspense } from "react";
 import { Card } from "@/components/ui/card";
 import { loginAction } from "./actions";
 import { TenantLoginCards } from "@/components/auth/tenant-login-cards";
+import type { TenantLoginInfo } from "@/lib/queries/tenant-login";
 
-function LoginForm({ error, next }: { error?: string; next?: string }) {
+function LoginForm({
+  error,
+  next,
+  tenantLogin,
+}: {
+  error?: string;
+  next?: string;
+  tenantLogin: TenantLoginInfo[];
+}) {
+  const studentEmailsBySlug = Object.fromEntries(
+    tenantLogin.map((t) => [t.slug, t.studentEmail])
+  ) as Partial<Record<string, string | null>>;
   return (
     <div className="flex min-h-screen items-center justify-center px-4 py-10">
       <Card className="w-full max-w-3xl">
@@ -37,7 +49,7 @@ function LoginForm({ error, next }: { error?: string; next?: string }) {
             Sign in
           </button>
         </form>
-        <TenantLoginCards />
+        <TenantLoginCards studentEmailsBySlug={studentEmailsBySlug} />
       </Card>
     </div>
   );
@@ -49,13 +61,15 @@ export default async function LoginPage({
   searchParams: Promise<{ error?: string; next?: string }>;
 }) {
   const sp = await searchParams;
+  const { getTenantLoginInfo } = await import("@/lib/queries/tenant-login");
+  const tenantLogin = await getTenantLoginInfo();
   return (
     <Suspense
       fallback={
         <div className="flex min-h-screen items-center justify-center text-muted">Loading…</div>
       }
     >
-      <LoginForm error={sp.error} next={sp.next} />
+      <LoginForm error={sp.error} next={sp.next} tenantLogin={tenantLogin} />
     </Suspense>
   );
 }

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { GRADE_LEVELS, classYearLabel } from "@/lib/grades";
 
-export function CreateClassForm() {
+export function CreateClassForm({ surface = "card" }: { surface?: "card" | "none" }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -40,8 +40,15 @@ export function CreateClassForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-3 rounded-2xl border border-card-border bg-card p-4">
-      <h2 className="font-semibold">Create a class</h2>
+    <form
+      onSubmit={onSubmit}
+      className={
+        surface === "card"
+          ? "space-y-3 rounded-2xl border border-card-border bg-card p-4"
+          : "space-y-3"
+      }
+    >
+      {surface === "card" ? <h2 className="font-semibold">Create a class</h2> : null}
       <p className="text-sm text-muted">
         Athletes can belong to more than one class (weights, speed, a graduating year, etc.).
       </p>
@@ -137,7 +144,7 @@ export function ImportClassesForm() {
   );
 }
 
-export function CreateWeightsPeriodsButton() {
+export function CreateWeightsPeriodsButton({ surface = "card" }: { surface?: "card" | "none" }) {
   const router = useRouter();
   const [msg, setMsg] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -160,8 +167,11 @@ export function CreateWeightsPeriodsButton() {
   }
 
   return (
-    <div className="rounded-2xl border border-card-border bg-card p-4">
-      <h2 className="font-semibold">Weightlifting periods</h2>
+    <div className={surface === "card" ? "rounded-2xl border border-card-border bg-card p-4" : "space-y-2"}>
+      {surface === "card" ? <h2 className="font-semibold">Weightlifting periods</h2> : null}
+      {surface === "none" ? (
+        <p className="text-sm font-medium text-muted">Quick add: weightlifting periods</p>
+      ) : null}
       <p className="mt-1 text-sm text-muted">
         Create Period 1–4 Weights in one click, then upload a roster into them.
       </p>

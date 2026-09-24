@@ -2,12 +2,16 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { UserPlus } from "lucide-react";
 import { DEFAULT_CLASS_YEAR, GRADE_LEVELS } from "@/lib/grades";
+import { cn } from "@/lib/utils";
 
 export function AddStudentForm({
   classes,
+  variant = "button",
 }: {
   classes: { id: string; name: string; period: string | null }[];
+  variant?: "button" | "icon";
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -44,6 +48,21 @@ export function AddStudentForm({
   }
 
   if (!open) {
+    if (variant === "icon") {
+      return (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          aria-label="Add student"
+          className={cn(
+            "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-card-border bg-card",
+            "hover:border-sky-400/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/50"
+          )}
+        >
+          <UserPlus className="h-5 w-5 text-sky-300" aria-hidden />
+        </button>
+      );
+    }
     return (
       <button
         type="button"
@@ -55,7 +74,7 @@ export function AddStudentForm({
     );
   }
 
-  return (
+  const formBody = (
     <form
       onSubmit={onSubmit}
       className="rounded-xl border border-card-border bg-card p-4 shadow-[0_0_24px_rgba(56,189,248,0.08)]"
@@ -138,4 +157,20 @@ export function AddStudentForm({
       </button>
     </form>
   );
+
+  if (variant === "icon") {
+    return (
+      <div className="fixed inset-0 z-[60] flex items-end justify-center p-3 sm:items-center sm:p-4">
+        <button
+          type="button"
+          aria-label="Close"
+          className="absolute inset-0 bg-black/60 backdrop-blur-[2px]"
+          onClick={() => setOpen(false)}
+        />
+        <div className="relative z-10 max-h-[92vh] w-full max-w-lg overflow-y-auto">{formBody}</div>
+      </div>
+    );
+  }
+
+  return formBody;
 }

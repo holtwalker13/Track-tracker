@@ -4,8 +4,7 @@ import { COACH_NAV } from "@/lib/navigation";
 import { requireSchoolSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { classYearLabel } from "@/lib/grades";
-import { CreateClassForm, CreateWeightsPeriodsButton } from "@/components/classes/class-forms";
-import { ImportRosterForm } from "@/components/roster/import-roster-form";
+import { ClassesPageActions } from "@/components/classes/classes-page-actions";
 
 export default async function ClassesPage() {
   const session = await requireSchoolSession();
@@ -30,11 +29,7 @@ export default async function ClassesPage() {
           ? " This JHS roster starts empty: add weightlifting periods, then upload a spreadsheet."
           : null}
       </p>
-      <div className="mb-8 grid gap-4 lg:grid-cols-2">
-        <CreateClassForm />
-        <ImportRosterForm />
-        <CreateWeightsPeriodsButton />
-      </div>
+      <ClassesPageActions />
       <ul className="space-y-2">
         {classes.map((c) => (
           <li key={c.id}>

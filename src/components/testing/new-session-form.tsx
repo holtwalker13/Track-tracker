@@ -21,11 +21,14 @@ export function NewTestingSessionForm({
   classes,
   sameDayCount = 0,
   strengthActivities,
+  surface = "card",
 }: {
   classes: { id: string; name: string; period: string | null }[];
   sameDayCount?: number;
   /** School lift library (catalog + custom). Used for weight room sections. */
   strengthActivities?: LiftingSessionActivityMeta[];
+  /** `card` = inline page block; `none` = body inside a modal shell */
+  surface?: "card" | "none";
 }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
@@ -95,8 +98,15 @@ export function NewTestingSessionForm({
   }
 
   return (
-    <form onSubmit={onSubmit} className="mb-8 space-y-3 rounded-2xl border border-card-border bg-card p-4">
-      <h2 className="font-semibold">New live testing session</h2>
+    <form
+      onSubmit={onSubmit}
+      className={
+        surface === "card"
+          ? "mb-8 space-y-3 rounded-2xl border border-card-border bg-card p-4"
+          : "space-y-3"
+      }
+    >
+      {surface === "card" ? <h2 className="font-semibold">New live testing session</h2> : null}
       <div className="grid gap-3 sm:grid-cols-3">
         <label className="block text-sm sm:col-span-1">
           Name

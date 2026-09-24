@@ -33,7 +33,7 @@ export function ImportRosterForm({ compact = false }: { compact?: boolean }) {
       onSubmit={onSubmit}
       className={compact ? "space-y-3" : "space-y-3 rounded-2xl border border-card-border bg-card p-4"}
     >
-      <h2 className="font-semibold">Upload roster spreadsheet</h2>
+      {!compact ? <h2 className="font-semibold">Upload roster spreadsheet</h2> : null}
       <p className="text-sm text-muted">
         CSV from Excel or Google Sheets. Header row:{" "}
         <code className="text-xs">firstName,lastName,gender,classYear,studentNumber,className,period</code>

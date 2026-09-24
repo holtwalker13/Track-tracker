@@ -7,7 +7,12 @@ export type ResultStatus =
   | "DNP"
   | "DQ"
   | "SUPERSEDED";
-export type EntryMethod = "LIVE_GRID" | "STUDENT_STATION" | "MANUAL" | "IMPORT";
+export type EntryMethod =
+  | "LIVE_GRID"
+  | "STUDENT_STATION"
+  | "MANUAL"
+  | "IMPORT"
+  | "WORKOUT";
 export type TestingSessionStatus = "DRAFT" | "LIVE" | "PAUSED" | "CLOSED" | "ACTIVE" | "COMPLETED";
 
 /** Sessions that still accept coach recording. */

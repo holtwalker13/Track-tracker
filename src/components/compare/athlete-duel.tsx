@@ -49,39 +49,37 @@ function DuelRow({
     (higherBetter ? rightValue > row.athleteValue : rightValue < row.athleteValue);
 
   return (
-    <div className="grid grid-cols-[1fr_minmax(7rem,9rem)_1fr] items-center gap-2 py-2.5">
-      <div className="flex items-center justify-end gap-2">
+    <div className="py-2.5">
+      <div className="mb-1.5 flex items-center justify-center gap-1.5 px-8 text-center">
+        <ActivityIcon
+          slug={row.activitySlug}
+          categorySlug={row.categorySlug}
+          className="h-3.5 w-3.5 shrink-0"
+        />
+        <span className="text-[11px] leading-tight text-muted">{row.activityName}</span>
+      </div>
+      <div className="grid grid-cols-[minmax(2.75rem,auto)_1fr_minmax(2.75rem,auto)] items-center gap-2">
         <span
           className={cn(
-            "font-mono text-sm font-bold tabular-nums",
+            "text-right font-mono text-sm font-bold tabular-nums",
             leftWins && "text-sky-400"
           )}
         >
           {row.athleteDisplay}
         </span>
-        <div className="h-1.5 w-full max-w-[7rem] rounded-full bg-card-border/60">
-          <div className="flex h-full justify-end">
+        <div className="flex min-w-0 items-center">
+          <div className="flex h-2 min-w-0 flex-1 justify-end overflow-hidden rounded-l-full bg-card-border/60">
             <div
-              className="h-full rounded-full bg-sky-500"
+              className="h-full rounded-l-full bg-sky-500"
               style={{ width: `${leftW}%` }}
             />
           </div>
-        </div>
-      </div>
-      <div className="flex items-center justify-center gap-1.5 text-center">
-        <ActivityIcon
-          slug={row.activitySlug}
-          categorySlug={row.categorySlug}
-          className="hidden h-3.5 w-3.5 sm:block"
-        />
-        <span className="text-[11px] leading-tight text-muted">{row.activityName}</span>
-      </div>
-      <div className="flex items-center gap-2">
-        <div className="h-1.5 w-full max-w-[7rem] rounded-full bg-card-border/60">
-          <div
-            className="h-full rounded-full bg-amber-400"
-            style={{ width: `${rightW}%` }}
-          />
+          <div className="flex h-2 min-w-0 flex-1 justify-start overflow-hidden rounded-r-full bg-card-border/60">
+            <div
+              className="h-full rounded-r-full bg-amber-400"
+              style={{ width: `${rightW}%` }}
+            />
+          </div>
         </div>
         <span
           className={cn(

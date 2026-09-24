@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { headerIndex, parseCsv } from "@/lib/csv";
 import { DEFAULT_CLASS_YEAR, isClassYear } from "@/lib/grades";
 import { genderFromFirstName } from "@/lib/gender";
+import { ensureStudentLoginUser } from "@/lib/services/student-login";
 
 function parseGender(raw: string | undefined, firstName: string, index: number): "M" | "F" {
   const v = (raw ?? "").trim().toLowerCase();
@@ -68,6 +69,11 @@ export async function POST(request: Request) {
     where: { userId: session.userId, schoolId: session.schoolId },
   });
 
+  const school = await prisma.school.findUniqueOrThrow({
+    where: { id: session.schoolId },
+    select: { slug: true },
+  });
+
   const existing = await prisma.studentProfile.findMany({
     where: { schoolId: session.schoolId },
     select: { studentNumber: true },
@@ -107,6 +113,13 @@ export async function POST(request: Request) {
     if (studentNumber) {
       student = await prisma.studentProfile.findFirst({
         where: { schoolId: session.schoolId, studentNumber },
+        select: {
+          id: true,
+          studentNumber: true,
+          firstName: true,
+          lastName: true,
+          userId: true,
+        },
       });
     }
     if (!student) {
@@ -115,6 +128,13 @@ export async function POST(request: Request) {
           schoolId: session.schoolId,
           firstName: { equals: first, mode: "insensitive" },
           lastName: { equals: last, mode: "insensitive" },
+        },
+        select: {
+          id: true,
+          studentNumber: true,
+          firstName: true,
+          lastName: true,
+          userId: true,
         },
       });
     }
@@ -147,9 +167,31 @@ export async function POST(request: Request) {
           },
         },
       });
+      await ensureStudentLoginUser(
+        {
+          id: student.id,
+          firstName: student.firstName,
+          lastName: student.lastName,
+          userId: student.userId,
+        },
+        session.schoolId,
+        school.slug
+      );
       createdStudents += 1;
     } else {
       existingStudents += 1;
+      if (!student.userId) {
+        await ensureStudentLoginUser(
+          {
+            id: student.id,
+            firstName: student.firstName,
+            lastName: student.lastName,
+            userId: student.userId,
+          },
+          session.schoolId,
+          school.slug
+        );
+      }
       await prisma.studentEnrollment.upsert({
         where: {
           studentId_schoolYearId: { studentId: student.id, schoolYearId: schoolYear.id },

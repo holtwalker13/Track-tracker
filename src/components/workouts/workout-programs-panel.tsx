@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { Pencil } from "lucide-react";
 import { WORKOUT_GENERATORS } from "@/lib/services/workout-generator";
 import type { SchoolLiftRow } from "@/lib/queries/lifts";
 
@@ -56,20 +57,42 @@ export function WorkoutProgramsPanel({
     }));
 
   const [lifts, setLifts] = useState(defaultLiftState);
+  const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
 
   useEffect(() => {
-    setLifts(
-      workoutLifts.map((l) => ({
+    if (editingTemplateId) return;
+    setLifts(defaultLiftState());
+  }, [workoutLifts, editingTemplateId]);
+
+  function liftsFromTemplate(template: TemplateRow) {
+    const bySlug = new Map(template.exercises.map((ex) => [ex.activity.slug, ex]));
+    return workoutLifts.map((l) => {
+      const ex = bySlug.get(l.slug);
+      return {
         slug: l.slug,
         name: l.name,
-        enabled: true,
-        sets: 3,
-        reps: 5,
-      }))
-    );
-  }, [workoutLifts]);
+        enabled: Boolean(ex),
+        sets: ex?.defaultSets ?? 3,
+        reps: ex?.defaultReps ?? 5,
+      };
+    });
+  }
 
-  async function createProgram(e: React.FormEvent) {
+  function startEditProgram(template: TemplateRow) {
+    setEditingTemplateId(template.id);
+    setProgramName(template.name);
+    setLifts(liftsFromTemplate(template));
+    setMsg(null);
+    setError(null);
+  }
+
+  function cancelEditProgram() {
+    setEditingTemplateId(null);
+    setProgramName("");
+    setLifts(defaultLiftState());
+  }
+
+  async function saveProgram(e: React.FormEvent) {
     e.preventDefault();
     setPending(true);
     setError(null);
@@ -81,22 +104,47 @@ export function WorkoutProgramsPanel({
         defaultSets: l.sets,
         defaultReps: l.reps,
       }));
-    const res = await fetch("/api/workouts/templates", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: programName, exercises }),
-    });
+    if (exercises.length === 0) {
+      setPending(false);
+      setError("Include at least one lift.");
+      return;
+    }
+
+    const isEdit = Boolean(editingTemplateId);
+    const res = await fetch(
+      isEdit ? `/api/workouts/templates/${editingTemplateId}` : "/api/workouts/templates",
+      {
+        method: isEdit ? "PATCH" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: programName, exercises }),
+      }
+    );
     const data = await res.json();
     setPending(false);
     if (!res.ok) {
-      setError(data.error ?? "Could not create program");
+      setError(data.error ?? (isEdit ? "Could not update program" : "Could not create program"));
       return;
     }
-    setTemplates((t) => [data.template, ...t]);
-    setAssignTemplateId(data.template.id);
-    setProgramName("");
-    setLifts(defaultLiftState());
-    setMsg(`Created “${data.template.name}”. Assign it to a class below.`);
+
+    const saved = data.template as TemplateRow;
+    if (isEdit) {
+      setTemplates((t) => t.map((row) => (row.id === saved.id ? { ...saved, updatedAt: saved.updatedAt } : row)));
+      setAssignTemplateId(saved.id);
+      setEditingTemplateId(null);
+      setProgramName("");
+      setLifts(defaultLiftState());
+      setMsg(
+        data.hadAssignments
+          ? `Updated “${saved.name}”. Past assignments keep their logged sets; new assignments use this version.`
+          : `Updated “${saved.name}”.`
+      );
+    } else {
+      setTemplates((t) => [saved, ...t]);
+      setAssignTemplateId(saved.id);
+      setProgramName("");
+      setLifts(defaultLiftState());
+      setMsg(`Created “${saved.name}”. Assign it to a class below.`);
+    }
     router.refresh();
   }
 
@@ -227,12 +275,27 @@ export function WorkoutProgramsPanel({
         </button>
       </form>
 
-      <form onSubmit={createProgram} className="space-y-4 rounded-2xl border border-card-border bg-card p-4">
-        <h2 className="font-semibold">New workout program</h2>
-        <p className="text-sm text-muted">
-          Define lifts, default sets/reps, then assign to a weight room section by date. Athletes log sets
-          with weight and RPE on their Log workout page.
-        </p>
+      <form onSubmit={saveProgram} className="space-y-4 rounded-2xl border border-card-border bg-card p-4">
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div>
+            <h2 className="font-semibold">
+              {editingTemplateId ? "Edit workout program" : "New workout program"}
+            </h2>
+            <p className="mt-1 text-sm text-muted">
+              Define lifts, default sets/reps, then assign to a weight room section by date. Athletes log
+              sets with weight and RPE on their Log workout page.
+            </p>
+          </div>
+          {editingTemplateId ? (
+            <button
+              type="button"
+              onClick={cancelEditProgram}
+              className="rounded-lg border border-card-border px-3 py-1.5 text-sm text-muted hover:text-foreground"
+            >
+              Cancel edit
+            </button>
+          ) : null}
+        </div>
         <label className="block text-sm">
           Program name
           <input
@@ -308,7 +371,7 @@ export function WorkoutProgramsPanel({
           disabled={pending || !programName.trim()}
           className="rounded-lg bg-accent px-4 py-2 font-medium text-background disabled:opacity-50"
         >
-          {pending ? "Saving…" : "Save program"}
+          {pending ? "Saving…" : editingTemplateId ? "Save changes" : "Save program"}
         </button>
       </form>
 
@@ -375,14 +438,29 @@ export function WorkoutProgramsPanel({
         ) : (
           <ul className="space-y-3">
             {templates.map((t) => (
-              <li key={t.id} className="rounded-xl border border-card-border bg-card/50 px-4 py-3 text-sm">
-                <div className="font-medium">{t.name}</div>
-                <div className="mt-1 text-muted">
-                  {t.exercises.map((ex) => `${ex.activity.name} ${ex.defaultSets}×${ex.defaultReps}`).join(" · ")}
+              <li
+                key={t.id}
+                className="flex flex-wrap items-start justify-between gap-2 rounded-xl border border-card-border bg-card/50 px-4 py-3 text-sm"
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="font-medium">{t.name}</div>
+                  <div className="mt-1 text-muted">
+                    {t.exercises
+                      .map((ex) => `${ex.activity.name} ${ex.defaultSets}×${ex.defaultReps}`)
+                      .join(" · ")}
+                  </div>
+                  <div className="mt-1 text-xs text-muted">
+                    {t._count.assignments} assignment{t._count.assignments === 1 ? "" : "s"}
+                  </div>
                 </div>
-                <div className="mt-1 text-xs text-muted">
-                  {t._count.assignments} assignment{t._count.assignments === 1 ? "" : "s"}
-                </div>
+                <button
+                  type="button"
+                  onClick={() => startEditProgram(t)}
+                  className="rounded-md p-1.5 text-muted hover:bg-sky-400/10 hover:text-sky-300"
+                  aria-label={`Edit ${t.name}`}
+                >
+                  <Pencil className="h-4 w-4" />
+                </button>
               </li>
             ))}
           </ul>

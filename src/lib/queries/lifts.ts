@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/db";
+import { DEFAULT_AGE_BRACKET, isAgeBracketId, type AgeBracketId } from "@/lib/age-brackets";
 import { LIFTING_SESSION_SLUGS } from "@/lib/lifting";
+import { MEDALS } from "@/lib/kpi-targets";
 
 export type SchoolLiftRow = {
   slug: string;
@@ -57,4 +59,63 @@ export function liftsForWorkoutPrograms(lifts: SchoolLiftRow[]) {
 
 export function liftsForTestingSession(lifts: SchoolLiftRow[]) {
   return lifts;
+}
+
+export type SchoolLiftEditDetails = {
+  slug: string;
+  name: string;
+  unit: string;
+  direction: "HIGHER_BETTER" | "LOWER_BETTER";
+  custom: boolean;
+  ageBrackets: AgeBracketId[];
+  genders: Array<"F" | "M">;
+  targets: Record<string, Record<string, Record<string, string>>>;
+};
+
+export async function getSchoolLiftEditDetails(
+  schoolId: string,
+  slug: string
+): Promise<SchoolLiftEditDetails | null> {
+  const activity = await prisma.activity.findFirst({
+    where: {
+      slug,
+      category: { slug: "strength" },
+      OR: [{ schoolId }, { schoolId: null }],
+    },
+  });
+  if (!activity) return null;
+
+  const targetRows = await prisma.schoolKpiTarget.findMany({
+    where: { schoolId, metricSlug: slug },
+  });
+
+  const bracketSet = new Set<AgeBracketId>();
+  const genderSet = new Set<"F" | "M">();
+  const targets: Record<string, Record<string, Record<string, string>>> = {};
+
+  for (const row of targetRows) {
+    if (isAgeBracketId(row.ageBracket)) bracketSet.add(row.ageBracket);
+    if (row.gender === "F" || row.gender === "M") genderSet.add(row.gender);
+    if (!isAgeBracketId(row.ageBracket)) continue;
+    if (row.gender !== "F" && row.gender !== "M") continue;
+    if (!MEDALS.includes(row.medal as (typeof MEDALS)[number])) continue;
+    targets[row.ageBracket] ??= {};
+    targets[row.ageBracket]![row.gender] ??= {};
+    targets[row.ageBracket]![row.gender]![row.medal] = String(row.target);
+  }
+
+  const direction =
+    activity.scoringDirection === "LOWER_BETTER" ? "LOWER_BETTER" : "HIGHER_BETTER";
+
+  return {
+    slug: activity.slug,
+    name: activity.name,
+    unit: activity.unit,
+    direction,
+    custom: activity.schoolId != null,
+    ageBrackets:
+      bracketSet.size > 0 ? [...bracketSet] : [DEFAULT_AGE_BRACKET as AgeBracketId],
+    genders: genderSet.size > 0 ? [...genderSet] : ["F", "M"],
+    targets,
+  };
 }

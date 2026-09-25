@@ -114,7 +114,7 @@ export function SprintPotentialCard({
       )}
 
       {matched && (
-        <div className="mt-5 grid grid-cols-2 gap-3">
+        <div className="mt-4 grid grid-cols-2 gap-2 sm:mt-5 sm:gap-3">
           {matched.rows.map((row) => {
             const meta = KPI_METRIC_META.find((m) => m.slug === row.slug)!;
             const mark =
@@ -126,45 +126,45 @@ export function SprintPotentialCard({
               <div
                 key={row.slug}
                 className={cn(
-                  "relative rounded-2xl border bg-background/60 px-4 py-3",
+                  "relative rounded-xl border bg-background/60 px-2.5 py-2 sm:rounded-2xl sm:px-4 sm:py-3",
                   highlighted
                     ? "border-sky-400 ring-1 ring-sky-400/40"
                     : "border-card-border",
-                  rank != null && "pr-12"
+                  rank != null && "pr-8 sm:pr-10"
                 )}
               >
                 {rank != null && (
-                  <div className="absolute right-2.5 top-2.5 flex flex-col items-end">
+                  <div className="absolute right-1.5 top-1.5 flex flex-col items-end sm:right-2 sm:top-2">
                     <span
                       className={cn(
-                        "text-xl font-black leading-none tabular-nums sm:text-2xl",
+                        "text-xs font-bold leading-none tabular-nums sm:text-sm",
                         highlighted ? "text-sky-300" : "text-sky-300/90"
                       )}
                       aria-label={`School rank ${rank}`}
                     >
                       {rank}
                     </span>
-                    <span className="mt-0.5 text-[8px] font-semibold uppercase tracking-wider text-muted">
+                    <span className="mt-0.5 text-[7px] font-semibold uppercase tracking-wider text-muted sm:text-[8px]">
                       School
                     </span>
                   </div>
                 )}
-                <div className="flex items-baseline gap-2">
-                  <p className="text-2xl font-bold leading-none tabular-nums tracking-tight">
+                <div className="flex min-w-0 items-baseline gap-1.5 pr-0.5">
+                  <p className="truncate text-xl font-bold leading-none tabular-nums tracking-tight sm:text-2xl">
                     {mark}
                   </p>
                   {row.hit === true && (
-                    <span className="text-xs font-semibold text-success">hit</span>
+                    <span className="shrink-0 text-[10px] font-semibold text-success sm:text-xs">hit</span>
                   )}
                   {row.hit === false && (
-                    <span className="text-xs font-semibold text-warning">gap</span>
+                    <span className="shrink-0 text-[10px] font-semibold text-warning sm:text-xs">gap</span>
                   )}
                 </div>
-                <p className="mt-1.5 flex items-center gap-1.5 text-sm leading-none tabular-nums text-muted">
+                <p className="mt-1 flex items-center gap-1 text-xs leading-none tabular-nums text-muted sm:mt-1.5 sm:gap-1.5 sm:text-sm">
                   {target}
-                  <Target className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                  <Target className="h-3 w-3 shrink-0 sm:h-3.5 sm:w-3.5" aria-hidden />
                 </p>
-                <p className="mt-1 text-sm font-bold leading-tight text-muted">{row.name}</p>
+                <p className="mt-1 text-xs font-bold leading-tight text-muted sm:text-sm">{row.name}</p>
               </div>
             );
           })}

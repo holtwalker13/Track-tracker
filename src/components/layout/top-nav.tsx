@@ -36,25 +36,37 @@ const NAV_ICONS: Record<NavIconKey, LucideIcon> = {
   classes: School,
 };
 
-const linkClassName = cn(
-  "flex shrink-0 snap-start flex-col items-center justify-center gap-0.5 rounded-lg px-2.5 py-2",
-  "min-w-[4.25rem] max-w-[5.75rem] text-muted transition hover:bg-card hover:text-foreground",
-  "md:min-w-0 md:max-w-none md:px-3"
-);
-
-const labelClassName =
-  "text-center text-[10px] font-medium uppercase leading-tight tracking-wide md:text-sm md:leading-snug";
-
-export function TopNav({ items }: { items: NavItem[] }) {
+export function TopNav({
+  items,
+  compact = false,
+}: {
+  items: NavItem[];
+  compact?: boolean;
+}) {
   const pathname = usePathname();
+
+  const linkClassName = cn(
+    "flex shrink-0 snap-start flex-col items-center justify-center rounded-lg text-muted transition hover:bg-card hover:text-foreground",
+    compact
+      ? "min-w-[2.75rem] max-w-[3.5rem] gap-0 px-1.5 py-1 md:min-w-0 md:max-w-none md:gap-0.5 md:px-2.5 md:py-1.5"
+      : "min-w-[4.25rem] max-w-[5.75rem] gap-0.5 px-2.5 py-2 md:min-w-0 md:max-w-none md:px-3"
+  );
+
+  const labelClassName = cn(
+    "text-center font-medium uppercase tracking-wide",
+    compact
+      ? "hidden text-[9px] leading-tight md:block md:text-xs"
+      : "text-[10px] leading-tight md:text-sm md:leading-snug"
+  );
 
   return (
     <nav
       aria-label="Main"
       className={cn(
-        "flex snap-x snap-mandatory gap-0.5 overflow-x-auto overscroll-x-contain pt-1 pb-1.5",
-        "-mx-4 px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
-        "md:mx-0 md:flex-wrap md:justify-end md:overflow-visible md:snap-none md:px-0 md:pt-0 md:pb-0"
+        "flex snap-x snap-mandatory gap-0.5 overflow-x-auto overscroll-x-contain",
+        "-mx-3 px-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:-mx-4 sm:px-4",
+        "md:mx-0 md:flex-wrap md:justify-end md:overflow-visible md:snap-none md:px-0",
+        compact ? "pt-0.5 pb-0.5" : "pt-1 pb-1.5 md:pt-0 md:pb-0"
       )}
     >
       {items.map((item) => {
@@ -65,19 +77,20 @@ export function TopNav({ items }: { items: NavItem[] }) {
             key={item.href}
             href={item.href}
             aria-current={active ? "page" : undefined}
+            title={item.label}
             className={cn(
               linkClassName,
               active && "bg-accent/15 text-accent ring-1 ring-accent/40"
             )}
           >
-            <Icon className="h-5 w-5 shrink-0" aria-hidden />
+            <Icon className={cn("shrink-0", compact ? "h-4 w-4 md:h-5 md:w-5" : "h-5 w-5")} aria-hidden />
             <span className={labelClassName}>{item.label}</span>
           </Link>
         );
       })}
       <form action="/api/auth/logout" method="POST" className="contents">
-        <button type="submit" className={linkClassName}>
-          <LogOut className="h-5 w-5 shrink-0" aria-hidden />
+        <button type="submit" className={linkClassName} title="Sign out">
+          <LogOut className={cn("shrink-0", compact ? "h-4 w-4 md:h-5 md:w-5" : "h-5 w-5")} aria-hidden />
           <span className={labelClassName}>Sign out</span>
         </button>
       </form>

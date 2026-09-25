@@ -36,7 +36,7 @@ function MedalScopeControlsInner({
   }
 
   return (
-    <div className="mb-4 space-y-3">
+    <div className="mb-3 space-y-2.5 sm:mb-4 sm:space-y-3">
       {classes.length > 0 ? (
         <label className="block text-sm">
           <span className="text-xs font-semibold uppercase tracking-wider text-muted">

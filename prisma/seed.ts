@@ -557,7 +557,7 @@ async function main() {
     return;
   }
   if (existingUsers > 0) {
-    console.log("FORCE_SEED=1: wiping database and loading Demo, empty JHS, and CHS test data...");
+    console.log("FORCE_SEED=1: wiping database and loading Demo, JHS (Kendall), and CHS test data...");
   }
 
   await wipe();
@@ -693,17 +693,119 @@ async function main() {
     const coaches = await seedCoaches(school.id, tenant.coachEmail.split("@")[1]!, hash);
 
     if (tenant.slug === "jhs") {
+      const periods = [];
       for (const n of [1, 2, 3, 4]) {
-        await prisma.class.create({
+        periods.push(
+          await prisma.class.create({
+            data: {
+              schoolId: school.id,
+              coachId: coaches[(n - 1) % coaches.length]!.id,
+              name: `Period ${n} Weights`,
+              period: `Period ${n}`,
+            },
+          })
+        );
+      }
+
+      const kendallUser = await prisma.user.create({
+        data: {
+          email: "student1@jhs.demo",
+          passwordHash: hash,
+          role: "STUDENT",
+          firstName: "Kendall",
+          lastName: "Leland",
+        },
+      });
+      const kendall = await prisma.studentProfile.create({
+        data: {
+          userId: kendallUser.id,
+          schoolId: school.id,
+          studentNumber: "F0001",
+          firstName: "Kendall",
+          lastName: "Leland",
+          dateOfBirth: new Date(2008, 8, 12),
+          gender: "F",
+          sports: "track",
+          participationType: "ATHLETE",
+          anonymousId: "3001",
+          nameHidden: false,
+        },
+      });
+      await prisma.studentEnrollment.create({
+        data: {
+          studentId: kendall.id,
+          schoolYearId: schoolYear.id,
+          gradeLevel: 2027,
+        },
+      });
+      await prisma.classEnrollment.create({
+        data: { classId: periods[0]!.id, studentId: kendall.id },
+      });
+
+      // Seed Kendall's CSV marks so 1RM / medal UI have something to show.
+      const csvPath = path.join(__dirname, "data", "jhs-female-athletes.csv");
+      const csvRows = parseCsv(fs.readFileSync(csvPath, "utf8"));
+      const headerIdx = csvRows.findIndex((r) => r[0]?.trim().toLowerCase() === "name");
+      const header = csvRows[headerIdx]!.map((h) => h.trim());
+      const kendallRow = csvRows
+        .slice(headerIdx + 1)
+        .find((r) => (r[0] ?? "").trim().toLowerCase() === "kendall leland");
+      if (kendallRow) {
+        const col = (name: string) =>
+          header.findIndex((h) => h.toLowerCase() === name.toLowerCase());
+        const activities = await prisma.activity.findMany();
+        const actBySlug = new Map(activities.map((a) => [a.slug, a]));
+        const testingDate = new Date("2026-04-15");
+        const session = await prisma.testingSession.create({
           data: {
             schoolId: school.id,
-            coachId: coaches[(n - 1) % coaches.length]!.id,
-            name: `Period ${n} Weights`,
-            period: `Period ${n}`,
+            schoolYearId: schoolYear.id,
+            classId: periods[0]!.id,
+            name: "JHS Kendall baseline",
+            testingDate,
+            status: "COMPLETED",
           },
         });
+        const markPairs: [string, number | null][] = [
+          ["standing-broad-jump", parseNum(kendallRow[col("Broad (inches)")])],
+          ["vertical-jump", parseNum(kendallRow[col("Vertical")])],
+          ["squat", parseNum(kendallRow[col("Squat 1rm")])],
+          ["hang-clean", parseNum(kendallRow[col("Clean 1rm")])],
+          ["flying-10-meter", parseNum(kendallRow[header.findIndex((h) => h.toLowerCase().startsWith("flying 10m"))])],
+          ["100-meter-dash", parseNum(kendallRow[header.findIndex((h) => h.toLowerCase().startsWith("projected 100"))])],
+          ["flying-20-meter", parseNum(kendallRow[header.findIndex((h) => h.toLowerCase().startsWith("flying 20m"))])],
+          ["40-yard-dash", parseNum(kendallRow[col("Comments")])],
+          ["weight", parseNum(kendallRow[col("Body Weight")])],
+        ];
+        for (const [slug, value] of markPairs) {
+          if (value == null) continue;
+          const act = actBySlug.get(slug);
+          if (!act) continue;
+          await prisma.performanceResult.create({
+            data: {
+              schoolId: school.id,
+              schoolYearId: schoolYear.id,
+              organizationId: org.id,
+              studentId: kendall.id,
+              activityId: act.id,
+              testingSessionId: session.id,
+              testingDate,
+              gradeLevel: 2027,
+              attemptNumber: 1,
+              isBestAttempt: true,
+              isPersonalRecord: true,
+              status: "COMPLETED",
+              resultValue: value,
+              displayValue: formatActivityValue(value, act.unit, slug),
+              entryMethod: "IMPORT",
+            },
+          });
+        }
       }
-      console.log(`JHS ready (empty roster, 4 weightlifting periods): ${tenant.coachEmail} / ${DEMO_PASSWORD}`);
+
+      console.log(
+        `JHS ready (Kendall Leland + 4 weightlifting periods): ${tenant.coachEmail} / ${DEMO_PASSWORD}; student ${kendallUser.email} / ${DEMO_PASSWORD}`
+      );
       continue;
     }
 

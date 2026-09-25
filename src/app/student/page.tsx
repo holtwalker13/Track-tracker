@@ -13,27 +13,53 @@ import { prisma } from "@/lib/db";
 import { getStudentLeaderboard } from "@/lib/queries/leaderboard-student";
 import { genderFullLabel } from "@/lib/gender";
 import { classYearLabel } from "@/lib/grades";
-import { getStudentSprintPotential } from "@/lib/queries/kpi";
+import {
+  getStudentClassTags,
+  getStudentPeerLeaders,
+  getStudentSprintPotential,
+} from "@/lib/queries/kpi";
 import { SprintPotentialCard } from "@/components/performance/sprint-potential";
+import { MedalScopeControls } from "@/components/performance/medal-scope-controls";
+import { PeerLeadersCard } from "@/components/performance/peer-leaders-card";
 import { ProfileBanner } from "@/components/layout/profile-banner";
 import { getStudentActivityRanks } from "@/lib/queries/coach";
 import { KPI_METRIC_META } from "@/lib/kpi-targets";
 import { leaderboardHighlightFromSearch } from "@/lib/leaderboard-link";
+import { ageBracketForClassYear, isAgeBracketId } from "@/lib/age-brackets";
 
 export default async function StudentDashboardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ lb?: string; rank?: string; scope?: string }>;
+  searchParams: Promise<{
+    lb?: string;
+    rank?: string;
+    scope?: string;
+    classId?: string;
+    bracket?: string;
+    window?: string;
+  }>;
 }) {
   const session = await requireSession(["STUDENT"]);
   if (!session?.studentId) redirect("/login");
   const studentId = session.studentId;
   const sp = await searchParams;
   const highlight = leaderboardHighlightFromSearch(sp);
+  const window = sp.window === "week" ? "week" : "all";
+  const classId = sp.classId?.trim() || null;
 
   const { student, currentGrade } = await getStudentContext(studentId);
+  const schoolYear = await prisma.schoolYear.findFirst({
+    where: { schoolId: student.schoolId, isCurrent: true },
+    select: { endDate: true },
+  });
+  const schoolYearEnd = schoolYear?.endDate?.getFullYear() ?? new Date().getFullYear();
+  const defaultBracket = ageBracketForClassYear(currentGrade, schoolYearEnd);
+  const bracket =
+    sp.bracket && isAgeBracketId(sp.bracket) ? sp.bracket : defaultBracket;
+
   const scorecard = await getStudentScorecard(studentId, currentGrade);
   const radar = await getCategoryRadar(studentId, currentGrade);
+  const classTags = await getStudentClassTags(studentId);
 
   const prs = await prisma.performanceResult.findMany({
     where: {
@@ -65,7 +91,15 @@ export default async function StudentDashboardPage({
     })
   );
 
-  const sprint = await getStudentSprintPotential(studentId);
+  const sprint = await getStudentSprintPotential(studentId, {
+    ageBracket: bracket,
+    window,
+  });
+  const peerLeaders = await getStudentPeerLeaders(studentId, {
+    ageBracket: bracket,
+    window,
+    classId,
+  });
   const kpiRanks = await getStudentActivityRanks(
     schoolId,
     studentId,
@@ -73,6 +107,7 @@ export default async function StudentDashboardPage({
     {
       gender: student.gender ?? undefined,
       scope: "school",
+      classId: classId ?? undefined,
     }
   );
 
@@ -85,10 +120,15 @@ export default async function StudentDashboardPage({
       />
 
       <div>
+        <MedalScopeControls classes={classTags} defaultBracket={defaultBracket} />
         <SprintPotentialCard
           potential={sprint}
           ranks={kpiRanks}
           highlightSlug={highlight?.slug}
+        />
+        <PeerLeadersCard
+          leaders={peerLeaders}
+          windowLabel={window === "week" ? "This week" : "All-time"}
         />
       </div>
 

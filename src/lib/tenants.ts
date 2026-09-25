@@ -26,10 +26,10 @@ export const TENANTS: TenantConfig[] = [
     slug: "jhs",
     name: "Jackson High School",
     shortName: "JHS",
-    description: "Live school, empty roster. Upload a spreadsheet to load weightlifting classes.",
+    description: "Live school with weightlifting periods. Demo student: Kendall Leland.",
     coachEmail: "coach1@jhs.demo",
-    studentEmail: null,
-    emptyRoster: true,
+    studentEmail: "student1@jhs.demo",
+    emptyRoster: false,
   },
   {
     slug: "chs",

@@ -168,6 +168,7 @@ export async function getLeaderboard(
     gradeLevels?: number[];
     gender?: string;
     scope?: "school" | "global";
+    classId?: string;
     viewer?: {
       role: "ADMIN" | "COACH" | "STUDENT";
       studentId?: string;
@@ -190,6 +191,16 @@ export async function getLeaderboard(
       ? { in: opts.gradeLevels }
       : undefined;
 
+  let classStudentIds: string[] | undefined;
+  if (opts.classId) {
+    const enrolled = await prisma.classEnrollment.findMany({
+      where: { classId: opts.classId },
+      select: { studentId: true },
+    });
+    classStudentIds = enrolled.map((e) => e.studentId);
+    if (classStudentIds.length === 0) return { activity, entries: [] };
+  }
+
   const results = await prisma.performanceResult.findMany({
     where: {
       activityId: activity.id,
@@ -201,6 +212,7 @@ export async function getLeaderboard(
         : {}),
       ...(gradeFilter ? { gradeLevel: gradeFilter } : {}),
       ...(opts.gender ? { student: { gender: opts.gender } } : {}),
+      ...(classStudentIds ? { studentId: { in: classStudentIds } } : {}),
     },
     include: {
       student: {
@@ -245,6 +257,7 @@ export async function getStudentActivityRanks(
     gradeLevels?: number[];
     gender?: string;
     scope?: "school" | "global";
+    classId?: string;
   } = {}
 ) {
   const ranks: Record<string, number> = {};

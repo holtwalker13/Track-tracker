@@ -5,7 +5,8 @@ import { WorkoutLogClient } from "@/components/workouts/workout-log-client";
 import { COACH_NAV } from "@/lib/navigation";
 import { requireSchoolSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
-import { suggestWeightsForExercises } from "@/lib/queries/workout-logs";
+import { suggestWeightsForPrescribedSets } from "@/lib/queries/workout-1rm";
+import { normalizeSetPrescriptions } from "@/lib/workout-prescriptions";
 
 export default async function CoachWorkoutSessionPage({
   params,
@@ -40,8 +41,25 @@ export default async function CoachWorkoutSessionPage({
     notFound();
   }
 
-  const exercises = workoutSession.assignment.template.exercises;
-  const suggestedWeightLb = await suggestWeightsForExercises(workoutSession.studentId, exercises);
+  const exercises = workoutSession.assignment.template.exercises.map((ex) => {
+    const sets = normalizeSetPrescriptions(ex.setPrescriptions, ex.defaultSets, ex.defaultReps);
+    return {
+      id: ex.id,
+      defaultSets: sets.length,
+      defaultReps: sets[0]?.reps ?? ex.defaultReps,
+      notes: ex.notes,
+      setPrescriptions: sets,
+      activity: {
+        slug: ex.activity.slug,
+        name: ex.activity.name,
+        unit: ex.activity.unit,
+      },
+    };
+  });
+  const suggestedWeightBySet = await suggestWeightsForPrescribedSets(
+    workoutSession.studentId,
+    exercises
+  );
 
   const dateStr = workoutSession.assignment.scheduledDate.toISOString().slice(0, 10);
 
@@ -53,17 +71,7 @@ export default async function CoachWorkoutSessionPage({
       template: {
         id: workoutSession.assignment.template.id,
         name: workoutSession.assignment.template.name,
-        exercises: exercises.map((ex) => ({
-          id: ex.id,
-          defaultSets: ex.defaultSets,
-          defaultReps: ex.defaultReps,
-          notes: ex.notes,
-          activity: {
-            slug: ex.activity.slug,
-            name: ex.activity.name,
-            unit: ex.activity.unit,
-          },
-        })),
+        exercises,
       },
     },
     session: {
@@ -79,7 +87,7 @@ export default async function CoachWorkoutSessionPage({
         skipped: l.skipped,
       })),
     },
-    suggestedWeightLb,
+    suggestedWeightBySet,
   };
 
   const studentName = `${workoutSession.student.firstName} ${workoutSession.student.lastName}`;

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { LIFTING_WORKOUT_SLUGS } from "@/lib/lifting";
+import { parseExerciseInput, type ExerciseInput } from "@/lib/services/workout-template-exercises";
 
 export async function GET() {
   const session = await requireSession(["COACH", "ADMIN"]);
@@ -23,13 +24,6 @@ export async function GET() {
 
   return NextResponse.json({ templates });
 }
-
-type ExerciseInput = {
-  activitySlug: string;
-  defaultSets?: number;
-  defaultReps?: number;
-  notes?: string;
-};
 
 export async function POST(request: Request) {
   const session = await requireSession(["COACH", "ADMIN"]);
@@ -67,13 +61,17 @@ export async function POST(request: Request) {
       name,
       createdById: session.userId,
       exercises: {
-        create: exercises.map((e, i) => ({
-          activityId: bySlug.get(String(e.activitySlug).trim())!,
-          defaultSets: Math.min(20, Math.max(1, Number(e.defaultSets) || 3)),
-          defaultReps: Math.min(50, Math.max(1, Number(e.defaultReps) || 5)),
-          notes: e.notes ? String(e.notes).trim() : null,
-          sortOrder: i,
-        })),
+        create: exercises.map((e, i) => {
+          const parsed = parseExerciseInput(e);
+          return {
+            activityId: bySlug.get(String(e.activitySlug).trim())!,
+            defaultSets: parsed.defaultSets,
+            defaultReps: parsed.defaultReps,
+            setPrescriptions: parsed.setPrescriptions,
+            notes: parsed.notes,
+            sortOrder: i,
+          };
+        }),
       },
     },
     include: {

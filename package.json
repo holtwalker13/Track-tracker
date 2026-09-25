@@ -9,6 +9,7 @@
     "lint": "eslint",
     "db:push": "prisma db push",
     "db:seed": "prisma db seed",
+    "db:ensure-kendall": "tsx scripts/ensure-jhs-kendall.ts",
     "db:sync-password": "tsx scripts/sync-demo-password.ts",
     "db:migrate-tenants": "tsx scripts/migrate-tenants.ts",
     "postinstall": "prisma generate"

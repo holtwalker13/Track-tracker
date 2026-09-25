@@ -37,8 +37,9 @@ export default async function CoachProgramsPage() {
   return (
     <AppShell nav={COACH_NAV} title="Workout programs">
       <p className="mb-6 max-w-2xl text-sm text-muted">
-        Build reusable lifting templates and assign them to a class by date. Athletes log each set with
-        weight, reps, and RPE from their Log workout screen.
+        Build reusable lifting templates and assign them to a class by date. When you assign, set
+        per-set % of 1RM (e.g. an 85% day) — athletes see expected weights from their logged 1RM and
+        enter what they actually lift.
       </p>
       <div className="mb-8">
         <SchoolLiftsPanel lifts={schoolLifts} />

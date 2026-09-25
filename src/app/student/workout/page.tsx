@@ -3,7 +3,8 @@ import { AppShell } from "@/components/layout/app-shell";
 import { WorkoutLogClient } from "@/components/workouts/workout-log-client";
 import { STUDENT_NAV } from "@/lib/navigation";
 import { requireSession } from "@/lib/auth/session";
-import { suggestWeightsForExercises } from "@/lib/queries/workout-logs";
+import { suggestWeightsForPrescribedSets } from "@/lib/queries/workout-1rm";
+import { normalizeSetPrescriptions } from "@/lib/workout-prescriptions";
 import {
   findStudentAssignmentForDate,
   getOrCreateWorkoutSession,
@@ -30,6 +31,7 @@ export default async function StudentWorkoutPage() {
           defaultSets: number;
           defaultReps: number;
           notes: string | null;
+          setPrescriptions?: unknown;
           activity: { slug: string; name: string; unit: string };
         }[];
       };
@@ -47,14 +49,29 @@ export default async function StudentWorkoutPage() {
         skipped: boolean;
       }[];
     } | null;
-    suggestedWeightLb?: Record<string, number | null>;
+    suggestedWeightBySet?: Record<string, number | null>;
   } = { date: dateStr, assignment: null, session: null };
 
   if (assignment) {
     const workoutSession = await getOrCreateWorkoutSession(assignment.id, session.studentId);
-    const suggestedWeightLb = await suggestWeightsForExercises(
+    const exercises = assignment.template.exercises.map((ex) => {
+      const sets = normalizeSetPrescriptions(ex.setPrescriptions, ex.defaultSets, ex.defaultReps);
+      return {
+        id: ex.id,
+        defaultSets: sets.length,
+        defaultReps: sets[0]?.reps ?? ex.defaultReps,
+        notes: ex.notes,
+        setPrescriptions: sets,
+        activity: {
+          slug: ex.activity.slug,
+          name: ex.activity.name,
+          unit: ex.activity.unit,
+        },
+      };
+    });
+    const suggestedWeightBySet = await suggestWeightsForPrescribedSets(
       session.studentId,
-      assignment.template.exercises
+      exercises
     );
     payload = {
       date: dateStr,
@@ -64,17 +81,7 @@ export default async function StudentWorkoutPage() {
         template: {
           id: assignment.template.id,
           name: assignment.template.name,
-          exercises: assignment.template.exercises.map((ex) => ({
-            id: ex.id,
-            defaultSets: ex.defaultSets,
-            defaultReps: ex.defaultReps,
-            notes: ex.notes,
-            activity: {
-              slug: ex.activity.slug,
-              name: ex.activity.name,
-              unit: ex.activity.unit,
-            },
-          })),
+          exercises,
         },
       },
       session: {
@@ -90,7 +97,7 @@ export default async function StudentWorkoutPage() {
           skipped: l.skipped,
         })),
       },
-      suggestedWeightLb,
+      suggestedWeightBySet,
     };
   }
 

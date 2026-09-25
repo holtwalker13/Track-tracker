@@ -57,7 +57,8 @@ export async function getLeaderboardGrid(
     role: "ADMIN" | "COACH" | "STUDENT";
     studentId?: string;
     schoolId: string;
-  }
+  },
+  classId?: string
 ) {
   const activities = await getLeaderboardActivities(schoolId);
   const grades = gradeLevels && gradeLevels.length > 0 ? gradeLevels : undefined;
@@ -70,6 +71,7 @@ export async function getLeaderboardGrid(
       gender,
       scope,
       viewer,
+      classId,
     });
 
     boards.push({

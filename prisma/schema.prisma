@@ -286,6 +286,9 @@ model WorkoutTemplateExercise {
   activity     Activity        @relation(fields: [activityId], references: [id])
   defaultSets  Int             @default(3)
   defaultReps  Int             @default(5)
+  // Per-set prescription: [{ reps, percentOf1Rm }]. Length drives set count when present.
+  // percentOf1Rm null = no auto weight; student fills in what they lift.
+  setPrescriptions Json?
   notes        String?
   sortOrder    Int             @default(0)
 

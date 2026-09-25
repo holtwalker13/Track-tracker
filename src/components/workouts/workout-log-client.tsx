@@ -7,6 +7,7 @@ type Exercise = {
   defaultSets: number;
   defaultReps: number;
   notes: string | null;
+  setPrescriptions?: unknown;
   activity: { slug: string; name: string; unit: string };
 };
 
@@ -32,6 +33,9 @@ type Payload = {
     completedAt: string | null;
     setLogs: SetLog[];
   } | null;
+  /** Per-set suggested weight keyed by `exerciseId:setNumber`. */
+  suggestedWeightBySet?: Record<string, number | null>;
+  /** @deprecated exercise-level suggestion (set 1 only) */
   suggestedWeightLb?: Record<string, number | null>;
 };
 
@@ -49,18 +53,27 @@ function cellKey(exerciseId: string, setNumber: number) {
 function buildInitialCells(
   exercises: Exercise[],
   logs: SetLog[],
+  suggestedWeightBySet?: Record<string, number | null>,
   suggestedWeightLb?: Record<string, number | null>
 ): Map<string, CellState> {
   const map = new Map<string, CellState>();
   for (const ex of exercises) {
-    const suggestion = suggestedWeightLb?.[ex.id];
+    const prescriptions = Array.isArray(ex.setPrescriptions)
+      ? (ex.setPrescriptions as { reps?: number }[])
+      : null;
     for (let n = 1; n <= ex.defaultSets; n++) {
       const log = logs.find((l) => l.templateExerciseId === ex.id && l.setNumber === n);
       let weight = log?.weightLb != null ? String(log.weightLb) : "";
-      if (!weight && n === 1 && suggestion != null) weight = String(suggestion);
+      if (!weight) {
+        const bySet = suggestedWeightBySet?.[cellKey(ex.id, n)];
+        const legacy = n === 1 ? suggestedWeightLb?.[ex.id] : null;
+        const suggestion = bySet ?? legacy;
+        if (suggestion != null) weight = String(suggestion);
+      }
+      const defaultReps = prescriptions?.[n - 1]?.reps ?? ex.defaultReps;
       map.set(cellKey(ex.id, n), {
         weightLb: weight,
-        reps: log?.reps != null ? String(log.reps) : String(ex.defaultReps),
+        reps: log?.reps != null ? String(log.reps) : String(defaultReps),
         rpe: log?.rpe != null ? String(log.rpe) : "",
         skipped: log?.skipped ?? false,
       });
@@ -82,6 +95,7 @@ export function WorkoutLogClient({
       ? buildInitialCells(
           initial.assignment.template.exercises,
           initial.session.setLogs,
+          initial.suggestedWeightBySet,
           initial.suggestedWeightLb
         )
       : new Map()
@@ -223,9 +237,6 @@ export function WorkoutLogClient({
           <h2 className="font-semibold">{ex.activity.name}</h2>
           <p className="text-sm text-muted">
             Target {ex.defaultSets}×{ex.defaultReps}
-            {data.suggestedWeightLb?.[ex.id] != null
-              ? ` · Suggested ${data.suggestedWeightLb[ex.id]} lb (from last logs @ RPE 8)`
-              : ""}
             {ex.notes ? ` · ${ex.notes}` : ""}
           </p>
           <div className="mt-3 space-y-2">
@@ -236,6 +247,9 @@ export function WorkoutLogClient({
                 rpe: "",
                 skipped: false,
               };
+              const suggested =
+                data.suggestedWeightBySet?.[cellKey(ex.id, setNum)] ??
+                (setNum === 1 ? data.suggestedWeightLb?.[ex.id] : null);
               return (
                 <div
                   key={setNum}
@@ -254,6 +268,9 @@ export function WorkoutLogClient({
                       className="mt-0.5 block w-24 rounded border border-card-border bg-background px-2 py-1.5 text-sm"
                     />
                   </label>
+                  {suggested != null && !readOnly ? (
+                    <span className="pb-2 text-[11px] text-muted">Expected {suggested} lb</span>
+                  ) : null}
                   <label className="text-xs">
                     Reps
                     <input

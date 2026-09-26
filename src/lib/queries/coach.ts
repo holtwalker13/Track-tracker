@@ -151,6 +151,22 @@ export async function listStudents(
     take: 500,
   });
 
+  const prCounts =
+    currentYear && students.length > 0
+      ? await prisma.performanceResult.groupBy({
+          by: ["studentId"],
+          where: {
+            schoolId,
+            schoolYearId: currentYear.id,
+            isPersonalRecord: true,
+            status: "COMPLETED",
+            studentId: { in: students.map((s) => s.id) },
+          },
+          _count: { _all: true },
+        })
+      : [];
+  const prByStudent = new Map(prCounts.map((row) => [row.studentId, row._count._all]));
+
   return students.map((s) => ({
     id: s.id,
     name: `${s.firstName} ${s.lastName}`,
@@ -161,7 +177,7 @@ export async function listStudents(
     gender: s.gender,
     testsCompleted: s.performanceResults.length,
     latestTest: s.performanceResults[0]?.testingDate,
-    prs: 0,
+    prs: prByStudent.get(s.id) ?? 0,
   }));
 }
 

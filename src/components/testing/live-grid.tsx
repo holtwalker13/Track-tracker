@@ -86,10 +86,11 @@ export function LiveTestingGrid({
       const data = await res.json().catch(() => ({}));
       if (generation !== generationRef.current) return;
       if (saveActivityId !== activityIdRef.current) return;
+      const saved = res.ok && Boolean(data.saved);
       setRows((prev) =>
         prev.map((r) =>
           r.studentId === studentId
-            ? { ...r, saved: Boolean(data.saved), pr: Boolean(data.pr) }
+            ? { ...r, saved, pr: saved && Boolean(data.pr) }
             : r
         )
       );

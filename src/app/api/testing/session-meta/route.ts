@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import { getSession } from "@/lib/auth/session";
+import { requireSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 
 export async function GET(request: Request) {
-  const session = await getSession();
-  if (!session || (session.role !== "COACH" && session.role !== "ADMIN")) {
+  const session = await requireSession(["COACH", "ADMIN"]);
+  if (!session?.schoolId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const sessionId = new URL(request.url).searchParams.get("sessionId");

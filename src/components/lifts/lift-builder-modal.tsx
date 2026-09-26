@@ -6,6 +6,7 @@ import { MEDAL_LABELS, MEDALS } from "@/lib/kpi-targets";
 import { AGE_BRACKETS, type AgeBracketId } from "@/lib/age-brackets";
 import { cn } from "@/lib/utils";
 import type { SchoolLiftEditDetails, SchoolLiftRow } from "@/lib/queries/lifts";
+import { LIFT_BODY_GROUPS, type LiftBodyGroup } from "@/lib/lift-groups";
 
 const LIFT_UNITS = [
   { id: "lb", label: "Pounds (lb)" },
@@ -38,6 +39,7 @@ export function LiftBuilderModal({
     initialLift?.ageBrackets ?? ["high-9-12"]
   );
   const [genders, setGenders] = useState<Array<"F" | "M">>(initialLift?.genders ?? ["F", "M"]);
+  const [bodyGroup, setBodyGroup] = useState<LiftBodyGroup>(initialLift?.bodyGroup ?? "other");
   const [targets, setTargets] = useState<
     Record<string, Record<string, Record<string, string>>>
   >(initialLift?.targets ?? {});
@@ -53,6 +55,7 @@ export function LiftBuilderModal({
     setBrackets(initialLift.ageBrackets);
     setGenders(initialLift.genders);
     setTargets(initialLift.targets);
+    setBodyGroup(initialLift.bodyGroup);
     setError("");
   }, [initialLift]);
 
@@ -113,6 +116,7 @@ export function LiftBuilderModal({
       ageBrackets: brackets,
       genders,
       targets: numericTargets,
+      bodyGroup,
     };
 
     const res = await fetch("/api/lifts", {
@@ -138,6 +142,7 @@ export function LiftBuilderModal({
       custom: isEdit ? initialLift!.custom : true,
       forWorkouts:
         data.activity?.forWorkouts ?? (unit === "lb" || unit === "reps"),
+      bodyGroup,
     };
 
     if (isEdit) onUpdated?.(row);
@@ -230,6 +235,30 @@ export function LiftBuilderModal({
               ))}
             </select>
           </label>
+
+          <fieldset>
+            <legend className="text-sm">Library group</legend>
+            <p className="mt-0.5 text-xs text-muted">Where this lift appears in your grouped list.</p>
+            <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {LIFT_BODY_GROUPS.map((g) => (
+                <button
+                  key={g.id}
+                  type="button"
+                  disabled={isEdit && !initialLift?.custom}
+                  onClick={() => setBodyGroup(g.id)}
+                  className={cn(
+                    "rounded-lg border px-2 py-2 text-xs font-semibold",
+                    bodyGroup === g.id
+                      ? "border-sky-400/50 bg-sky-400/15 text-sky-200"
+                      : "border-card-border text-muted",
+                    isEdit && !initialLift?.custom && "cursor-not-allowed opacity-60"
+                  )}
+                >
+                  {g.label}
+                </button>
+              ))}
+            </div>
+          </fieldset>
 
           <fieldset>
             <legend className="text-sm">Scoring</legend>

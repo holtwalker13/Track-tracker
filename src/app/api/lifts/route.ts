@@ -13,6 +13,10 @@ import {
 } from "@/lib/services/school-activity-create";
 import { getSchoolLiftEditDetails, listSchoolLifts } from "@/lib/queries/lifts";
 import { syncSchoolLiftTargets } from "@/lib/services/school-lift-update";
+import {
+  descriptionForLiftGroup,
+  type LiftBodyGroup,
+} from "@/lib/lift-groups";
 
 const LIFT_UNITS = KPI_UNITS.filter((u) => ["lb", "reps", "x BW"].includes(u.id));
 
@@ -44,6 +48,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid unit for a lift" }, { status: 400 });
     }
 
+    const rawGroup = String(body.bodyGroup ?? "other");
+    const liftGroup: LiftBodyGroup =
+      rawGroup === "legs" || rawGroup === "back" || rawGroup === "arms" ? rawGroup : "other";
+
     try {
       const activity = await createSchoolActivity({
         schoolId: session.schoolId,
@@ -53,6 +61,7 @@ export async function POST(request: Request) {
         direction,
         ageBrackets,
         genders,
+        liftGroup,
         targets: body.targets as
           | Record<string, Record<string, Record<string, number>>>
           | undefined,
@@ -196,6 +205,15 @@ export async function PATCH(request: Request) {
       scoringDirection: direction,
       bodyweightInfluenced: unit === "x BW",
       acceptsDecimals: unit !== "reps",
+      ...(body.bodyGroup != null && activity.schoolId != null
+        ? {
+            description: descriptionForLiftGroup(
+              (["legs", "back", "arms", "other"] as const).includes(body.bodyGroup)
+                ? body.bodyGroup
+                : "other"
+            ),
+          }
+        : {}),
     },
   });
 

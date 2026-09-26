@@ -2,6 +2,10 @@ import { prisma } from "@/lib/db";
 import { KPI_CATEGORIES } from "@/lib/age-brackets";
 import { MEDALS } from "@/lib/kpi-targets";
 import { DEFAULT_AGE_BRACKET, isAgeBracketId } from "@/lib/age-brackets";
+import {
+  descriptionForLiftGroup,
+  type LiftBodyGroup,
+} from "@/lib/lift-groups";
 
 export function slugifyActivityName(name: string) {
   return name
@@ -21,6 +25,7 @@ export async function createSchoolActivity(input: {
   ageBrackets?: string[];
   genders?: Array<"F" | "M">;
   targets?: Record<string, Record<string, Record<string, number>>>;
+  liftGroup?: LiftBodyGroup;
 }) {
   const title = input.title.trim();
   if (!title) throw new Error("Title is required");
@@ -61,6 +66,7 @@ export async function createSchoolActivity(input: {
       bodyweightInfluenced: input.bodyweightInfluenced ?? input.unit === "x BW",
       genderInfluenced: true,
       ageInfluenced: true,
+      description: input.liftGroup ? descriptionForLiftGroup(input.liftGroup) : null,
     },
     include: { category: true },
   });

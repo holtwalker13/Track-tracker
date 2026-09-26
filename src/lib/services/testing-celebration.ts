@@ -32,12 +32,15 @@ export async function getPeriodBoardHits(input: {
 
 export function shouldCelebrate(pr: boolean, hits: PeriodBoardHit[]): boolean {
   if (pr) return true;
-  return hits.some((h) => h.rank <= 3);
+  // Ignore solo boards (only athlete logged) — that was firing confetti on every first mark.
+  return hits.some((h) => h.rank <= 3 && h.total >= 2);
 }
 
 export function celebrationLabel(pr: boolean, hits: PeriodBoardHit[]): string | null {
   if (pr) return "New Record!";
-  const best = hits.filter((h) => h.rank <= 3).sort((a, b) => a.rank - b.rank)[0];
+  const best = hits
+    .filter((h) => h.rank <= 3 && h.total >= 2)
+    .sort((a, b) => a.rank - b.rank)[0];
   if (!best) return null;
   const window =
     best.period === "day"

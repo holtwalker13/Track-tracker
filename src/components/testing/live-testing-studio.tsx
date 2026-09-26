@@ -12,7 +12,9 @@ import {
 import { ActivityIcon } from "@/lib/activity-icons";
 import { fireConfetti } from "@/lib/confetti";
 import { formatActivityValue } from "@/lib/format";
+import { pickBestAttempt } from "@/lib/services/performance";
 import { formatStudentName, cn } from "@/lib/utils";
+import type { ScoringDirection } from "@/lib/constants";
 
 export type StudioActivity = {
   id: string;
@@ -72,6 +74,8 @@ export function LiveTestingStudio({
   const generationRef = useRef(0);
   const skipBlurRef = useRef(false);
   const inputRefs = useRef<Map<number, HTMLInputElement>>(new Map());
+  /** Prevents confetti spam when re-saving the same (or worse) best. */
+  const lastCelebratedKeyRef = useRef<string | null>(null);
 
   const studentId =
     initialStudentId && rows.some((r) => r.studentId === initialStudentId)
@@ -90,6 +94,7 @@ export function LiveTestingStudio({
     activityIdRef.current = activityId;
     setRows(initialRows);
     setBanner(null);
+    lastCelebratedKeyRef.current = null;
   }, [activityId, initialRows]);
 
   const saveRow = useCallback(
@@ -133,10 +138,14 @@ export function LiveTestingStudio({
         )
       );
 
-      if (data.celebrate && data.celebrateLabel) {
-        setBanner(data.celebrateLabel);
-        fireConfetti();
-        window.setTimeout(() => setBanner(null), 3200);
+      if (data.celebrate && data.celebrateLabel && data.best != null) {
+        const key = `${target.studentId}:${aid}:${data.best}`;
+        if (lastCelebratedKeyRef.current !== key) {
+          lastCelebratedKeyRef.current = key;
+          setBanner(data.celebrateLabel);
+          fireConfetti();
+          window.setTimeout(() => setBanner(null), 3200);
+        }
       }
       return data;
     },
@@ -281,16 +290,16 @@ export function LiveTestingStudio({
               aria-selected={active}
               href={`${sessionPath}?activity=${a.slug}${studentId ? `&student=${studentId}` : ""}`}
               className={cn(
-                "inline-flex shrink-0 snap-start items-center gap-2 rounded-xl border px-3 py-2 text-sm font-medium",
+                "inline-flex shrink-0 snap-start items-center gap-2 rounded-xl border px-3 py-2 text-sm font-semibold",
                 active
-                  ? "border-sky-400 bg-sky-500 text-white"
-                  : "border-card-border bg-card text-muted hover:text-foreground"
+                  ? "border-sky-800 bg-sky-800 text-white shadow-sm"
+                  : "border-card-border bg-card font-medium text-muted hover:text-foreground"
               )}
             >
               <span
                 className={cn(
                   "flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold",
-                  active ? "bg-white/20" : "bg-background"
+                  active ? "bg-white/25 text-white" : "bg-background"
                 )}
               >
                 {i + 1}
@@ -298,7 +307,8 @@ export function LiveTestingStudio({
               <ActivityIcon
                 slug={a.slug}
                 categorySlug={a.categorySlug}
-                className="h-3.5 w-3.5"
+                tone={active ? "inherit" : "default"}
+                className={cn("h-3.5 w-3.5", active && "text-white")}
               />
               <span className="max-w-[8rem] truncate sm:max-w-none">{a.name}</span>
             </Link>
@@ -378,19 +388,30 @@ export function LiveTestingStudio({
 
         <div className="space-y-3 px-3 py-4 sm:px-4">
           <div className="grid grid-cols-3 gap-2">
-            {[0, 1, 2].map((i) => {
-              const val = row.attempts[i] ?? "";
-              const num = val === "" ? null : Number(val);
-              const isRecord =
-                row.pr &&
-                num != null &&
-                !Number.isNaN(num) &&
-                (row.previousBest == null ||
-                  (scoringDirection === "LOWER_BETTER"
-                    ? num < row.previousBest
-                    : num > row.previousBest));
-              const filled = val !== "" && !Number.isNaN(Number(val));
-              return (
+            {(() => {
+              const nums = row.attempts
+                .map((a) => (a === "" || a == null ? null : Number(a)))
+                .filter((n): n is number => n != null && !Number.isNaN(n));
+              const sessionBest = pickBestAttempt(
+                nums,
+                scoringDirection as ScoringDirection
+              );
+              const recordAttemptIdx =
+                row.pr && sessionBest != null
+                  ? row.attempts.findIndex((a) => {
+                      const n = a === "" || a == null ? null : Number(a);
+                      return n != null && !Number.isNaN(n) && n === sessionBest;
+                    })
+                  : -1;
+
+              return [0, 1, 2].map((i) => {
+                const val = row.attempts[i] ?? "";
+                const num = val === "" ? null : Number(val);
+                // Only the single best attempt of this session earns the trophy —
+                // worse attempts must not show "New Record!".
+                const isRecord = recordAttemptIdx === i;
+                const filled = val !== "" && !Number.isNaN(Number(val));
+                return (
                 <div key={i} className="min-w-0">
                   <label className="mb-1 block text-center text-[10px] font-semibold uppercase tracking-wide text-slate-400">
                     {attemptLabels[i]}
@@ -449,14 +470,15 @@ export function LiveTestingStudio({
                     ) : null}
                   </div>
                 </div>
-              );
-            })}
+                );
+              });
+            })()}
           </div>
 
-          {row.boardHits && row.boardHits.length > 0 ? (
+          {row.boardHits && row.boardHits.some((h) => h.rank <= 3 && h.total >= 2) ? (
             <div className="flex flex-wrap gap-1.5">
               {row.boardHits
-                .filter((h) => h.rank <= 3)
+                .filter((h) => h.rank <= 3 && h.total >= 2)
                 .map((h) => (
                   <span
                     key={h.period}

@@ -7,12 +7,15 @@ import { getStudentClassTags } from "@/lib/queries/kpi";
 import { classYearLabel, gradesFromSearch, gradesLabel } from "@/lib/grades";
 import { getLeaderboardGrid } from "@/lib/queries/leaderboard-grid";
 import { LeaderboardGrid } from "@/components/leaderboards/leaderboard-grid";
-import { RankScopeToggle } from "@/components/ui/rank-scope-toggle";
-import { GradePills } from "@/components/ui/filter-pills";
-import { ClassFilterPills } from "@/components/ui/class-filter-pills";
+import { PeriodPills } from "@/components/ui/period-pills";
+import { LeaderboardFilterModal } from "@/components/ui/leaderboard-filter-modal";
 import { genderFullLabel } from "@/lib/gender";
 import { prisma } from "@/lib/db";
 import { classSectionLabel } from "@/lib/periods";
+import {
+  parseLeaderboardPeriod,
+  periodLabel,
+} from "@/lib/leaderboard-periods";
 
 export default async function StudentLeaderboardsPage({
   searchParams,
@@ -22,6 +25,7 @@ export default async function StudentLeaderboardsPage({
     grades?: string;
     grade?: string;
     classId?: string;
+    period?: string;
   }>;
 }) {
   const session = await requireSession(["STUDENT"]);
@@ -33,14 +37,12 @@ export default async function StudentLeaderboardsPage({
   const grades = gradesFromSearch(sp);
   const classTags = await getStudentClassTags(session.studentId);
   const classId = sp.classId?.trim() || undefined;
+  const period = parseLeaderboardPeriod(sp.period);
 
   let classLabel: string | null = null;
   if (classId) {
     const allowed = classTags.some((c) => c.id === classId);
-    if (!allowed) {
-      // Students may only filter to periods they share.
-      redirect("/student/leaderboards");
-    }
+    if (!allowed) redirect("/student/leaderboards");
     const cls = await prisma.class.findUnique({
       where: { id: classId },
       select: { name: true, period: true },
@@ -58,7 +60,8 @@ export default async function StudentLeaderboardsPage({
       studentId: session.studentId,
       schoolId: student.schoolId,
     },
-    classId
+    classId,
+    period
   );
 
   const peerNote = classLabel
@@ -69,18 +72,21 @@ export default async function StudentLeaderboardsPage({
 
   return (
     <AppShell title="Leaderboards" nav={STUDENT_NAV}>
-      <div className="mb-6 space-y-4">
-        <p className="text-sm text-muted">
-          Standing locked to {genderFullLabel(student.gender).toLowerCase()}. Filter by graduation year
-          or a PE / weights period you share — classmates across grades in that section appear together.
-        </p>
-        <ClassFilterPills classes={classTags} />
-        <GradePills />
-        <RankScopeToggle />
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <PeriodPills />
+        <LeaderboardFilterModal
+          classes={classTags}
+          showGender={false}
+          lockGenderLabel={genderFullLabel(student.gender)}
+        />
       </div>
+      <p className="mb-4 text-sm text-muted">
+        Standing locked to {genderFullLabel(student.gender).toLowerCase()}. Time window defaults to
+        this week — open Filters for PE period, class year, and school/global.
+      </p>
       <LeaderboardGrid
         boards={boards}
-        subtitle={`${scope === "global" ? "Global" : "School"} · ${peerNote} · ${genderFullLabel(student.gender).toLowerCase()} · you: ${classYearLabel(currentGrade)}`}
+        subtitle={`${periodLabel(period)} · ${scope === "global" ? "Global" : "School"} · ${peerNote} · you: ${classYearLabel(currentGrade)}`}
         selfHref="/student"
         rankScope={scope}
         compareHref="/student/compare"

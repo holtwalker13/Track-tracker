@@ -11,11 +11,13 @@ export function LiveSessionControls({
   status,
   recordingUnlocked,
   withinWindow,
+  compact = false,
 }: {
   sessionId: string;
   status: string;
   recordingUnlocked: boolean;
   withinWindow: boolean;
+  compact?: boolean;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
@@ -50,19 +52,28 @@ export function LiveSessionControls({
   }
 
   return (
-    <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-card-border bg-card px-4 py-3">
-      <div className="flex min-w-0 items-center gap-3">
+    <div
+      className={cn(
+        "flex flex-wrap items-center justify-between gap-2 rounded-xl border border-card-border bg-card",
+        compact ? "mb-2 px-2 py-1.5 sm:mb-3 sm:px-3 sm:py-2" : "mb-4 gap-3 rounded-2xl px-4 py-3"
+      )}
+    >
+      <div className="flex min-w-0 items-center gap-2">
         <Link
           href="/coach/testing"
-          className="inline-flex items-center gap-1.5 rounded-lg border border-card-border px-3 py-2 text-sm text-muted hover:text-foreground"
+          className={cn(
+            "inline-flex items-center gap-1 rounded-lg border border-card-border text-muted hover:text-foreground",
+            compact ? "px-2 py-1.5 text-xs" : "gap-1.5 px-3 py-2 text-sm"
+          )}
+          aria-label="Back to testing"
         >
           <ArrowLeft className="h-4 w-4" aria-hidden />
-          Back
+          <span className={compact ? "hidden sm:inline" : undefined}>Back</span>
         </Link>
-        <div className="flex items-center gap-2">
+        <div className="flex min-w-0 items-center gap-2">
           <span
             className={cn(
-              "relative flex h-2.5 w-2.5",
+              "relative flex h-2.5 w-2.5 shrink-0",
               isLive && recordingUnlocked && "text-sport-red"
             )}
             aria-hidden
@@ -82,27 +93,29 @@ export function LiveSessionControls({
             )}
           </span>
           <div className="min-w-0">
-            <p className="text-sm font-semibold">
+            <p className={cn("font-semibold leading-tight", compact ? "text-xs sm:text-sm" : "text-sm")}>
               {isClosed
-                ? "Testing closed"
+                ? "Closed"
                 : !withinWindow
-                  ? "Live window ended (24h)"
+                  ? "Window ended"
                   : isPaused
                     ? "Paused"
                     : recordingUnlocked
-                      ? "Live recording"
-                      : "Recording locked"}
+                      ? "Live"
+                      : "Locked"}
             </p>
-            <p className="text-xs text-muted">
-              {withinWindow
-                ? "24-hour live window · lock when students shouldn’t self-enter"
-                : "Start a new session to record again"}
-            </p>
+            {!compact && (
+              <p className="text-xs text-muted">
+                {withinWindow
+                  ? "24-hour live window · lock when students shouldn’t self-enter"
+                  : "Start a new session to record again"}
+              </p>
+            )}
           </div>
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-1.5">
         {!isClosed && withinWindow && (
           <>
             {isPaused || !recordingUnlocked ? (
@@ -110,9 +123,12 @@ export function LiveSessionControls({
                 type="button"
                 disabled={busy != null}
                 onClick={() => run(isPaused ? "resume" : "unlock")}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-sky-400/40 px-3 py-2 text-sm font-medium text-sky-300 hover:bg-sky-400/10 disabled:opacity-50"
+                className={cn(
+                  "inline-flex items-center gap-1 rounded-lg border border-sky-400/40 font-medium text-sky-300 hover:bg-sky-400/10 disabled:opacity-50",
+                  compact ? "px-2 py-1.5 text-xs" : "gap-1.5 px-3 py-2 text-sm"
+                )}
               >
-                {isPaused ? <Play className="h-4 w-4" /> : <LockOpen className="h-4 w-4" />}
+                {isPaused ? <Play className="h-3.5 w-3.5" /> : <LockOpen className="h-3.5 w-3.5" />}
                 {busy === "resume" || busy === "unlock" ? "…" : isPaused ? "Resume" : "Unlock"}
               </button>
             ) : (
@@ -121,18 +137,24 @@ export function LiveSessionControls({
                   type="button"
                   disabled={busy != null}
                   onClick={() => run("pause")}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-card-border px-3 py-2 text-sm font-medium text-muted hover:text-foreground disabled:opacity-50"
+                  className={cn(
+                    "inline-flex items-center gap-1 rounded-lg border border-card-border text-muted hover:text-foreground disabled:opacity-50",
+                    compact ? "px-2 py-1.5 text-xs" : "gap-1.5 px-3 py-2 text-sm"
+                  )}
                 >
-                  <Pause className="h-4 w-4" />
+                  <Pause className="h-3.5 w-3.5" />
                   {busy === "pause" ? "…" : "Pause"}
                 </button>
                 <button
                   type="button"
                   disabled={busy != null}
                   onClick={() => run("lock")}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-card-border px-3 py-2 text-sm font-medium text-muted hover:text-foreground disabled:opacity-50"
+                  className={cn(
+                    "inline-flex items-center gap-1 rounded-lg border border-card-border text-muted hover:text-foreground disabled:opacity-50",
+                    compact ? "px-2 py-1.5 text-xs" : "gap-1.5 px-3 py-2 text-sm"
+                  )}
                 >
-                  <Lock className="h-4 w-4" />
+                  <Lock className="h-3.5 w-3.5" />
                   {busy === "lock" ? "…" : "Lock"}
                 </button>
               </>
@@ -147,10 +169,13 @@ export function LiveSessionControls({
               if (!window.confirm("Close this testing session? Recording will stop.")) return;
               run("close");
             }}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-sport-red/40 px-3 py-2 text-sm font-medium text-sport-red hover:bg-sport-red/10 disabled:opacity-50"
+            className={cn(
+              "inline-flex items-center gap-1 rounded-lg border border-sport-red/40 font-medium text-sport-red hover:bg-sport-red/10 disabled:opacity-50",
+              compact ? "px-2 py-1.5 text-xs" : "gap-1.5 px-3 py-2 text-sm"
+            )}
           >
-            <Square className="h-3.5 w-3.5 fill-current" />
-            {busy === "close" ? "…" : "Close testing"}
+            <Square className="h-3 w-3 fill-current" />
+            {busy === "close" ? "…" : compact ? "Close" : "Close testing"}
           </button>
         )}
       </div>

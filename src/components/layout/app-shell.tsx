@@ -1,3 +1,4 @@
+import { Podium } from "lucide-react";
 import { TopNav } from "@/components/layout/top-nav";
 import { SchoolSwitcher } from "@/components/admin/school-switcher";
 import type { NavItem } from "@/lib/navigation";
@@ -56,43 +57,51 @@ export async function AppShell({
         <div
           className={cn(
             "mx-auto max-w-7xl",
-            compact ? "px-3 py-1.5 sm:px-4 sm:py-2" : "px-3 py-2.5 sm:px-4 sm:py-3"
+            compact ? "px-3 py-1.5 sm:px-4 sm:py-2" : "px-3 py-2 sm:px-4 sm:py-2.5"
           )}
         >
-          <div
-            className={cn(
-              "flex flex-col md:flex-row md:items-center md:justify-between",
-              compact ? "gap-1.5 md:gap-3" : "gap-3 md:gap-4"
-            )}
-          >
-            <div className="flex min-w-0 items-start justify-between gap-3 md:block">
-              <div>
-                <p
-                  className={cn(
-                    "font-semibold uppercase tracking-[0.2em] text-muted",
-                    compact ? "text-[9px] leading-tight" : "text-[11px]"
-                  )}
-                >
-                  Track Tracker
-                  {schoolName ? <span className="text-accent"> · {schoolName}</span> : null}
-                </p>
+          <div className="flex items-center justify-between gap-3 md:gap-4">
+            <div className="flex min-w-0 items-center gap-2.5">
+              <Podium
+                className={cn(
+                  "shrink-0 text-accent",
+                  compact ? "h-5 w-5" : "h-6 w-6 sm:h-7 sm:w-7"
+                )}
+                aria-hidden
+              />
+              <div className="min-w-0">
                 <h1
                   className={cn(
-                    "font-bold uppercase tracking-wide",
-                    compact ? "text-sm sm:text-base" : "text-lg"
+                    "truncate font-bold uppercase tracking-wide",
+                    compact ? "text-sm sm:text-base" : "text-base sm:text-lg"
                   )}
                 >
                   {title}
                 </h1>
+                {schoolName ? (
+                  <p
+                    className={cn(
+                      "truncate font-semibold uppercase tracking-[0.16em] text-accent",
+                      compact ? "text-[9px] leading-tight" : "text-[10px] leading-tight"
+                    )}
+                  >
+                    {schoolName}
+                  </p>
+                ) : null}
               </div>
               {session?.role === "ADMIN" && schools.length > 0 ? (
-                <div className={cn(compact ? "md:mt-1" : "md:mt-2")}>
+                <div className="hidden shrink-0 sm:block">
                   <SchoolSwitcher schools={schools} currentSchoolId={session.schoolId} />
                 </div>
               ) : null}
             </div>
             <TopNav items={items} compact={navCompact || compact} />
           </div>
+          {session?.role === "ADMIN" && schools.length > 0 ? (
+            <div className="mt-2 sm:hidden">
+              <SchoolSwitcher schools={schools} currentSchoolId={session.schoolId} />
+            </div>
+          ) : null}
         </div>
       </header>
       <main

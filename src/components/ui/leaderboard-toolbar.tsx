@@ -15,8 +15,8 @@ function LeaderboardToolbarInner({
   lockedGender?: "M" | "F";
 }) {
   return (
-    <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-      <div className="flex min-w-0 max-w-full flex-1 flex-wrap items-center gap-2 sm:gap-2.5">
+    <div className="mb-6 flex flex-wrap items-center justify-between gap-3 sm:mb-7">
+      <div className="flex min-w-0 max-w-full flex-1 flex-wrap items-center gap-2.5 sm:gap-3">
         <PeriodPills />
         <span className="h-6 w-px shrink-0 bg-card-border" aria-hidden />
         <GenderToggle variant="inline" lockedGender={lockedGender} />

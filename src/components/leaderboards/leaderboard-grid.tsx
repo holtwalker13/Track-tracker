@@ -142,7 +142,7 @@ function LeaderboardGridInner({
 
   return (
     <div className={cn(selectMode && "pb-28")}>
-      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+      <div className="mb-5 flex flex-wrap items-start justify-between gap-3 sm:mb-6">
         {subtitle ? <p className="max-w-2xl text-sm text-muted">{subtitle}</p> : <span />}
         {compareHref && (
           <button
@@ -165,13 +165,13 @@ function LeaderboardGridInner({
       </div>
 
       {/* Mobile event picker */}
-      <div className="mb-4 md:hidden">
+      <div className="mb-5 md:hidden">
         <label className="block text-xs font-semibold uppercase tracking-[0.18em] text-muted">
           Event
           <select
             value={selectedBoard.activity.slug}
             onChange={(e) => setEvent(e.target.value)}
-            className="mt-1.5 w-full rounded-lg border border-card-border bg-card px-3 py-2.5 text-sm font-medium text-foreground"
+            className="mt-2 w-full rounded-lg border border-card-border bg-card px-3 py-2.5 text-sm font-medium text-foreground"
           >
             {boards.map((b) => (
               <option key={b.activity.id} value={b.activity.slug}>
@@ -182,19 +182,19 @@ function LeaderboardGridInner({
         </label>
       </div>
 
-      <div className="flex gap-5 lg:gap-6">
+      <div className="flex gap-6 lg:gap-8">
         <aside className="hidden w-56 shrink-0 md:block lg:w-64">
-          <div className="sticky top-4 max-h-[calc(100vh-6rem)] overflow-y-auto rounded-2xl border border-card-border bg-card/40 p-2">
-            <p className="px-2 py-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-muted">
+          <div className="sticky top-4 max-h-[calc(100vh-6rem)] overflow-y-auto rounded-2xl border border-card-border bg-card/40 p-3 sm:p-3.5">
+            <p className="px-2.5 pb-2 pt-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-muted">
               Events
             </p>
-            <nav className="space-y-3" aria-label="Leaderboard events">
+            <nav className="space-y-4" aria-label="Leaderboard events">
               {groupedSidebar.map(({ group, label, boards: groupBoards }) => (
                 <div key={group}>
-                  <p className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted/80">
+                  <p className="px-2.5 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted/80">
                     {label}
                   </p>
-                  <ul className="space-y-0.5">
+                  <ul className="space-y-1">
                     {groupBoards.map((board) => {
                       const active = board.activity.slug === selectedBoard.activity.slug;
                       return (
@@ -203,7 +203,7 @@ function LeaderboardGridInner({
                             type="button"
                             onClick={() => setEvent(board.activity.slug)}
                             className={cn(
-                              "flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-left text-sm transition",
+                              "flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2.5 text-left text-sm transition",
                               active
                                 ? "bg-sky-500/15 text-sky-100 ring-1 ring-sky-400/40"
                                 : "text-muted hover:bg-foreground/[0.04] hover:text-foreground"
@@ -231,10 +231,10 @@ function LeaderboardGridInner({
           </div>
         </aside>
 
-        <div className="min-w-0 flex-1 space-y-5">
-          <div className="flex flex-wrap items-end justify-between gap-2">
+        <div className="min-w-0 flex-1 space-y-6 sm:space-y-7">
+          <div className="flex flex-wrap items-end justify-between gap-3">
             <div className="min-w-0">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2.5">
                 <ActivityIcon
                   slug={selectedBoard.activity.slug}
                   categorySlug={selectedBoard.activity.category?.slug}
@@ -244,7 +244,7 @@ function LeaderboardGridInner({
                   {selectedBoard.activity.name}
                 </h2>
               </div>
-              <p className="mt-1 text-sm text-muted">
+              <p className="mt-1.5 text-sm text-muted">
                 {selectedBoard.entries.length === 0
                   ? "No results in this window"
                   : `${selectedBoard.entries.length} ranked`}
@@ -254,13 +254,13 @@ function LeaderboardGridInner({
 
           {recentRecords.length > 0 && (
             <section>
-              <div className="mb-2 flex items-center gap-2">
+              <div className="mb-3 flex items-center gap-2">
                 <Trophy className="h-3.5 w-3.5 text-sky-300" aria-hidden />
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
                   Top marks
                 </p>
               </div>
-              <div className="grid gap-3 sm:grid-cols-3">
+              <div className="grid gap-3 sm:grid-cols-3 sm:gap-4">
                 {recentRecords.map((e, i) => {
                   const href = entryHref(selectedBoard, e);
                   const value = formatActivityValue(
@@ -278,7 +278,7 @@ function LeaderboardGridInner({
                   const body = (
                     <div
                       className={cn(
-                        "rounded-2xl border bg-gradient-to-b p-4 ring-1",
+                        "rounded-2xl border bg-gradient-to-b p-4 sm:p-5 ring-1",
                         medal
                       )}
                     >
@@ -290,8 +290,8 @@ function LeaderboardGridInner({
                           <span className="text-[11px] text-muted">{dateLabel}</span>
                         )}
                       </div>
-                      <p className="mt-2 truncate text-sm font-semibold">{e.displayName}</p>
-                      <p className="mt-1 font-mono text-2xl font-bold tabular-nums tracking-tight text-sky-100">
+                      <p className="mt-2.5 truncate text-sm font-semibold">{e.displayName}</p>
+                      <p className="mt-1.5 font-mono text-2xl font-bold tabular-nums tracking-tight text-sky-100">
                         {value}
                       </p>
                     </div>
@@ -315,12 +315,11 @@ function LeaderboardGridInner({
 
           {!eventParam && crossEventRecords.length > 0 && (
             <section>
-              <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
+              <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
                 Recent records across events
               </p>
-              <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                 {crossEventRecords.map(({ board, entry }) => {
-                  const href = entryHref(board, entry);
                   const value = formatActivityValue(
                     entry.value,
                     board.activity.unit,
@@ -328,7 +327,7 @@ function LeaderboardGridInner({
                   );
                   const dateLabel = formatRecordDate(entry.testingDate);
                   const card = (
-                    <div className="flex items-center gap-3 rounded-xl border border-card-border bg-card/50 px-3 py-3">
+                    <div className="flex items-center gap-3 rounded-xl border border-card-border bg-card/50 px-3.5 py-3.5 sm:px-4">
                       <ActivityIcon
                         slug={board.activity.slug}
                         categorySlug={board.activity.category?.slug}
@@ -361,14 +360,14 @@ function LeaderboardGridInner({
             </section>
           )}
 
-          <section className="rounded-2xl border border-card-border bg-card/30 p-2 sm:p-3">
-            <p className="mb-2 px-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
+          <section className="rounded-2xl border border-card-border bg-card/30 p-3 sm:p-4">
+            <p className="mb-3 px-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted sm:px-2.5">
               Full rankings
             </p>
             {selectedBoard.entries.length === 0 ? (
-              <p className="px-2 py-6 text-center text-sm text-muted">No results yet</p>
+              <p className="px-2 py-8 text-center text-sm text-muted">No results yet</p>
             ) : (
-              <ol className="space-y-0.5">
+              <ol className="space-y-1">
                 {selectedBoard.entries.map((e, i) => {
                   const isSelected = selected.includes(e.studentId);
                   const striped =
@@ -384,7 +383,7 @@ function LeaderboardGridInner({
                   const row = (
                     <div
                       className={cn(
-                        "flex items-center gap-2 rounded-xl px-2 py-2 sm:gap-3 sm:px-3",
+                        "flex items-center gap-2.5 rounded-xl px-2.5 py-2.5 sm:gap-3 sm:px-3.5 sm:py-3",
                         striped && "bg-foreground/[0.045]",
                         e.displayName === "You" && "bg-foreground/8 ring-1 ring-foreground/15",
                         selectMode && isSelected && "bg-sky-400/10 ring-1 ring-sky-400/40"

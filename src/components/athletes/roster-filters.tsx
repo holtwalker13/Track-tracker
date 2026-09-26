@@ -8,8 +8,10 @@ import { cn } from "@/lib/utils";
 
 function ClassHourPillsInner({
   classes,
+  compact = false,
 }: {
   classes: { id: string; name: string; period: string | null }[];
+  compact?: boolean;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -53,8 +55,11 @@ function ClassHourPillsInner({
         aria-haspopup="dialog"
         aria-expanded={open}
         className={cn(
-          "inline-flex w-full max-w-md items-center justify-between gap-3 rounded-xl border border-card-border bg-card px-4 py-3 text-left text-sm font-medium",
-          "hover:border-sky-400/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/50"
+          "inline-flex w-full items-center justify-between gap-2 border border-card-border bg-card text-left text-sm font-medium",
+          "hover:border-sky-400/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/50",
+          compact
+            ? "max-w-none rounded-lg px-3 py-2"
+            : "max-w-md rounded-xl px-4 py-3"
         )}
       >
         <span className="min-w-0 truncate">{activeLabel}</span>
@@ -127,16 +132,23 @@ function ClassHourPillsInner({
 
 export function ClassHourPills({
   classes,
+  compact = false,
 }: {
   classes: { id: string; name: string; period: string | null }[];
+  compact?: boolean;
 }) {
   return (
     <Suspense
       fallback={
-        <div className="h-12 w-full max-w-md rounded-xl border border-card-border bg-card" />
+        <div
+          className={cn(
+            "w-full border border-card-border bg-card",
+            compact ? "h-9 max-w-none rounded-lg" : "h-12 max-w-md rounded-xl"
+          )}
+        />
       }
     >
-      <ClassHourPillsInner classes={classes} />
+      <ClassHourPillsInner classes={classes} compact={compact} />
     </Suspense>
   );
 }

@@ -55,8 +55,8 @@ export function TopNav({
   const labelClassName = cn(
     "text-center font-medium uppercase tracking-wide",
     compact
-      ? "hidden text-[9px] leading-tight md:block md:text-[11px]"
-      : "text-[10px] leading-tight md:text-xs md:leading-snug"
+      ? "hidden text-[8px] leading-tight md:block md:text-[9px]"
+      : "text-[8px] leading-tight md:text-[9px] md:leading-snug"
   );
 
   return (

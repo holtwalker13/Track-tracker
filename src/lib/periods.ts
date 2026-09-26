@@ -30,7 +30,8 @@ export function guessPeriodLabel(now = new Date()) {
 
 /** Graduating-cohort classes (student metric) — not PE/section classes for testing. */
 export function isGraduatingClassName(name: string) {
-  return /^class of\s+\d{4}$/i.test(name.trim());
+  const n = name.trim();
+  return /^class of\s+\d{4}$/i.test(n) || /^\d{2}\s+roster$/i.test(n);
 }
 
 /** Display label for a PE / hour / semester section. */

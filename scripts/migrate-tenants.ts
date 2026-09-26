@@ -269,6 +269,20 @@ async function main() {
 
   await hideSomeDemoNames(populated.id);
 
+  // Cohort class names used to match graduating-class labels ("Class of 2026").
+  const cohortClasses = await prisma.class.findMany({
+    where: { name: { startsWith: "Class of " } },
+    select: { id: true, name: true },
+  });
+  for (const c of cohortClasses) {
+    const m = /^class of\s+(\d{4})$/i.exec(c.name.trim());
+    if (!m) continue;
+    await prisma.class.update({
+      where: { id: c.id },
+      data: { name: `${m[1]!.slice(-2)} roster` },
+    });
+  }
+
   const jhs = await prisma.school.findUnique({
     where: { slug: "jhs" },
     include: { _count: { select: { studentProfiles: true } } },

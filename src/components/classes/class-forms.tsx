@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { GRADE_LEVELS, classYearLabel } from "@/lib/grades";
+import { GRADE_LEVELS, classYearShort } from "@/lib/grades";
 
 export function CreateClassForm({ surface = "card" }: { surface?: "card" | "none" }) {
   const router = useRouter();
@@ -93,7 +93,7 @@ export function CreateClassForm({ surface = "card" }: { surface?: "card" | "none
             <option value="">Any / mixed</option>
             {GRADE_LEVELS.map((y) => (
               <option key={y} value={y}>
-                {classYearLabel(y)}
+                {y} ({classYearShort(y)})
               </option>
             ))}
           </select>

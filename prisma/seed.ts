@@ -311,7 +311,7 @@ async function seedRoster(opts: {
       data: {
         schoolId: opts.schoolId,
         coachId: opts.coaches[year % opts.coaches.length]!.id,
-        name: `Class of ${year}`,
+        name: `${String(year).slice(-2)} roster`,
         period: null,
         gradeLevel: year,
       },

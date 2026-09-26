@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { getLeaderboard } from "./coach";
 import { activityDisplayGroup, type ActivityDisplayGroup } from "@/lib/activity-groups";
 import type { Activity, ActivityCategory } from "@prisma/client";
+import type { LeaderboardPeriod } from "@/lib/leaderboard-periods";
 
 export const LEADERBOARD_MAX_N = 500;
 
@@ -58,7 +59,8 @@ export async function getLeaderboardGrid(
     studentId?: string;
     schoolId: string;
   },
-  classId?: string
+  classId?: string,
+  period: LeaderboardPeriod = "week"
 ) {
   const activities = await getLeaderboardActivities(schoolId);
   const grades = gradeLevels && gradeLevels.length > 0 ? gradeLevels : undefined;
@@ -72,6 +74,7 @@ export async function getLeaderboardGrid(
       scope,
       viewer,
       classId,
+      period,
     });
 
     boards.push({

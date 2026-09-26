@@ -3,6 +3,12 @@ import { getSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { saveAttemptResults } from "@/lib/services/results";
 import { DEFAULT_CLASS_YEAR } from "@/lib/grades";
+import {
+  celebrationLabel,
+  getPeriodBoardHits,
+  shouldCelebrate,
+  type PeriodBoardHit,
+} from "@/lib/services/testing-celebration";
 
 export async function POST(request: Request) {
   const session = await getSession();
@@ -55,5 +61,35 @@ export async function POST(request: Request) {
     weightAtTest,
   });
 
-  return NextResponse.json(result);
+  let boardHits: PeriodBoardHit[] = [];
+  let celebrate = false;
+  let celebrateLabel: string | null = null;
+
+  if (result.saved && "best" in result && result.best != null) {
+    const activity = await prisma.activity.findUnique({
+      where: { id: activityId },
+      select: { slug: true },
+    });
+    const student = await prisma.studentProfile.findUnique({
+      where: { id: studentId },
+      select: { gender: true },
+    });
+    if (activity) {
+      boardHits = await getPeriodBoardHits({
+        schoolId: sessionRec.schoolId,
+        activitySlug: activity.slug,
+        studentId,
+        gender: student?.gender,
+      });
+      celebrate = shouldCelebrate(Boolean(result.pr), boardHits);
+      celebrateLabel = celebrationLabel(Boolean(result.pr), boardHits);
+    }
+  }
+
+  return NextResponse.json({
+    ...result,
+    boardHits,
+    celebrate,
+    celebrateLabel,
+  });
 }

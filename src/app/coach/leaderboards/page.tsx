@@ -3,14 +3,16 @@ import { COACH_NAV } from "@/lib/navigation";
 import { requireSchoolSession } from "@/lib/auth/session";
 import { getLeaderboardGrid } from "@/lib/queries/leaderboard-grid";
 import { LeaderboardGrid } from "@/components/leaderboards/leaderboard-grid";
-import { GradePills } from "@/components/ui/filter-pills";
-import { GenderToggle } from "@/components/ui/gender-toggle";
-import { RankScopeToggle } from "@/components/ui/rank-scope-toggle";
-import { ClassFilterPills } from "@/components/ui/class-filter-pills";
+import { PeriodPills } from "@/components/ui/period-pills";
+import { LeaderboardFilterModal } from "@/components/ui/leaderboard-filter-modal";
 import { gradesFromSearch, gradesLabel } from "@/lib/grades";
 import { parseGenderParam, genderFullLabel } from "@/lib/gender";
 import { prisma } from "@/lib/db";
 import { isGraduatingClassName, classSectionLabel } from "@/lib/periods";
+import {
+  parseLeaderboardPeriod,
+  periodLabel,
+} from "@/lib/leaderboard-periods";
 
 export default async function CoachLeaderboardsPage({
   searchParams,
@@ -21,6 +23,7 @@ export default async function CoachLeaderboardsPage({
     gender?: string;
     scope?: string;
     classId?: string;
+    period?: string;
   }>;
 }) {
   const session = await requireSchoolSession();
@@ -29,6 +32,7 @@ export default async function CoachLeaderboardsPage({
   const gender = parseGenderParam(sp.gender);
   const scope = sp.scope === "global" ? "global" : "school";
   const classId = sp.classId?.trim() || undefined;
+  const period = parseLeaderboardPeriod(sp.period);
 
   const classes = (
     await prisma.class.findMany({
@@ -54,20 +58,19 @@ export default async function CoachLeaderboardsPage({
       schoolId: session.schoolId,
       studentId: session.studentId,
     },
-    classId
+    classId,
+    period
   );
 
   return (
     <AppShell title="Leaderboards" nav={COACH_NAV}>
-      <div className="mb-6 space-y-4">
-        <ClassFilterPills classes={classes} />
-        <GradePills />
-        <GenderToggle />
-        <RankScopeToggle />
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <PeriodPills />
+        <LeaderboardFilterModal classes={classes} showGender />
       </div>
       <LeaderboardGrid
         boards={boards}
-        subtitle={`${scope === "global" ? "Global" : "School"} rank · ${classLabel ?? gradesLabel(grades)} · ${genderFullLabel(gender).toLowerCase()}`}
+        subtitle={`${periodLabel(period)} · ${scope === "global" ? "Global" : "School"} · ${classLabel ?? gradesLabel(grades)} · ${genderFullLabel(gender).toLowerCase()}`}
         athleteHrefBase="/coach/students"
         rankScope={scope}
         compareHref="/coach/compare"

@@ -2,6 +2,10 @@ import { prisma } from "@/lib/db";
 import { rankResults } from "@/lib/services/leaderboard";
 import type { ScoringDirection } from "@/lib/constants";
 import { GRADE_LEVELS } from "@/lib/grades";
+import {
+  periodDateRange,
+  type LeaderboardPeriod,
+} from "@/lib/leaderboard-periods";
 
 export async function getCoachDashboard(schoolId: string) {
   const currentYear = await prisma.schoolYear.findFirst({
@@ -169,6 +173,7 @@ export async function getLeaderboard(
     gender?: string;
     scope?: "school" | "global";
     classId?: string;
+    period?: LeaderboardPeriod;
     viewer?: {
       role: "ADMIN" | "COACH" | "STUDENT";
       studentId?: string;
@@ -201,12 +206,22 @@ export async function getLeaderboard(
     if (classStudentIds.length === 0) return { activity, entries: [] };
   }
 
+  const period = opts.period ?? "week";
+  const range = periodDateRange(
+    period,
+    new Date(),
+    currentYear
+      ? { startDate: currentYear.startDate, endDate: currentYear.endDate }
+      : null
+  );
+
   const results = await prisma.performanceResult.findMany({
     where: {
       activityId: activity.id,
       status: "COMPLETED",
       isBestAttempt: true,
       resultValue: { not: null },
+      testingDate: { gte: range.start, lte: range.end },
       ...(scope === "school"
         ? { schoolId, schoolYearId: currentYear!.id }
         : {}),
@@ -228,15 +243,32 @@ export async function getLeaderboard(
     },
   });
 
+  // Keep best mark per student within the window
+  const bestByStudent = new Map<string, (typeof results)[number]>();
+  for (const r of results) {
+    const prev = bestByStudent.get(r.studentId);
+    if (!prev) {
+      bestByStudent.set(r.studentId, r);
+      continue;
+    }
+    const direction = activity.scoringDirection as ScoringDirection;
+    const better =
+      direction === "LOWER_BETTER"
+        ? r.resultValue! < prev.resultValue!
+        : r.resultValue! > prev.resultValue!;
+    if (better) bestByStudent.set(r.studentId, r);
+  }
+  const unique = [...bestByStudent.values()];
+
   const ranked = rankResults(
-    results.map((r) => ({ studentId: r.studentId, value: r.resultValue! })),
+    unique.map((r) => ({ studentId: r.studentId, value: r.resultValue! })),
     activity.scoringDirection as ScoringDirection
   );
 
   return {
     activity,
     entries: ranked.slice(0, 500).map((e) => {
-      const st = results.find((r) => r.studentId === e.studentId)!.student;
+      const st = unique.find((r) => r.studentId === e.studentId)!.student;
       return {
         rank: e.rank,
         value: e.value,
@@ -258,6 +290,7 @@ export async function getStudentActivityRanks(
     gender?: string;
     scope?: "school" | "global";
     classId?: string;
+    period?: LeaderboardPeriod;
   } = {}
 ) {
   const ranks: Record<string, number> = {};

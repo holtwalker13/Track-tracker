@@ -83,14 +83,14 @@ export function TopNav({
               active && "bg-accent/15 text-accent ring-1 ring-accent/40"
             )}
           >
-            <Icon className={cn("shrink-0", compact ? "h-4 w-4 md:h-5 md:w-5" : "h-5 w-5")} aria-hidden />
+            <Icon className={cn("shrink-0", compact ? "h-3.5 w-3.5 md:h-4 md:w-4" : "h-4 w-4")} aria-hidden />
             <span className={labelClassName}>{item.label}</span>
           </Link>
         );
       })}
       <form action="/api/auth/logout" method="POST" className="contents">
         <button type="submit" className={linkClassName} title="Sign out">
-          <LogOut className={cn("shrink-0", compact ? "h-4 w-4 md:h-5 md:w-5" : "h-5 w-5")} aria-hidden />
+          <LogOut className={cn("shrink-0", compact ? "h-3.5 w-3.5 md:h-4 md:w-4" : "h-4 w-4")} aria-hidden />
           <span className={labelClassName}>Sign out</span>
         </button>
       </form>

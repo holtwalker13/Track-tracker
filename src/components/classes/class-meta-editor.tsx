@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { GRADE_LEVELS } from "@/lib/grades";
+import { GRADE_LEVELS, classYearShort } from "@/lib/grades";
 
 export function ClassMetaEditor({
   classId,
@@ -88,7 +88,7 @@ export function ClassMetaEditor({
             <option value="">Mixed / none</option>
             {GRADE_LEVELS.map((y) => (
               <option key={y} value={y}>
-                Class of {y}
+                {y} ({classYearShort(y)})
               </option>
             ))}
           </select>

@@ -74,10 +74,6 @@ export default async function StudentLeaderboardsPage({
   return (
     <AppShell title="Leaderboards" nav={STUDENT_NAV}>
       <LeaderboardToolbar classes={classTags} lockedGender={lockedGender} />
-      <p className="mb-4 text-sm text-muted">
-        Time window defaults to this week — open Filters for PE period, class year, and
-        school/global.
-      </p>
       <LeaderboardGrid
         boards={boards}
         subtitle={`${periodLabel(period)} · ${scope === "global" ? "Global" : "School"} · ${peerNote} · you: ${classYearLabel(currentGrade)}`}

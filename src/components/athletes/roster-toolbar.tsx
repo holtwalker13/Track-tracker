@@ -329,7 +329,7 @@ export function RosterToolbar(props: {
   );
 }
 
-/** Desktop-only filter stack (unchanged layout for md+). */
+/** Desktop-only filter bar — compact inline row for md+. */
 export function RosterFiltersDesktop({
   hourClasses,
   resultCount,
@@ -342,35 +342,36 @@ export function RosterFiltersDesktop({
   gender: string;
 }) {
   return (
-    <div className="mb-8 hidden space-y-5 md:block">
-      <div>
-        <p className="mb-2 text-center text-[11px] font-semibold uppercase tracking-[0.2em] text-muted">
-          Graduating class
-        </p>
-        <div className="flex justify-center">
+    <div className="mb-6 hidden md:block">
+      <div className="flex flex-wrap items-end gap-x-6 gap-y-4">
+        <div className="min-w-0">
+          <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted">
+            Graduating class
+          </p>
           <GradePills />
         </div>
-      </div>
-      <div>
-        <p className="mb-2 text-center text-[11px] font-semibold uppercase tracking-[0.2em] text-muted">
-          Class hour / semester section
-        </p>
-        <div className="flex justify-center">
-          <ClassHourPills classes={hourClasses} />
+        <div className="w-44 min-w-0 shrink-0">
+          <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted">
+            Class hour
+          </p>
+          <ClassHourPills classes={hourClasses} compact />
         </div>
-      </div>
-      <div>
-        <p className="mb-2 text-center text-[11px] font-semibold uppercase tracking-[0.2em] text-muted">
-          Tracking type
-        </p>
-        <div className="flex justify-center">
+        <div className="min-w-0">
+          <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted">
+            Tracking type
+          </p>
           <ParticipationPills />
         </div>
+        <div className="min-w-0">
+          <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted">
+            Gender
+          </p>
+          <GenderToggle variant="inline" />
+        </div>
+        <p className="ml-auto self-center pb-0.5 text-sm text-muted">
+          {gradesLabel(grades)} · {genderFullLabel(gender)} · {resultCount} students
+        </p>
       </div>
-      <GenderToggle />
-      <p className="text-center text-sm text-muted">
-        {gradesLabel(grades)} · {genderFullLabel(gender)} · {resultCount} students
-      </p>
     </div>
   );
 }

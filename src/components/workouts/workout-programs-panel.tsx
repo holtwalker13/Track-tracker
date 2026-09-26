@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { Pencil } from "lucide-react";
+import { Pencil, Plus } from "lucide-react";
 import { WORKOUT_GENERATORS } from "@/lib/services/workout-generator";
 import type { SchoolLiftRow } from "@/lib/queries/lifts";
 import {
@@ -11,11 +11,12 @@ import {
   prescriptionSummary,
   type SetPrescription,
 } from "@/lib/workout-prescriptions";
-import { ProgramsClassTabs } from "@/components/workouts/programs-class-tabs";
 import {
   ProgramsSetBuilderGrid,
   type AssignLiftDraft,
 } from "@/components/workouts/programs-set-builder-grid";
+import { CoachModal } from "@/components/ui/coach-modal";
+import { classSectionLabel } from "@/lib/periods";
 import { cn } from "@/lib/utils";
 
 type TemplateRow = {
@@ -86,11 +87,6 @@ export function WorkoutProgramsPanel({
   const [genBlockName, setGenBlockName] = useState("Fall linear block");
   const [genWeeks, setGenWeeks] = useState(4);
 
-  function selectClass(id: string) {
-    setAssignClassId(id);
-    setGenClassId(id);
-  }
-
   const defaultLiftState = () =>
     workoutLifts.map((l) => ({
       slug: l.slug,
@@ -102,11 +98,12 @@ export function WorkoutProgramsPanel({
 
   const [lifts, setLifts] = useState(defaultLiftState);
   const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
+  const [programModalOpen, setProgramModalOpen] = useState(false);
 
   useEffect(() => {
-    if (editingTemplateId) return;
+    if (editingTemplateId || programModalOpen) return;
     setLifts(defaultLiftState());
-  }, [workoutLifts, editingTemplateId]);
+  }, [workoutLifts, editingTemplateId, programModalOpen]);
 
   function liftsFromTemplate(template: TemplateRow) {
     const bySlug = new Map(template.exercises.map((ex) => [ex.activity.slug, ex]));
@@ -126,15 +123,25 @@ export function WorkoutProgramsPanel({
     });
   }
 
+  function openNewProgram() {
+    setEditingTemplateId(null);
+    setProgramName("");
+    setLifts(defaultLiftState());
+    setError(null);
+    setProgramModalOpen(true);
+  }
+
   function startEditProgram(template: TemplateRow) {
     setEditingTemplateId(template.id);
     setProgramName(template.name);
     setLifts(liftsFromTemplate(template));
     setMsg(null);
     setError(null);
+    setProgramModalOpen(true);
   }
 
-  function cancelEditProgram() {
+  function closeProgramModal() {
+    setProgramModalOpen(false);
     setEditingTemplateId(null);
     setProgramName("");
     setLifts(defaultLiftState());
@@ -195,9 +202,6 @@ export function WorkoutProgramsPanel({
     if (isEdit) {
       setTemplates((t) => t.map((row) => (row.id === saved.id ? { ...saved, updatedAt: saved.updatedAt } : row)));
       setAssignTemplateId(saved.id);
-      setEditingTemplateId(null);
-      setProgramName("");
-      setLifts(defaultLiftState());
       setMsg(
         data.hadAssignments
           ? `Updated “${saved.name}”. Past assignments keep their logged sets; new assignments use this version.`
@@ -206,10 +210,9 @@ export function WorkoutProgramsPanel({
     } else {
       setTemplates((t) => [saved, ...t]);
       setAssignTemplateId(saved.id);
-      setProgramName("");
-      setLifts(defaultLiftState());
       setMsg(`Created “${saved.name}”. Assign it to a class below.`);
     }
+    closeProgramModal();
     router.refresh();
   }
 
@@ -291,17 +294,9 @@ export function WorkoutProgramsPanel({
     await doAssign();
   }
 
-  async function quickAssignToClass() {
-    if (!assignPreviewReady) {
-      setError("Choose a day program below, then tap + on the active class tab.");
-      return;
-    }
-    await doAssign();
-  }
-
   const assignPreviewReady = useMemo(
-    () => Boolean(assignTemplateId && assignLifts.length > 0),
-    [assignTemplateId, assignLifts.length]
+    () => Boolean(assignTemplateId && assignLifts.length > 0 && assignClassId),
+    [assignTemplateId, assignLifts.length, assignClassId]
   );
 
   async function generateBlock(e: React.FormEvent) {
@@ -348,53 +343,226 @@ export function WorkoutProgramsPanel({
       )}
       {error && <p className="text-sm text-sport-red">{error}</p>}
 
-      <div className="rounded-2xl border border-card-border bg-card/30 p-4">
-        <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted">
-          Your classes
-        </p>
-        <ProgramsClassTabs
-          classes={classes}
-          activeClassId={assignClassId}
-          onSelectClass={selectClass}
-          onQuickAssign={() => void quickAssignToClass()}
-          quickAssignDisabled={pending || !assignPreviewReady}
-        />
-        <p className="mt-2 text-xs text-muted">
-          Tabs set the class for blocks and assignments. Tap{" "}
-          <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-accent align-middle text-[10px] font-bold text-background">
-            +
-          </span>{" "}
-          on the active tab to push the selected day program to that class for the date below.
-        </p>
-      </div>
-
       <div className="grid gap-6 xl:grid-cols-5">
         <div className="space-y-6 xl:col-span-3">
-          <form
-            onSubmit={saveProgram}
-            className="space-y-4 rounded-2xl border border-sky-500/20 bg-gradient-to-b from-card to-card/50 p-4 sm:p-5"
-          >
-            <StepBadge n={2} label="Day programs" />
-            <div className="flex flex-wrap items-start justify-between gap-2">
+          <section className="rounded-2xl border border-sky-500/20 bg-gradient-to-b from-card to-card/50 p-4 sm:p-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <h2 className="text-lg font-semibold">
-                  {editingTemplateId ? "Edit day program" : "New day program"}
-                </h2>
-                <p className="mt-1 text-sm text-muted">
-                  One workout day built from your library — default sets and reps only. Intensity (%
-                  1RM) is set when you assign.
-                </p>
+                <StepBadge n={2} label="Day programs" />
+                <h2 className="mt-2 text-lg font-semibold">Saved day programs</h2>
               </div>
-              {editingTemplateId ? (
-                <button
-                  type="button"
-                  onClick={cancelEditProgram}
-                  className="rounded-lg border border-card-border px-3 py-1.5 text-sm text-muted hover:text-foreground"
-                >
-                  Cancel edit
-                </button>
-              ) : null}
+              <button
+                type="button"
+                onClick={openNewProgram}
+                className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-sky-400/20 px-4 py-2.5 text-sm font-semibold text-sky-300 ring-1 ring-sky-400/40"
+              >
+                <Plus className="h-4 w-4" />
+                New day program
+              </button>
             </div>
+            {templates.length === 0 ? (
+              <p className="mt-4 text-sm text-muted">
+                No programs yet — create one to assign workouts.
+              </p>
+            ) : (
+              <ul className="mt-4 space-y-2">
+                {templates.map((t) => (
+                  <li
+                    key={t.id}
+                    className={cn(
+                      "flex flex-wrap items-start justify-between gap-2 rounded-xl border px-3 py-2.5 text-sm",
+                      assignTemplateId === t.id
+                        ? "border-sky-400/50 bg-sky-500/10"
+                        : "border-card-border bg-background/30"
+                    )}
+                  >
+                    <button
+                      type="button"
+                      className="min-w-0 flex-1 text-left"
+                      onClick={() => setAssignTemplateId(t.id)}
+                    >
+                      <div className="font-medium">{t.name}</div>
+                      <div className="mt-0.5 text-xs text-muted">
+                        {t.exercises
+                          .map((ex) => {
+                            const sets = normalizeSetPrescriptions(
+                              ex.setPrescriptions,
+                              ex.defaultSets,
+                              ex.defaultReps
+                            );
+                            return `${ex.activity.name} ${prescriptionSummary(sets)}`;
+                          })
+                          .join(" · ")}
+                      </div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => startEditProgram(t)}
+                      className="rounded-md p-1.5 text-muted hover:bg-sky-400/10 hover:text-sky-300"
+                      aria-label={`Edit ${t.name}`}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        </div>
+
+        <form
+          onSubmit={generateBlock}
+          className="space-y-3 rounded-2xl border border-amber-500/25 bg-gradient-to-b from-amber-500/5 to-card/40 p-4 xl:col-span-2 xl:self-start"
+        >
+          <StepBadge n={3} label="Training block" />
+          <h2 className="text-lg font-semibold">Auto-generate block</h2>
+          <p className="text-xs text-muted">{WORKOUT_GENERATORS["linear-5x5-mwf"].description}</p>
+          <label className="block text-sm">
+            Class
+            <select
+              required
+              value={genClassId}
+              onChange={(e) => {
+                setGenClassId(e.target.value);
+                setAssignClassId(e.target.value);
+              }}
+              className="mt-1 w-full rounded-lg border border-card-border bg-background px-3 py-2"
+            >
+              <option value="" disabled>
+                Select…
+              </option>
+              {classes.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {classSectionLabel(c)}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="block text-sm">
+            Block name
+            <input
+              required
+              value={genBlockName}
+              onChange={(e) => setGenBlockName(e.target.value)}
+              className="mt-1 w-full rounded-lg border border-card-border bg-background px-3 py-2"
+            />
+          </label>
+          <div className="grid grid-cols-2 gap-3">
+            <label className="block text-sm">
+              Start date
+              <input
+                required
+                type="date"
+                value={genStartDate}
+                onChange={(e) => setGenStartDate(e.target.value)}
+                className="mt-1 w-full rounded-lg border border-card-border bg-background px-3 py-2"
+              />
+            </label>
+            <label className="block text-sm">
+              Weeks
+              <input
+                type="number"
+                min={1}
+                max={12}
+                value={genWeeks}
+                onChange={(e) => setGenWeeks(Number(e.target.value))}
+                className="mt-1 w-full rounded-lg border border-card-border bg-background px-3 py-2"
+              />
+            </label>
+          </div>
+          <button
+            type="submit"
+            disabled={pending || classes.length === 0 || !genClassId}
+            className="w-full rounded-lg border border-amber-400/40 bg-amber-500/15 px-4 py-2 text-sm font-semibold text-amber-100 disabled:opacity-50"
+          >
+            {pending ? "Generating…" : "Generate Mon / Wed / Fri block"}
+          </button>
+        </form>
+      </div>
+
+      <form
+        onSubmit={assignProgram}
+        className="space-y-4 rounded-2xl border border-emerald-500/20 bg-gradient-to-b from-emerald-500/5 to-card/50 p-4 sm:p-5"
+      >
+        <StepBadge n={4} label="Assign & set builder" />
+        <h2 className="text-lg font-semibold">Load program into class</h2>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 lg:max-w-3xl">
+          <label className="block text-sm">
+            Day program
+            <select
+              required
+              value={assignTemplateId}
+              onChange={(e) => setAssignTemplateId(e.target.value)}
+              className="mt-1 w-full rounded-lg border border-card-border bg-background px-3 py-2"
+            >
+              <option value="" disabled>
+                Select…
+              </option>
+              {templates.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="block text-sm">
+            Class
+            <select
+              required
+              value={assignClassId}
+              onChange={(e) => {
+                setAssignClassId(e.target.value);
+                setGenClassId(e.target.value);
+              }}
+              className="mt-1 w-full rounded-lg border border-card-border bg-background px-3 py-2"
+            >
+              <option value="" disabled>
+                Select…
+              </option>
+              {classes.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {classSectionLabel(c)}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="block text-sm">
+            Workout date
+            <input
+              required
+              type="date"
+              value={assignDate}
+              onChange={(e) => setAssignDate(e.target.value)}
+              className="mt-1 w-full rounded-lg border border-card-border bg-background px-3 py-2"
+            />
+          </label>
+        </div>
+
+        <ProgramsSetBuilderGrid
+          lifts={assignLifts}
+          bulkPercent={bulkPercent}
+          onBulkPercentChange={setBulkPercent}
+          onApplyBulkPercent={applyBulkPercent}
+          onUpdateLift={updateAssignLift}
+        />
+
+        <button
+          type="submit"
+          disabled={pending || !assignPreviewReady || classes.length === 0}
+          className="rounded-lg bg-accent px-4 py-2 font-medium text-background disabled:opacity-50"
+        >
+          {pending ? "Assigning…" : "Assign for this date"}
+        </button>
+      </form>
+
+      {programModalOpen ? (
+        <CoachModal
+          eyebrow="Day programs"
+          title={editingTemplateId ? "Edit day program" : "New day program"}
+          onClose={closeProgramModal}
+          maxWidth="max-w-2xl"
+        >
+          <form onSubmit={saveProgram} className="space-y-4">
             <label className="block text-sm">
               Program name
               <input
@@ -402,7 +570,7 @@ export function WorkoutProgramsPanel({
                 value={programName}
                 onChange={(e) => setProgramName(e.target.value)}
                 placeholder="Week 3 — Lower body"
-                className="mt-1 w-full max-w-md rounded-lg border border-card-border bg-background px-3 py-2"
+                className="mt-1 w-full rounded-lg border border-card-border bg-background px-3 py-2"
               />
             </label>
             <div className="grid gap-2 sm:grid-cols-2">
@@ -461,174 +629,25 @@ export function WorkoutProgramsPanel({
                 </label>
               ))}
             </div>
-            <button
-              type="submit"
-              disabled={pending || !programName.trim()}
-              className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-background disabled:opacity-50"
-            >
-              {pending ? "Saving…" : editingTemplateId ? "Save changes" : "Save day program"}
-            </button>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="submit"
+                disabled={pending || !programName.trim()}
+                className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-background disabled:opacity-50"
+              >
+                {pending ? "Saving…" : editingTemplateId ? "Save changes" : "Save day program"}
+              </button>
+              <button
+                type="button"
+                onClick={closeProgramModal}
+                className="rounded-lg border border-card-border px-4 py-2 text-sm text-muted hover:text-foreground"
+              >
+                Cancel
+              </button>
+            </div>
           </form>
-
-          <section className="rounded-2xl border border-card-border/80 bg-card/40 p-4">
-            <h3 className="text-sm font-semibold">Saved day programs</h3>
-            {templates.length === 0 ? (
-              <p className="mt-2 text-sm text-muted">No programs yet — save one above.</p>
-            ) : (
-              <ul className="mt-3 space-y-2">
-                {templates.map((t) => (
-                  <li
-                    key={t.id}
-                    className={cn(
-                      "flex flex-wrap items-start justify-between gap-2 rounded-xl border px-3 py-2.5 text-sm",
-                      assignTemplateId === t.id
-                        ? "border-sky-400/50 bg-sky-500/10"
-                        : "border-card-border bg-background/30"
-                    )}
-                  >
-                    <button
-                      type="button"
-                      className="min-w-0 flex-1 text-left"
-                      onClick={() => setAssignTemplateId(t.id)}
-                    >
-                      <div className="font-medium">{t.name}</div>
-                      <div className="mt-0.5 text-xs text-muted">
-                        {t.exercises
-                          .map((ex) => {
-                            const sets = normalizeSetPrescriptions(
-                              ex.setPrescriptions,
-                              ex.defaultSets,
-                              ex.defaultReps
-                            );
-                            return `${ex.activity.name} ${prescriptionSummary(sets)}`;
-                          })
-                          .join(" · ")}
-                      </div>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => startEditProgram(t)}
-                      className="rounded-md p-1.5 text-muted hover:bg-sky-400/10 hover:text-sky-300"
-                      aria-label={`Edit ${t.name}`}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
-        </div>
-
-        <form
-          onSubmit={generateBlock}
-          className="space-y-3 rounded-2xl border border-amber-500/25 bg-gradient-to-b from-amber-500/5 to-card/40 p-4 xl:col-span-2 xl:self-start"
-        >
-          <StepBadge n={3} label="Training block" />
-          <h2 className="text-lg font-semibold">Auto-generate block</h2>
-          <p className="text-sm text-muted">
-            Multi-week schedule (not a single day). Uses the{" "}
-            <strong className="font-medium text-foreground">class tab</strong> selected above.
-          </p>
-          <p className="text-xs text-muted">{WORKOUT_GENERATORS["linear-5x5-mwf"].description}</p>
-          <label className="block text-sm">
-            Block name
-            <input
-              required
-              value={genBlockName}
-              onChange={(e) => setGenBlockName(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-card-border bg-background px-3 py-2"
-            />
-          </label>
-          <div className="grid grid-cols-2 gap-3">
-            <label className="block text-sm">
-              Start date
-              <input
-                required
-                type="date"
-                value={genStartDate}
-                onChange={(e) => setGenStartDate(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-card-border bg-background px-3 py-2"
-              />
-            </label>
-            <label className="block text-sm">
-              Weeks
-              <input
-                type="number"
-                min={1}
-                max={12}
-                value={genWeeks}
-                onChange={(e) => setGenWeeks(Number(e.target.value))}
-                className="mt-1 w-full rounded-lg border border-card-border bg-background px-3 py-2"
-              />
-            </label>
-          </div>
-          <button
-            type="submit"
-            disabled={pending || classes.length === 0 || !genClassId}
-            className="w-full rounded-lg border border-amber-400/40 bg-amber-500/15 px-4 py-2 text-sm font-semibold text-amber-100 disabled:opacity-50"
-          >
-            {pending ? "Generating…" : "Generate Mon / Wed / Fri block"}
-          </button>
-        </form>
-      </div>
-
-      <form
-        onSubmit={assignProgram}
-        className="space-y-4 rounded-2xl border border-emerald-500/20 bg-gradient-to-b from-emerald-500/5 to-card/50 p-4 sm:p-5"
-      >
-        <StepBadge n={4} label="Assign & set builder" />
-        <h2 className="text-lg font-semibold">Load program into class</h2>
-        <p className="text-sm text-muted">
-          Choose a saved day program, edit sets and % 1RM in the grid, then assign for one date.
-        </p>
-        <div className="grid gap-3 sm:grid-cols-2 lg:max-w-xl">
-          <label className="block text-sm">
-            Day program
-            <select
-              required
-              value={assignTemplateId}
-              onChange={(e) => setAssignTemplateId(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-card-border bg-background px-3 py-2"
-            >
-              <option value="" disabled>
-                Select…
-              </option>
-              {templates.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="block text-sm">
-            Workout date
-            <input
-              required
-              type="date"
-              value={assignDate}
-              onChange={(e) => setAssignDate(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-card-border bg-background px-3 py-2"
-            />
-          </label>
-        </div>
-
-        <ProgramsSetBuilderGrid
-          lifts={assignLifts}
-          bulkPercent={bulkPercent}
-          onBulkPercentChange={setBulkPercent}
-          onApplyBulkPercent={applyBulkPercent}
-          onUpdateLift={updateAssignLift}
-        />
-
-        <button
-          type="submit"
-          disabled={pending || !assignPreviewReady || classes.length === 0}
-          className="rounded-lg bg-accent px-4 py-2 font-medium text-background disabled:opacity-50"
-        >
-          {pending ? "Assigning…" : "Assign for this date"}
-        </button>
-      </form>
+        </CoachModal>
+      ) : null}
     </div>
   );
 }

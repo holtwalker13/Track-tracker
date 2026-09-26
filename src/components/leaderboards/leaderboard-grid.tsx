@@ -1,19 +1,30 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Suspense, useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { Check, GitCompare, X } from "lucide-react";
-import { Card, CardTitle } from "@/components/ui/card";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { Check, GitCompare, Trophy, X } from "lucide-react";
 import { ActivityIcon } from "@/lib/activity-icons";
 import { formatActivityValue } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { LeaderboardBoard } from "@/lib/queries/leaderboard-grid";
 import { leaderboardProfileQuery } from "@/lib/leaderboard-link";
+import {
+  DISPLAY_GROUP_LABELS,
+  DISPLAY_GROUP_ORDER,
+  type ActivityDisplayGroup,
+} from "@/lib/activity-groups";
 
 const MAX_COMPARE = 2;
 
-export function LeaderboardGrid({
+function formatRecordDate(iso?: string) {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+function LeaderboardGridInner({
   boards,
   subtitle,
   athleteHrefBase,
@@ -23,17 +34,55 @@ export function LeaderboardGrid({
 }: {
   boards: LeaderboardBoard[];
   subtitle?: string;
-  /** Profile path prefix, e.g. `/coach/students` → `/coach/students/{id}`. */
   athleteHrefBase?: string;
-  /** Student viewing themselves, e.g. `/student/performance`. */
   selfHref?: string;
   rankScope?: "school" | "global";
-  /** Base compare path, e.g. `/coach/compare` or `/student/compare`. */
   compareHref?: string;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [selectMode, setSelectMode] = useState(false);
   const [selected, setSelected] = useState<string[]>([]);
+
+  const eventParam = searchParams.get("event")?.trim() || "";
+  const selectedBoard =
+    boards.find((b) => b.activity.slug === eventParam) ?? boards[0] ?? null;
+
+  const groupedSidebar = useMemo(() => {
+    const map = new Map<ActivityDisplayGroup, LeaderboardBoard[]>();
+    for (const g of DISPLAY_GROUP_ORDER) map.set(g, []);
+    for (const board of boards) {
+      const list = map.get(board.group) ?? [];
+      list.push(board);
+      map.set(board.group, list);
+    }
+    return DISPLAY_GROUP_ORDER.map((g) => ({
+      group: g,
+      label: DISPLAY_GROUP_LABELS[g],
+      boards: map.get(g) ?? [],
+    })).filter((g) => g.boards.length > 0);
+  }, [boards]);
+
+  const recentRecords = useMemo(() => {
+    if (!selectedBoard) return [];
+    return selectedBoard.entries.slice(0, 3);
+  }, [selectedBoard]);
+
+  const crossEventRecords = useMemo(() => {
+    return boards
+      .flatMap((board) => {
+        const top = board.entries[0];
+        if (!top) return [];
+        return [{ board, entry: top }];
+      })
+      .sort((a, b) => {
+        const at = a.entry.testingDate ? Date.parse(a.entry.testingDate) : 0;
+        const bt = b.entry.testingDate ? Date.parse(b.entry.testingDate) : 0;
+        return bt - at;
+      })
+      .slice(0, 6);
+  }, [boards]);
 
   const selectedNames = useMemo(() => {
     const map = new Map<string, string>();
@@ -44,6 +93,14 @@ export function LeaderboardGrid({
     }
     return selected.map((id) => map.get(id) ?? "Athlete");
   }, [boards, selected]);
+
+  function setEvent(slug: string) {
+    const params = new URLSearchParams(searchParams.toString());
+    if (slug) params.set("event", slug);
+    else params.delete("event");
+    const qs = params.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  }
 
   function toggleSelect(studentId: string) {
     setSelected((prev) => {
@@ -64,9 +121,28 @@ export function LeaderboardGrid({
     router.push(`${compareHref}?vs=athlete&ids=${encodeURIComponent(ids)}`);
   }
 
+  function entryHref(
+    board: LeaderboardBoard,
+    e: LeaderboardBoard["entries"][number]
+  ) {
+    if (selectMode) return undefined;
+    const query = leaderboardProfileQuery(board.activity.slug, e.rank, rankScope);
+    if (athleteHrefBase && e.linkable !== false) {
+      return `${athleteHrefBase}/${e.studentId}?${query}`;
+    }
+    if (selfHref && e.displayName === "You") {
+      return `${selfHref}?${query}`;
+    }
+    return undefined;
+  }
+
+  if (!selectedBoard) {
+    return <p className="text-sm text-muted">No leaderboard events yet.</p>;
+  }
+
   return (
     <div className={cn(selectMode && "pb-28")}>
-      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+      <div className="mb-5 flex flex-wrap items-start justify-between gap-3 sm:mb-6">
         {subtitle ? <p className="max-w-2xl text-sm text-muted">{subtitle}</p> : <span />}
         {compareHref && (
           <button
@@ -88,49 +164,226 @@ export function LeaderboardGrid({
         )}
       </div>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-        {boards.map((board) => (
-          <Card key={board.activity.id} className="p-3 sm:p-5">
-            <div className="flex items-center gap-1.5 sm:gap-2">
-              <ActivityIcon
-                slug={board.activity.slug}
-                categorySlug={board.activity.category?.slug}
-                className="h-5 w-5 shrink-0 sm:h-6 sm:w-6"
-              />
-              <CardTitle className="!text-xs !leading-tight sm:!text-base">
-                {board.activity.name}
-              </CardTitle>
+      {/* Mobile event picker */}
+      <div className="mb-5 md:hidden">
+        <label className="block text-xs font-semibold uppercase tracking-[0.18em] text-muted">
+          Event
+          <select
+            value={selectedBoard.activity.slug}
+            onChange={(e) => setEvent(e.target.value)}
+            className="mt-2 w-full rounded-lg border border-card-border bg-card px-3 py-2.5 text-sm font-medium text-foreground"
+          >
+            {boards.map((b) => (
+              <option key={b.activity.id} value={b.activity.slug}>
+                {b.activity.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+
+      <div className="flex gap-6 lg:gap-8">
+        <aside className="hidden w-56 shrink-0 md:block lg:w-64">
+          <div className="sticky top-4 max-h-[calc(100vh-6rem)] overflow-y-auto rounded-2xl border border-card-border bg-card/40 p-3 sm:p-3.5">
+            <p className="px-2.5 pb-2 pt-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-muted">
+              Events
+            </p>
+            <nav className="space-y-4" aria-label="Leaderboard events">
+              {groupedSidebar.map(({ group, label, boards: groupBoards }) => (
+                <div key={group}>
+                  <p className="px-2.5 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted/80">
+                    {label}
+                  </p>
+                  <ul className="space-y-1">
+                    {groupBoards.map((board) => {
+                      const active = board.activity.slug === selectedBoard.activity.slug;
+                      return (
+                        <li key={board.activity.id}>
+                          <button
+                            type="button"
+                            onClick={() => setEvent(board.activity.slug)}
+                            className={cn(
+                              "flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2.5 text-left text-sm transition",
+                              active
+                                ? "bg-sky-500/15 text-sky-100 ring-1 ring-sky-400/40"
+                                : "text-muted hover:bg-foreground/[0.04] hover:text-foreground"
+                            )}
+                          >
+                            <ActivityIcon
+                              slug={board.activity.slug}
+                              categorySlug={board.activity.category?.slug}
+                              className="h-4 w-4 shrink-0"
+                            />
+                            <span className="min-w-0 flex-1 truncate font-medium">
+                              {board.activity.name}
+                            </span>
+                            <span className="shrink-0 tabular-nums text-[11px] text-muted">
+                              {board.entries.length}
+                            </span>
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              ))}
+            </nav>
+          </div>
+        </aside>
+
+        <div className="min-w-0 flex-1 space-y-6 sm:space-y-7">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2.5">
+                <ActivityIcon
+                  slug={selectedBoard.activity.slug}
+                  categorySlug={selectedBoard.activity.category?.slug}
+                  className="h-6 w-6 shrink-0"
+                />
+                <h2 className="truncate text-xl font-semibold tracking-tight">
+                  {selectedBoard.activity.name}
+                </h2>
+              </div>
+              <p className="mt-1.5 text-sm text-muted">
+                {selectedBoard.entries.length === 0
+                  ? "No results in this window"
+                  : `${selectedBoard.entries.length} ranked`}
+              </p>
             </div>
-            {board.entries.length === 0 ? (
-              <p className="mt-3 text-xs text-muted sm:text-sm">No results yet</p>
+          </div>
+
+          {recentRecords.length > 0 && (
+            <section>
+              <div className="mb-3 flex items-center gap-2">
+                <Trophy className="h-3.5 w-3.5 text-sky-300" aria-hidden />
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
+                  Top marks
+                </p>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-3 sm:gap-4">
+                {recentRecords.map((e, i) => {
+                  const href = entryHref(selectedBoard, e);
+                  const value = formatActivityValue(
+                    e.value,
+                    selectedBoard.activity.unit,
+                    selectedBoard.activity.slug
+                  );
+                  const dateLabel = formatRecordDate(e.testingDate);
+                  const medal =
+                    i === 0
+                      ? "from-sky-500/25 to-card ring-sky-400/40"
+                      : i === 1
+                        ? "from-foreground/[0.06] to-card ring-card-border"
+                        : "from-foreground/[0.03] to-card ring-card-border";
+                  const body = (
+                    <div
+                      className={cn(
+                        "rounded-2xl border bg-gradient-to-b p-4 sm:p-5 ring-1",
+                        medal
+                      )}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[11px] font-bold uppercase tracking-wider text-muted">
+                          #{e.rank}
+                        </span>
+                        {dateLabel && (
+                          <span className="text-[11px] text-muted">{dateLabel}</span>
+                        )}
+                      </div>
+                      <p className="mt-2.5 truncate text-sm font-semibold">{e.displayName}</p>
+                      <p className="mt-1.5 font-mono text-2xl font-bold tabular-nums tracking-tight text-sky-100">
+                        {value}
+                      </p>
+                    </div>
+                  );
+                  if (href) {
+                    return (
+                      <Link
+                        key={`${e.studentId}-${e.rank}`}
+                        href={href}
+                        className="block transition hover:brightness-110"
+                      >
+                        {body}
+                      </Link>
+                    );
+                  }
+                  return <div key={`${e.studentId}-${e.rank}`}>{body}</div>;
+                })}
+              </div>
+            </section>
+          )}
+
+          {!eventParam && crossEventRecords.length > 0 && (
+            <section>
+              <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
+                Recent records across events
+              </p>
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                {crossEventRecords.map(({ board, entry }) => {
+                  const value = formatActivityValue(
+                    entry.value,
+                    board.activity.unit,
+                    board.activity.slug
+                  );
+                  const dateLabel = formatRecordDate(entry.testingDate);
+                  const card = (
+                    <div className="flex items-center gap-3 rounded-xl border border-card-border bg-card/50 px-3.5 py-3.5 sm:px-4">
+                      <ActivityIcon
+                        slug={board.activity.slug}
+                        categorySlug={board.activity.category?.slug}
+                        className="h-5 w-5 shrink-0"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-xs text-muted">{board.activity.name}</p>
+                        <p className="truncate text-sm font-semibold">{entry.displayName}</p>
+                      </div>
+                      <div className="shrink-0 text-right">
+                        <p className="font-mono text-sm font-bold tabular-nums">{value}</p>
+                        {dateLabel && (
+                          <p className="text-[10px] text-muted">{dateLabel}</p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                  return (
+                    <button
+                      key={board.activity.id}
+                      type="button"
+                      className="w-full text-left transition hover:brightness-110"
+                      onClick={() => setEvent(board.activity.slug)}
+                    >
+                      {card}
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+          )}
+
+          <section className="rounded-2xl border border-card-border bg-card/30 p-3 sm:p-4">
+            <p className="mb-3 px-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted sm:px-2.5">
+              Full rankings
+            </p>
+            {selectedBoard.entries.length === 0 ? (
+              <p className="px-2 py-8 text-center text-sm text-muted">No results yet</p>
             ) : (
-              <ol className="mt-2 max-h-80 space-y-0.5 overflow-y-auto sm:mt-3">
-                {board.entries.map((e, i) => {
+              <ol className="space-y-1">
+                {selectedBoard.entries.map((e, i) => {
                   const isSelected = selected.includes(e.studentId);
                   const striped =
                     i % 2 === 1 && e.displayName !== "You" && !(selectMode && isSelected);
                   const value = formatActivityValue(
                     e.value,
-                    board.activity.unit,
-                    board.activity.slug
+                    selectedBoard.activity.unit,
+                    selectedBoard.activity.slug
                   );
-                  const query = leaderboardProfileQuery(
-                    board.activity.slug,
-                    e.rank,
-                    rankScope
-                  );
-                  const href = selectMode
-                    ? undefined
-                    : athleteHrefBase && e.linkable !== false
-                      ? `${athleteHrefBase}/${e.studentId}?${query}`
-                      : selfHref && e.displayName === "You"
-                        ? `${selfHref}?${query}`
-                        : undefined;
+                  const href = entryHref(selectedBoard, e);
+                  const dateLabel = formatRecordDate(e.testingDate);
 
                   const row = (
                     <div
                       className={cn(
-                        "flex items-center gap-1.5 rounded-lg px-1 py-1 sm:gap-2 sm:px-2 sm:py-1.5",
+                        "flex items-center gap-2.5 rounded-xl px-2.5 py-2.5 sm:gap-3 sm:px-3.5 sm:py-3",
                         striped && "bg-foreground/[0.045]",
                         e.displayName === "You" && "bg-foreground/8 ring-1 ring-foreground/15",
                         selectMode && isSelected && "bg-sky-400/10 ring-1 ring-sky-400/40"
@@ -150,26 +403,29 @@ export function LeaderboardGrid({
                         </span>
                       ) : (
                         <span
-                          className="w-7 shrink-0 text-right text-xs font-bold tabular-nums text-muted sm:w-8 sm:text-sm"
+                          className="w-8 shrink-0 text-right text-sm font-bold tabular-nums text-muted"
                           aria-label={`Rank ${e.rank}`}
                         >
                           {e.rank}
                         </span>
                       )}
-                      <span className="min-w-0 flex-1 truncate text-xs font-medium sm:text-sm">
+                      <span className="min-w-0 flex-1 truncate text-sm font-medium">
                         {e.displayName}
                       </span>
-                      <span className="shrink-0 text-right">
-                        <span className="block font-mono text-[11px] font-semibold tabular-nums sm:text-sm">
-                          {value}
+                      {dateLabel && (
+                        <span className="hidden shrink-0 text-xs text-muted sm:inline">
+                          {dateLabel}
                         </span>
+                      )}
+                      <span className="shrink-0 font-mono text-sm font-semibold tabular-nums">
+                        {value}
                       </span>
                     </div>
                   );
 
                   if (selectMode) {
                     return (
-                      <li key={`${board.activity.id}-${e.studentId}-${e.rank}`}>
+                      <li key={`${e.studentId}-${e.rank}`}>
                         <button
                           type="button"
                           onClick={() => toggleSelect(e.studentId)}
@@ -184,27 +440,20 @@ export function LeaderboardGrid({
 
                   if (href) {
                     return (
-                      <li key={`${board.activity.id}-${e.studentId}-${e.rank}`}>
-                        <Link href={href} className="block rounded-lg hover:bg-card-border/20">
+                      <li key={`${e.studentId}-${e.rank}`}>
+                        <Link href={href} className="block rounded-xl hover:bg-card-border/20">
                           {row}
                         </Link>
                       </li>
                     );
                   }
 
-                  return (
-                    <li key={`${board.activity.id}-${e.studentId}-${e.rank}`}>{row}</li>
-                  );
+                  return <li key={`${e.studentId}-${e.rank}`}>{row}</li>;
                 })}
               </ol>
             )}
-            {board.entries.length > 0 && (
-              <p className="mt-2 text-center text-[9px] uppercase tracking-wider text-muted sm:text-[10px]">
-                {board.entries.length} ranked
-              </p>
-            )}
-          </Card>
-        ))}
+          </section>
+        </div>
       </div>
 
       {selectMode && (
@@ -254,5 +503,22 @@ export function LeaderboardGrid({
         </div>
       )}
     </div>
+  );
+}
+
+export function LeaderboardGrid(props: {
+  boards: LeaderboardBoard[];
+  subtitle?: string;
+  athleteHrefBase?: string;
+  selfHref?: string;
+  rankScope?: "school" | "global";
+  compareHref?: string;
+}) {
+  return (
+    <Suspense
+      fallback={<div className="h-64 animate-pulse rounded-2xl bg-card/40" aria-hidden />}
+    >
+      <LeaderboardGridInner {...props} />
+    </Suspense>
   );
 }

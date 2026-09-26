@@ -111,18 +111,32 @@ function GenderToggleFallback({
 }) {
   if (variant === "inline") {
     return (
-      <div className={cn("flex gap-1.5", className)}>
-        <span className="rounded-full border border-card-border px-3 py-2 text-sm font-semibold text-muted">
+      <div
+        className={cn(
+          "inline-grid grid-cols-2 rounded-full bg-[#1a1f28] p-0.5 ring-1 ring-card-border",
+          className
+        )}
+      >
+        <span className="rounded-full bg-sky-500 px-3 py-1.5 text-center text-xs font-semibold text-white">
           Boys
         </span>
-        <span className="rounded-full bg-sky-500 px-3 py-2 text-sm font-semibold text-white">Girls</span>
+        <span className="rounded-full px-3 py-1.5 text-center text-xs font-semibold text-muted">
+          Girls
+        </span>
       </div>
     );
   }
   return (
-    <div className={cn("mx-auto grid w-full max-w-xs grid-cols-2 rounded-xl bg-[#1a1f28] p-1", className)}>
-      <span className="px-4 py-2.5 text-center text-sm font-bold text-muted">Boys</span>
-      <span className="rounded-lg bg-sky-500 px-4 py-2.5 text-center text-sm font-bold text-white">Girls</span>
+    <div
+      className={cn(
+        "mx-auto grid w-full max-w-xs grid-cols-2 rounded-full bg-[#1a1f28] p-1 ring-1 ring-card-border",
+        className
+      )}
+    >
+      <span className="rounded-full px-4 py-2.5 text-center text-sm font-bold text-muted">Boys</span>
+      <span className="rounded-full bg-sky-500 px-4 py-2.5 text-center text-sm font-bold text-white">
+        Girls
+      </span>
     </div>
   );
 }

@@ -56,12 +56,15 @@ export function ActivityIcon({
   slug,
   categorySlug,
   className = "h-5 w-5",
+  tone = "default",
 }: {
   slug: string;
   categorySlug?: string;
   className?: string;
+  /** Use inherit to let parent text color drive the icon (e.g. active tabs). */
+  tone?: "default" | "inherit";
 }) {
   const Icon = getActivityIcon(slug, categorySlug);
-  const color = activityIconColor(slug, categorySlug);
-  return <Icon className={`${color} ${className}`} aria-hidden />;
+  const color = tone === "inherit" ? "" : activityIconColor(slug, categorySlug);
+  return <Icon className={`${color} ${className}`.trim()} aria-hidden />;
 }

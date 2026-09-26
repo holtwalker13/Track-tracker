@@ -34,8 +34,8 @@
   --color-sport-red: var(--sport-red);
   --color-sport-bronze: var(--sport-bronze);
   --color-sport-silver: var(--sport-silver);
-  --font-sans: var(--font-strait);
-  --font-mono: var(--font-strait);
+  --font-sans: var(--font-inter);
+  --font-mono: var(--font-inter);
 }
 
 html {

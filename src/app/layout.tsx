@@ -1,11 +1,10 @@
 import type { Metadata } from "next";
-import { Strait } from "next/font/google";
+import { Inter } from "next/font/google";
 import "./globals.css";
 
-const strait = Strait({
-  weight: "400",
+const inter = Inter({
   subsets: ["latin"],
-  variable: "--font-strait",
+  variable: "--font-inter",
 });
 
 export const metadata: Metadata = {
@@ -19,8 +18,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={strait.variable}>
-      <body className={`${strait.className} antialiased`}>
+    <html lang="en" className={inter.variable}>
+      <body className={`${inter.className} antialiased`}>
         {children}
       </body>
     </html>

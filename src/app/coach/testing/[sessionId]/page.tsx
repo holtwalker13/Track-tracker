@@ -6,7 +6,7 @@ import { prisma } from "@/lib/db";
 import { getPreviousBest } from "@/lib/services/results";
 import { LiveTestingStudio } from "@/components/testing/live-testing-studio";
 import { LiveSessionControls } from "@/components/testing/live-session-controls";
-import { isWithinLiveWindow } from "@/lib/constants";
+import { isLiveRecordingOpen, isWithinLiveWindow } from "@/lib/constants";
 import { classSectionLabel } from "@/lib/periods";
 import { SessionDateEditor } from "@/components/testing/session-date-editor";
 
@@ -61,12 +61,13 @@ export default async function LiveTestingPage({
   });
 
   const withinWindow = isWithinLiveWindow(testingSession.liveOpenedAt);
-  const status = testingSession.status;
   const coachCanEdit =
     withinWindow &&
-    status !== "CLOSED" &&
-    status !== "COMPLETED" &&
-    status !== "PAUSED";
+    isLiveRecordingOpen(
+      testingSession.status,
+      testingSession.recordingUnlocked,
+      testingSession.liveOpenedAt
+    );
 
   const rows = await Promise.all(
     testingSession.students.map(async (ss) => {

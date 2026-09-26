@@ -112,7 +112,7 @@ export function SchoolLiftsPanel({
         ))}
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-2">
         {visibleGroups.map((groupMeta) => {
           const items = grouped[groupMeta.id];
           if (items.length === 0 && filterGroup !== "all" && filterGroup !== groupMeta.id) {

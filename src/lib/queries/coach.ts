@@ -284,13 +284,15 @@ export async function getLeaderboard(
   return {
     activity,
     entries: ranked.slice(0, 500).map((e) => {
-      const st = unique.find((r) => r.studentId === e.studentId)!.student;
+      const row = unique.find((r) => r.studentId === e.studentId)!;
+      const st = row.student;
       return {
         rank: e.rank,
         value: e.value,
         studentId: st.id,
         displayName: leaderboardEntryName(st, opts.viewer),
         nameHidden: st.nameHidden,
+        testingDate: row.testingDate.toISOString(),
         linkable: !opts.viewer || (opts.viewer.role !== "STUDENT" && st.schoolId === opts.viewer.schoolId),
       };
     }),

@@ -40,6 +40,7 @@ export type LeaderboardBoardEntry = {
   value: number;
   displayName: string;
   studentId: string;
+  testingDate?: string;
   linkable?: boolean;
 };
 

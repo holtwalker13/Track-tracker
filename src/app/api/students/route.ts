@@ -73,6 +73,7 @@ export async function POST(request: Request) {
     where: { id: session.schoolId },
     select: { slug: true },
   });
+  const schoolSlug = school.slug ?? "school";
 
   const student = await prisma.studentProfile.create({
     data: {
@@ -109,7 +110,7 @@ export async function POST(request: Request) {
       userId: student.userId,
     },
     session.schoolId,
-    school.slug
+    schoolSlug
   );
 
   return NextResponse.json({ ok: true, studentId: student.id, loginEmail });

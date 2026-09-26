@@ -73,6 +73,7 @@ export async function POST(request: Request) {
     where: { id: session.schoolId },
     select: { slug: true },
   });
+  const schoolSlug = school.slug ?? "school";
 
   const existing = await prisma.studentProfile.findMany({
     where: { schoolId: session.schoolId },
@@ -175,7 +176,7 @@ export async function POST(request: Request) {
           userId: student.userId,
         },
         session.schoolId,
-        school.slug
+        schoolSlug
       );
       createdStudents += 1;
     } else {
@@ -189,7 +190,7 @@ export async function POST(request: Request) {
             userId: student.userId,
           },
           session.schoolId,
-          school.slug
+          schoolSlug
         );
       }
       await prisma.studentEnrollment.upsert({

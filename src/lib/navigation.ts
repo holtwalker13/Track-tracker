@@ -32,10 +32,8 @@ export const COACH_NAV: NavItem[] = [
   { href: "/coach/testing", label: "Testing", icon: "clipboard" },
   { href: "/coach/programs", label: "Programs", icon: "workout" },
   { href: "/coach/classes", label: "Classes", icon: "classes" },
-  { href: "/coach/analytics", label: "Analytics", icon: "chart" },
   { href: "/coach/benchmarks", label: "KPI targets", icon: "target" },
   { href: "/coach/compare", label: "Compare", icon: "compare" },
-  { href: "/coach", label: "Dashboard", icon: "dashboard" },
 ];
 
 export const ADMIN_NAV: NavItem[] = [

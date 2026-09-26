@@ -2,9 +2,8 @@ import { AppShell } from "@/components/layout/app-shell";
 import { COACH_NAV } from "@/lib/navigation";
 import { requireSchoolSession } from "@/lib/auth/session";
 import { getLeaderboardGrid } from "@/lib/queries/leaderboard-grid";
+import { LeaderboardToolbar } from "@/components/ui/leaderboard-toolbar";
 import { LeaderboardGrid } from "@/components/leaderboards/leaderboard-grid";
-import { PeriodPills } from "@/components/ui/period-pills";
-import { LeaderboardFilterModal } from "@/components/ui/leaderboard-filter-modal";
 import { gradesFromSearch, gradesLabel } from "@/lib/grades";
 import { parseGenderParam, genderFullLabel } from "@/lib/gender";
 import { prisma } from "@/lib/db";
@@ -64,10 +63,7 @@ export default async function CoachLeaderboardsPage({
 
   return (
     <AppShell title="Leaderboards" nav={COACH_NAV}>
-      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-        <PeriodPills />
-        <LeaderboardFilterModal classes={classes} showGender />
-      </div>
+      <LeaderboardToolbar classes={classes} />
       <LeaderboardGrid
         boards={boards}
         subtitle={`${periodLabel(period)} · ${scope === "global" ? "Global" : "School"} · ${classLabel ?? gradesLabel(grades)} · ${genderFullLabel(gender).toLowerCase()}`}

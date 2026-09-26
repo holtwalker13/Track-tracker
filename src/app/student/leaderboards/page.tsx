@@ -6,10 +6,9 @@ import { getStudentContext } from "@/lib/queries/student";
 import { getStudentClassTags } from "@/lib/queries/kpi";
 import { classYearLabel, gradesFromSearch, gradesLabel } from "@/lib/grades";
 import { getLeaderboardGrid } from "@/lib/queries/leaderboard-grid";
+import { LeaderboardToolbar } from "@/components/ui/leaderboard-toolbar";
 import { LeaderboardGrid } from "@/components/leaderboards/leaderboard-grid";
-import { PeriodPills } from "@/components/ui/period-pills";
-import { LeaderboardFilterModal } from "@/components/ui/leaderboard-filter-modal";
-import { genderFullLabel } from "@/lib/gender";
+import { parseGenderParam } from "@/lib/gender";
 import { prisma } from "@/lib/db";
 import { classSectionLabel } from "@/lib/periods";
 import {
@@ -70,19 +69,14 @@ export default async function StudentLeaderboardsPage({
       ? "entire school"
       : gradesLabel(grades);
 
+  const lockedGender = parseGenderParam(student.gender);
+
   return (
     <AppShell title="Leaderboards" nav={STUDENT_NAV}>
-      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-        <PeriodPills />
-        <LeaderboardFilterModal
-          classes={classTags}
-          showGender={false}
-          lockGenderLabel={genderFullLabel(student.gender)}
-        />
-      </div>
+      <LeaderboardToolbar classes={classTags} lockedGender={lockedGender} />
       <p className="mb-4 text-sm text-muted">
-        Standing locked to {genderFullLabel(student.gender).toLowerCase()}. Time window defaults to
-        this week — open Filters for PE period, class year, and school/global.
+        Time window defaults to this week — open Filters for PE period, class year, and
+        school/global.
       </p>
       <LeaderboardGrid
         boards={boards}

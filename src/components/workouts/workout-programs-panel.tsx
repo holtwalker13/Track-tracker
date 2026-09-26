@@ -58,7 +58,34 @@ export function WorkoutProgramsPanel({
   const [templates, setTemplates] = useState(initialTemplates);
   const [msg, setMsg] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
+  const [pending, setPending] = useState<null | "save" | "generate" | "assign">(null);
+  const [assignPanelOpen, setAssignPanelOpen] = useState(false);
+  const [slotLoading, setSlotLoading] = useState(false);
+  const [slotAssignment, setSlotAssignment] = useState<{
+    templateId: string;
+    templateName: string;
+  } | null>(null);
+
+  async function readApiJson(res: Response) {
+    const text = await res.text();
+    if (!text.trim()) {
+      return {
+        ok: res.ok,
+        data: { error: res.ok ? undefined : `Request failed (${res.status})` } as {
+          error?: string;
+          [key: string]: unknown;
+        },
+      };
+    }
+    try {
+      return { ok: res.ok, data: JSON.parse(text) as Record<string, unknown> };
+    } catch {
+      return {
+        ok: false,
+        data: { error: `Invalid server response (${res.status})` },
+      };
+    }
+  }
 
   const [programName, setProgramName] = useState("");
   const [assignTemplateId, setAssignTemplateId] = useState(initialTemplates[0]?.id ?? "");
@@ -80,6 +107,39 @@ export function WorkoutProgramsPanel({
     const selected = templates.find((t) => t.id === assignTemplateId);
     setAssignLifts(draftFromTemplate(selected));
   }, [assignTemplateId, templates]);
+
+  useEffect(() => {
+    if (!assignClassId || !assignDate) {
+      setSlotAssignment(null);
+      return;
+    }
+    let cancelled = false;
+    setSlotLoading(true);
+    void (async () => {
+      const res = await fetch(
+        `/api/workouts/assignments?classId=${encodeURIComponent(assignClassId)}&date=${encodeURIComponent(assignDate)}`
+      );
+      const { ok, data } = await readApiJson(res);
+      if (cancelled) return;
+      setSlotLoading(false);
+      if (!ok) {
+        setSlotAssignment(null);
+        return;
+      }
+      const a = data.assignment as
+        | { templateId: string; templateName: string }
+        | null
+        | undefined;
+      setSlotAssignment(a ? { templateId: a.templateId, templateName: a.templateName } : null);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [assignClassId, assignDate]);
+
+  useEffect(() => {
+    setAssignPanelOpen(false);
+  }, [assignClassId, assignDate]);
 
   const [genClassId, setGenClassId] = useState(classes[0]?.id ?? "");
   const [genStartDate, setGenStartDate] = useState(new Date().toISOString().slice(0, 10));
@@ -142,7 +202,7 @@ export function WorkoutProgramsPanel({
 
   async function saveProgram(e: React.FormEvent) {
     e.preventDefault();
-    setPending(true);
+    setPending("save");
     setError(null);
     setMsg(null);
     const exercises = lifts
@@ -170,47 +230,54 @@ export function WorkoutProgramsPanel({
         };
       });
     if (exercises.length === 0) {
-      setPending(false);
+      setPending(null);
       setError("Include at least one lift.");
       return;
     }
 
     const isEdit = Boolean(editingTemplateId);
-    const res = await fetch(
-      isEdit ? `/api/workouts/templates/${editingTemplateId}` : "/api/workouts/templates",
-      {
-        method: isEdit ? "PATCH" : "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: programName, exercises }),
-      }
-    );
-    const data = await res.json();
-    setPending(false);
-    if (!res.ok) {
-      setError(data.error ?? (isEdit ? "Could not update program" : "Could not create program"));
-      return;
-    }
-
-    const saved = data.template as TemplateRow;
-    if (isEdit) {
-      setTemplates((t) => t.map((row) => (row.id === saved.id ? { ...saved, updatedAt: saved.updatedAt } : row)));
-      setAssignTemplateId(saved.id);
-      setEditingTemplateId(null);
-      setProgramName("");
-      setLifts(defaultLiftState());
-      setMsg(
-        data.hadAssignments
-          ? `Updated “${saved.name}”. Past assignments keep their logged sets; new assignments use this version.`
-          : `Updated “${saved.name}”.`
+    try {
+      const res = await fetch(
+        isEdit ? `/api/workouts/templates/${editingTemplateId}` : "/api/workouts/templates",
+        {
+          method: isEdit ? "PATCH" : "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: programName, exercises }),
+        }
       );
-    } else {
-      setTemplates((t) => [saved, ...t]);
-      setAssignTemplateId(saved.id);
-      setProgramName("");
-      setLifts(defaultLiftState());
-      setMsg(`Created “${saved.name}”. Assign it to a class below.`);
+      const { ok, data } = await readApiJson(res);
+      if (!ok) {
+        setError(
+          String(data.error ?? (isEdit ? "Could not update program" : "Could not create program"))
+        );
+        return;
+      }
+
+      const saved = data.template as TemplateRow;
+      if (isEdit) {
+        setTemplates((t) =>
+          t.map((row) => (row.id === saved.id ? { ...saved, updatedAt: saved.updatedAt } : row))
+        );
+        setAssignTemplateId(saved.id);
+        setEditingTemplateId(null);
+        setProgramName("");
+        setLifts(defaultLiftState());
+        setMsg(
+          data.hadAssignments
+            ? `Updated “${saved.name}”. Past assignments keep their logged sets; new assignments use this version.`
+            : `Updated “${saved.name}”.`
+        );
+      } else {
+        setTemplates((t) => [saved, ...t]);
+        setAssignTemplateId(saved.id);
+        setProgramName("");
+        setLifts(defaultLiftState());
+        setMsg(`Created “${saved.name}”. Schedule it on a class below.`);
+      }
+      router.refresh();
+    } finally {
+      setPending(null);
     }
-    router.refresh();
   }
 
   function updateAssignLift(index: number, sets: SetPrescription[]) {
@@ -238,64 +305,68 @@ export function WorkoutProgramsPanel({
   async function doAssign() {
     if (!assignTemplateId || assignLifts.length === 0) {
       setError("Select a program with at least one lift.");
-      return;
+      return false;
     }
-    setPending(true);
+    setPending("assign");
     setError(null);
     setMsg(null);
 
-    const patchRes = await fetch(`/api/workouts/templates/${assignTemplateId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        exercises: assignLifts.map((l) => ({
-          activitySlug: l.activitySlug,
-          defaultSets: l.sets.length,
-          defaultReps: l.sets[0]?.reps ?? 5,
-          setPrescriptions: l.sets,
-        })),
-      }),
-    });
-    const patchData = await patchRes.json();
-    if (!patchRes.ok) {
-      setPending(false);
-      setError(patchData.error ?? "Could not update program intensities");
-      return;
-    }
-    const saved = patchData.template as TemplateRow;
-    setTemplates((t) => t.map((row) => (row.id === saved.id ? saved : row)));
+    try {
+      const patchRes = await fetch(`/api/workouts/templates/${assignTemplateId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          exercises: assignLifts.map((l) => ({
+            activitySlug: l.activitySlug,
+            defaultSets: l.sets.length,
+            defaultReps: l.sets[0]?.reps ?? 5,
+            setPrescriptions: l.sets,
+          })),
+        }),
+      });
+      const patchResult = await readApiJson(patchRes);
+      if (!patchResult.ok) {
+        setError(String(patchResult.data.error ?? "Could not update program intensities"));
+        return false;
+      }
+      const saved = patchResult.data.template as TemplateRow;
+      setTemplates((t) => t.map((row) => (row.id === saved.id ? saved : row)));
 
-    const res = await fetch("/api/workouts/assignments", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
+      const res = await fetch("/api/workouts/assignments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          templateId: assignTemplateId,
+          classId: assignClassId,
+          scheduledDate: assignDate,
+        }),
+      });
+      const result = await readApiJson(res);
+      if (!result.ok) {
+        setError(String(result.data.error ?? "Could not assign"));
+        return false;
+      }
+      const assignment = result.data.assignment as {
+        template: { name: string };
+        class: { name: string };
+      };
+      setSlotAssignment({
         templateId: assignTemplateId,
-        classId: assignClassId,
-        scheduledDate: assignDate,
-      }),
-    });
-    const data = await res.json();
-    setPending(false);
-    if (!res.ok) {
-      setError(data.error ?? "Could not assign");
-      return;
+        templateName: assignment.template.name,
+      });
+      setAssignPanelOpen(false);
+      setMsg(
+        `Assigned “${assignment.template.name}” to ${assignment.class.name} on ${assignDate}.`
+      );
+      router.refresh();
+      return true;
+    } finally {
+      setPending(null);
     }
-    setMsg(
-      `Updated program intensities and assigned “${data.assignment.template.name}” to ${data.assignment.class.name} on ${assignDate}.`
-    );
-    router.refresh();
   }
 
   async function assignProgram(e: React.FormEvent) {
     e.preventDefault();
-    await doAssign();
-  }
-
-  async function quickAssignToClass() {
-    if (!assignPreviewReady) {
-      setError("Choose a day program below, then tap + on the active class tab.");
-      return;
-    }
     await doAssign();
   }
 
@@ -306,30 +377,33 @@ export function WorkoutProgramsPanel({
 
   async function generateBlock(e: React.FormEvent) {
     e.preventDefault();
-    setPending(true);
+    setPending("generate");
     setError(null);
     setMsg(null);
-    const res = await fetch("/api/workouts/generate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        generatorKey: "linear-5x5-mwf",
-        classId: genClassId,
-        startDate: genStartDate,
-        blockName: genBlockName,
-        weeks: genWeeks,
-      }),
-    });
-    const data = await res.json();
-    setPending(false);
-    if (!res.ok) {
-      setError(data.error ?? "Could not generate block");
-      return;
+    try {
+      const res = await fetch("/api/workouts/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          generatorKey: "linear-5x5-mwf",
+          classId: genClassId,
+          startDate: genStartDate,
+          blockName: genBlockName,
+          weeks: genWeeks,
+        }),
+      });
+      const { ok, data } = await readApiJson(res);
+      if (!ok) {
+        setError(String(data.error ?? "Could not generate block"));
+        return;
+      }
+      setMsg(
+        `Generated ${data.assignmentsCreated} workouts (${data.generatorLabel}). Athletes see them on matching dates.`
+      );
+      router.refresh();
+    } finally {
+      setPending(null);
     }
-    setMsg(
-      `Generated ${data.assignmentsCreated} workouts (${data.generatorLabel}). Athletes see them on matching dates.`
-    );
-    router.refresh();
   }
 
   return (
@@ -347,26 +421,6 @@ export function WorkoutProgramsPanel({
         </p>
       )}
       {error && <p className="text-sm text-sport-red">{error}</p>}
-
-      <div className="rounded-2xl border border-card-border bg-card/30 p-4">
-        <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted">
-          Your classes
-        </p>
-        <ProgramsClassTabs
-          classes={classes}
-          activeClassId={assignClassId}
-          onSelectClass={selectClass}
-          onQuickAssign={() => void quickAssignToClass()}
-          quickAssignDisabled={pending || !assignPreviewReady}
-        />
-        <p className="mt-2 text-xs text-muted">
-          Tabs set the class for blocks and assignments. Tap{" "}
-          <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-accent align-middle text-[10px] font-bold text-background">
-            +
-          </span>{" "}
-          on the active tab to push the selected day program to that class for the date below.
-        </p>
-      </div>
 
       <div className="grid gap-6 xl:grid-cols-5">
         <div className="space-y-6 xl:col-span-3">
@@ -463,10 +517,10 @@ export function WorkoutProgramsPanel({
             </div>
             <button
               type="submit"
-              disabled={pending || !programName.trim()}
+              disabled={pending !== null || !programName.trim()}
               className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-background disabled:opacity-50"
             >
-              {pending ? "Saving…" : editingTemplateId ? "Save changes" : "Save day program"}
+              {pending === "save" ? "Saving…" : editingTemplateId ? "Save changes" : "Save day program"}
             </button>
           </form>
 
@@ -527,10 +581,24 @@ export function WorkoutProgramsPanel({
           <StepBadge n={3} label="Training block" />
           <h2 className="text-lg font-semibold">Auto-generate block</h2>
           <p className="text-sm text-muted">
-            Multi-week schedule (not a single day). Uses the{" "}
-            <strong className="font-medium text-foreground">class tab</strong> selected above.
+            Multi-week Mon / Wed / Fri plan — separate from single-day programs.
           </p>
           <p className="text-xs text-muted">{WORKOUT_GENERATORS["linear-5x5-mwf"].description}</p>
+          <label className="block text-sm">
+            Class for this block
+            <select
+              required
+              value={genClassId}
+              onChange={(e) => setGenClassId(e.target.value)}
+              className="mt-1 w-full rounded-lg border border-card-border bg-background px-3 py-2"
+            >
+              {classes.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.period ? `${c.period} — ${c.name}` : c.name}
+                </option>
+              ))}
+            </select>
+          </label>
           <label className="block text-sm">
             Block name
             <input
@@ -565,70 +633,123 @@ export function WorkoutProgramsPanel({
           </div>
           <button
             type="submit"
-            disabled={pending || classes.length === 0 || !genClassId}
+            disabled={pending !== null || classes.length === 0 || !genClassId}
             className="w-full rounded-lg border border-amber-400/40 bg-amber-500/15 px-4 py-2 text-sm font-semibold text-amber-100 disabled:opacity-50"
           >
-            {pending ? "Generating…" : "Generate Mon / Wed / Fri block"}
+            {pending === "generate" ? "Generating…" : "Generate Mon / Wed / Fri block"}
           </button>
         </form>
       </div>
 
-      <form
-        onSubmit={assignProgram}
-        className="space-y-4 rounded-2xl border border-emerald-500/20 bg-gradient-to-b from-emerald-500/5 to-card/50 p-4 sm:p-5"
-      >
-        <StepBadge n={4} label="Assign & set builder" />
-        <h2 className="text-lg font-semibold">Load program into class</h2>
+      <section className="space-y-4 rounded-2xl border border-emerald-500/20 bg-gradient-to-b from-emerald-500/5 to-card/50 p-4 sm:p-5">
+        <StepBadge n={4} label="Class schedule" />
+        <h2 className="text-lg font-semibold">Load a day program into a class</h2>
         <p className="text-sm text-muted">
-          Choose a saved day program, edit sets and % 1RM in the grid, then assign for one date.
+          Pick a class and date. Empty days show an open slot — use Add program to choose a template
+          and set % of 1RM.
         </p>
-        <div className="grid gap-3 sm:grid-cols-2 lg:max-w-xl">
-          <label className="block text-sm">
-            Day program
-            <select
-              required
-              value={assignTemplateId}
-              onChange={(e) => setAssignTemplateId(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-card-border bg-background px-3 py-2"
-            >
-              <option value="" disabled>
-                Select…
-              </option>
-              {templates.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="block text-sm">
-            Workout date
-            <input
-              required
-              type="date"
-              value={assignDate}
-              onChange={(e) => setAssignDate(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-card-border bg-background px-3 py-2"
-            />
-          </label>
-        </div>
 
-        <ProgramsSetBuilderGrid
-          lifts={assignLifts}
-          bulkPercent={bulkPercent}
-          onBulkPercentChange={setBulkPercent}
-          onApplyBulkPercent={applyBulkPercent}
-          onUpdateLift={updateAssignLift}
+        <ProgramsClassTabs
+          classes={classes}
+          activeClassId={assignClassId}
+          onSelectClass={selectClass}
         />
 
-        <button
-          type="submit"
-          disabled={pending || !assignPreviewReady || classes.length === 0}
-          className="rounded-lg bg-accent px-4 py-2 font-medium text-background disabled:opacity-50"
-        >
-          {pending ? "Assigning…" : "Assign for this date"}
-        </button>
-      </form>
+        <label className="block max-w-xs text-sm">
+          Workout date
+          <input
+            type="date"
+            value={assignDate}
+            onChange={(e) => setAssignDate(e.target.value)}
+            className="mt-1 w-full rounded-lg border border-card-border bg-background px-3 py-2"
+          />
+        </label>
+
+        <div className="rounded-xl border border-card-border bg-background/40 p-4">
+          {slotLoading ? (
+            <p className="text-sm text-muted">Loading schedule…</p>
+          ) : slotAssignment ? (
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted">
+                  Scheduled program
+                </p>
+                <p className="mt-1 font-semibold">{slotAssignment.templateName}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setAssignTemplateId(slotAssignment.templateId);
+                  setAssignPanelOpen(true);
+                }}
+                className="rounded-lg border border-card-border px-3 py-2 text-sm hover:border-sky-400/40"
+              >
+                Change program
+              </button>
+            </div>
+          ) : (
+            <div className="flex min-h-[5rem] flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-card-border/80 px-4 py-6 text-center">
+              <p className="text-sm text-muted">No program assigned for this class on this date.</p>
+              <button
+                type="button"
+                onClick={() => setAssignPanelOpen(true)}
+                className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-background"
+              >
+                Add program
+              </button>
+            </div>
+          )}
+        </div>
+
+        {assignPanelOpen ? (
+          <form onSubmit={assignProgram} className="space-y-4 rounded-xl border border-card-border bg-card/50 p-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h3 className="font-semibold">Set builder</h3>
+              <button
+                type="button"
+                onClick={() => setAssignPanelOpen(false)}
+                className="text-sm text-muted hover:text-foreground"
+              >
+                Cancel
+              </button>
+            </div>
+            <label className="block text-sm">
+              Day program
+              <select
+                required
+                value={assignTemplateId}
+                onChange={(e) => setAssignTemplateId(e.target.value)}
+                className="mt-1 w-full max-w-md rounded-lg border border-card-border bg-background px-3 py-2"
+              >
+                <option value="" disabled>
+                  Select…
+                </option>
+                {templates.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <ProgramsSetBuilderGrid
+              lifts={assignLifts}
+              bulkPercent={bulkPercent}
+              onBulkPercentChange={setBulkPercent}
+              onApplyBulkPercent={applyBulkPercent}
+              onUpdateLift={updateAssignLift}
+            />
+
+            <button
+              type="submit"
+              disabled={pending !== null || !assignPreviewReady || classes.length === 0}
+              className="rounded-lg bg-accent px-4 py-2 font-medium text-background disabled:opacity-50"
+            >
+              {pending === "assign" ? "Saving…" : "Save & assign to this class"}
+            </button>
+          </form>
+        ) : null}
+      </section>
     </div>
   );
 }

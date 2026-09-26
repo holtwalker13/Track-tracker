@@ -3,6 +3,57 @@ import { requireSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { dayBoundsFromDateString } from "@/lib/services/workouts";
 
+export async function GET(request: Request) {
+  const session = await requireSession(["COACH", "ADMIN"]);
+  if (!session?.schoolId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const params = new URL(request.url).searchParams;
+  const classId = params.get("classId")?.trim();
+  const dateStr = params.get("date")?.trim();
+  if (!classId || !dateStr) {
+    return NextResponse.json({ error: "classId and date required" }, { status: 400 });
+  }
+
+  const bounds = dayBoundsFromDateString(dateStr);
+  if (!bounds) {
+    return NextResponse.json({ error: "Invalid date" }, { status: 400 });
+  }
+
+  const cls = await prisma.class.findFirst({
+    where: { id: classId, schoolId: session.schoolId },
+    select: { id: true },
+  });
+  if (!cls) {
+    return NextResponse.json({ error: "Class not found" }, { status: 404 });
+  }
+
+  const assignment = await prisma.workoutAssignment.findFirst({
+    where: {
+      schoolId: session.schoolId,
+      classId,
+      scheduledDate: { gte: bounds.start, lte: bounds.end },
+    },
+    include: {
+      template: { select: { id: true, name: true } },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  if (!assignment) {
+    return NextResponse.json({ assignment: null });
+  }
+
+  return NextResponse.json({
+    assignment: {
+      id: assignment.id,
+      templateId: assignment.templateId,
+      templateName: assignment.template.name,
+    },
+  });
+}
+
 export async function POST(request: Request) {
   const session = await requireSession(["COACH", "ADMIN"]);
   if (!session?.schoolId) {
@@ -76,6 +127,7 @@ export async function POST(request: Request) {
   return NextResponse.json({
     assignment: {
       id: rec.id,
+      templateId: rec.templateId,
       template: rec.template,
       class: { name: rec.class?.name, period: rec.class?.period },
     },

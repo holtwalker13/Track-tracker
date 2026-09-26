@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { DEFAULT_AGE_BRACKET, isAgeBracketId, type AgeBracketId } from "@/lib/age-brackets";
 import { LIFTING_SESSION_SLUGS } from "@/lib/lifting";
+import { resolveLiftBodyGroup, type LiftBodyGroup } from "@/lib/lift-groups";
 import { MEDALS } from "@/lib/kpi-targets";
 
 export type SchoolLiftRow = {
@@ -8,6 +9,7 @@ export type SchoolLiftRow = {
   name: string;
   unit: string;
   custom: boolean;
+  bodyGroup: LiftBodyGroup;
   /** Suitable for set/rep workout programs (lb or reps, not × BW). */
   forWorkouts: boolean;
 };
@@ -29,7 +31,7 @@ export async function listSchoolLifts(schoolId: string): Promise<SchoolLiftRow[]
       category: { slug: "strength" },
       OR: [{ schoolId: null }, { schoolId }],
     },
-    include: { category: true },
+    select: { slug: true, name: true, unit: true, schoolId: true, description: true },
     orderBy: { name: "asc" },
   });
 
@@ -40,6 +42,11 @@ export async function listSchoolLifts(schoolId: string): Promise<SchoolLiftRow[]
       name: a.name,
       unit: a.unit,
       custom: a.schoolId != null,
+      bodyGroup: resolveLiftBodyGroup({
+        slug: a.slug,
+        name: a.name,
+        description: a.description,
+      }),
       forWorkouts: WORKOUT_UNITS.has(a.unit),
     }));
 
@@ -67,6 +74,7 @@ export type SchoolLiftEditDetails = {
   unit: string;
   direction: "HIGHER_BETTER" | "LOWER_BETTER";
   custom: boolean;
+  bodyGroup: LiftBodyGroup;
   ageBrackets: AgeBracketId[];
   genders: Array<"F" | "M">;
   targets: Record<string, Record<string, Record<string, string>>>;
@@ -113,6 +121,11 @@ export async function getSchoolLiftEditDetails(
     unit: activity.unit,
     direction,
     custom: activity.schoolId != null,
+    bodyGroup: resolveLiftBodyGroup({
+      slug: activity.slug,
+      name: activity.name,
+      description: activity.description,
+    }),
     ageBrackets:
       bracketSet.size > 0 ? [...bracketSet] : [DEFAULT_AGE_BRACKET as AgeBracketId],
     genders: genderSet.size > 0 ? [...genderSet] : ["F", "M"],

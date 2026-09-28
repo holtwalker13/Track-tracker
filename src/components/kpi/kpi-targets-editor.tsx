@@ -166,12 +166,25 @@ export function KpiTargetsEditor({
       if (target != null && Number.isFinite(target)) {
         next.push({ gender, medal, metricSlug: slug, target, ageBracket: bracket });
       }
-      const stillHas = next.some((c) => c.metricSlug === slug && c.target != null);
-      setRankedBySlug((rankedPrev) => ({
+      return next;
+    });
+    setRankedBySlug((rankedPrev) => {
+      const stillHas =
+        (target != null && Number.isFinite(target)) ||
+        cells.some(
+          (c) =>
+            c.metricSlug === slug &&
+            !(
+              c.gender === gender &&
+              c.medal === medal &&
+              c.ageBracket === bracket
+            ) &&
+            c.target != null
+        );
+      return {
         ...rankedPrev,
         [slug]: stillHas ? true : rankedPrev[slug] ?? false,
-      }));
-      return next;
+      };
     });
     setStatus("idle");
   }

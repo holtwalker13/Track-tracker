@@ -48,23 +48,25 @@ export function SessionResultsAccordion({
   return (
     <details className="group rounded-2xl border border-card-border bg-card open:shadow-sm">
       <summary className="cursor-pointer list-none p-4 sm:p-5 [&::-webkit-details-marker]:hidden">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+          <div className="min-w-0 w-full sm:flex-1">
+            <div className="flex items-start gap-2">
               {live && (
-                <span className="relative flex h-2.5 w-2.5 shrink-0" aria-label="Live">
+                <span className="relative mt-1.5 flex h-2.5 w-2.5 shrink-0" aria-label="Live">
                   <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-sport-red opacity-60" />
                   <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-sport-red shadow-[0_0_10px_rgba(239,68,68,0.75)]" />
                 </span>
               )}
-              <h2 className="text-lg font-semibold tracking-tight">{sessionName}</h2>
+              <h2 className="min-w-0 flex-1 text-base font-semibold tracking-tight sm:text-lg">
+                {sessionName}
+              </h2>
               <ChevronDown
-                className="h-4 w-4 shrink-0 text-muted transition group-open:rotate-180"
+                className="mt-1 h-4 w-4 shrink-0 text-muted transition group-open:rotate-180"
                 aria-hidden
               />
             </div>
-            <p className="mt-1 text-sm text-muted">{meta}</p>
-            <p className="mt-1 text-sm">
+            <p className="mt-1.5 text-sm leading-snug text-muted">{meta}</p>
+            <p className="mt-1 text-sm leading-snug">
               {totalStudents === 0 ? (
                 <span className="text-muted">No athletes on this session yet</span>
               ) : allDone ? (
@@ -78,20 +80,20 @@ export function SessionResultsAccordion({
               )}
             </p>
             {activityChips.length > 0 && (
-              <div className="mt-3 flex flex-wrap gap-2">
+              <div className="mt-3 flex flex-wrap gap-1.5 sm:gap-2">
                 {activityChips.map((a) => {
                   const summary = activities.find((x) => x.slug === a.slug);
                   return (
                     <span
                       key={a.slug}
-                      className="inline-flex items-center gap-1.5 rounded-full border border-card-border px-2.5 py-1 text-xs"
+                      className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-card-border px-2.5 py-1 text-xs"
                     >
-                      <ActivityIcon slug={a.slug} className="h-3.5 w-3.5" />
-                      {a.name}
+                      <ActivityIcon slug={a.slug} className="h-3.5 w-3.5 shrink-0" />
+                      <span className="min-w-0 truncate">{a.name}</span>
                       {summary && totalStudents > 0 && (
                         <span
                           className={cn(
-                            "font-mono tabular-nums",
+                            "shrink-0 font-mono tabular-nums",
                             summary.recorded >= summary.total
                               ? "text-success"
                               : summary.recorded > 0
@@ -109,19 +111,19 @@ export function SessionResultsAccordion({
             )}
           </div>
           <div
-            className="flex flex-wrap items-center gap-2"
+            className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:shrink-0 sm:justify-end"
             onClick={(e) => e.stopPropagation()}
             onKeyDown={(e) => e.stopPropagation()}
           >
             <Link
               href={`/coach/testing/${sessionId}`}
-              className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-background"
+              className="inline-flex flex-1 items-center justify-center rounded-lg bg-accent px-3 py-2.5 text-sm font-medium text-background sm:flex-none sm:px-4 sm:py-2"
             >
               {anyRecorded ? "Continue" : "Live testing"}
             </Link>
             <Link
               href={`/coach/testing/${sessionId}/station`}
-              className="rounded-lg border border-card-border px-4 py-2 text-sm"
+              className="inline-flex flex-1 items-center justify-center rounded-lg border border-card-border px-3 py-2.5 text-sm sm:flex-none sm:px-4 sm:py-2"
             >
               Student station
             </Link>

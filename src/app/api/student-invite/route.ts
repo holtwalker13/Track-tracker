@@ -18,7 +18,8 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Invalid link" }, { status: 404 });
   }
 
-  if (preview.alreadyActive) {
+  const resetFlow = preview.purpose === "RESET";
+  if (preview.alreadyActive && !resetFlow) {
     return NextResponse.json({ ...preview, canComplete: false });
   }
   if (preview.used || preview.expired) {

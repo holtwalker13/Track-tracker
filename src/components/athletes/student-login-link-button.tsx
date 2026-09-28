@@ -39,38 +39,53 @@ export function StudentLoginLinkButton({
     }
   }
 
-  if (loginStatus === "active") {
-    return (
-      <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-300/90" title="Student login active">
-        <Check className="h-3.5 w-3.5" aria-hidden />
-        Active
-      </span>
-    );
-  }
+  const active = loginStatus === "active";
+  const pendingInvite = loginStatus === "invite";
 
   return (
     <div className="flex flex-col items-start gap-0.5">
-      <button
-        type="button"
-        onClick={() => void copyLink()}
-        disabled={pending}
-        className={cn(
-          "inline-flex items-center gap-1.5 rounded-lg border border-card-border px-2.5 py-1 text-xs font-semibold transition hover:bg-white/[0.04]",
-          loginStatus === "invite" && "border-sky-400/40 text-sky-300"
+      <div className="inline-flex items-center gap-1">
+        {active && (
+          <span
+            className="inline-flex h-8 w-8 items-center justify-center text-emerald-400"
+            title="Student login is set up"
+            aria-label={`${fullName} login is active`}
+          >
+            <Check className="h-4 w-4" strokeWidth={2.5} aria-hidden />
+          </span>
         )}
-        title={`Copy login link for ${fullName}`}
-        aria-label={`Copy student login link for ${fullName}`}
-      >
-        {pending ? (
-          <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
-        ) : copied ? (
-          <Check className="h-3.5 w-3.5" aria-hidden />
-        ) : (
-          <Copy className="h-3.5 w-3.5" aria-hidden />
-        )}
-        {copied ? "Copied" : loginStatus === "invite" ? "Copy link" : "Login link"}
-        {!copied && !pending && <Link2 className="h-3 w-3 opacity-60" aria-hidden />}
-      </button>
+        <button
+          type="button"
+          onClick={() => void copyLink()}
+          disabled={pending}
+          className={cn(
+            "inline-flex h-8 items-center gap-1 rounded-lg border border-card-border px-2 transition hover:bg-white/[0.04]",
+            pendingInvite && !active && "border-sky-400/40 text-sky-300",
+            copied && "border-emerald-400/40 text-emerald-300"
+          )}
+          title={
+            active
+              ? `Copy password reset link for ${fullName}`
+              : `Copy login setup link for ${fullName}`
+          }
+          aria-label={
+            active
+              ? `Copy password reset link for ${fullName}`
+              : `Copy student login link for ${fullName}`
+          }
+        >
+          {pending ? (
+            <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+          ) : copied ? (
+            <Check className="h-4 w-4" aria-hidden />
+          ) : (
+            <>
+              <Copy className="h-4 w-4" aria-hidden />
+              <Link2 className="h-3.5 w-3.5 opacity-70" aria-hidden />
+            </>
+          )}
+        </button>
+      </div>
       {error && <span className="text-[10px] text-red-400">{error}</span>}
     </div>
   );

@@ -8,6 +8,7 @@ type Preview = {
   fullName: string;
   username: string;
   schoolName: string;
+  purpose?: "SETUP" | "RESET";
   canComplete?: boolean;
   alreadyActive?: boolean;
   expired?: boolean;
@@ -114,7 +115,7 @@ export function StudentJoinForm({ token }: { token: string }) {
     );
   }
 
-  if (preview.alreadyActive) {
+  if (preview.alreadyActive && preview.purpose !== "RESET") {
     return (
       <div className="flex min-h-screen items-center justify-center px-4">
         <Card className="w-full max-w-md p-6">
@@ -149,13 +150,17 @@ export function StudentJoinForm({ token }: { token: string }) {
     );
   }
 
+  const isReset = preview.purpose === "RESET";
+
   return (
     <div className="flex min-h-screen items-center justify-center px-4 py-10">
       <Card className="w-full max-w-md">
         <p className="text-xs uppercase tracking-widest text-accent">{preview.schoolName}</p>
-        <h1 className="mt-2 text-2xl font-bold">Create your login</h1>
+        <h1 className="mt-2 text-2xl font-bold">{isReset ? "Set a new password" : "Create your login"}</h1>
         <p className="mt-1 text-sm text-muted">
-          Confirm your roster info, then choose a password only you should know.
+          {isReset
+            ? "Confirm your roster info, then choose a new password. Your old password will stop working."
+            : "Confirm your roster info, then choose a password only you should know."}
         </p>
 
         <dl className="mt-6 space-y-3 rounded-lg border border-card-border bg-background/50 px-4 py-3 text-sm">
@@ -218,7 +223,13 @@ export function StudentJoinForm({ token }: { token: string }) {
             disabled={submitting || !confirmName}
             className="w-full rounded-lg bg-accent py-3 font-semibold text-background disabled:opacity-60"
           >
-            {submitting ? "Creating account…" : "Create account & sign in"}
+            {submitting
+              ? isReset
+                ? "Updating password…"
+                : "Creating account…"
+              : isReset
+                ? "Update password & sign in"
+                : "Create account & sign in"}
           </button>
         </form>
       </Card>

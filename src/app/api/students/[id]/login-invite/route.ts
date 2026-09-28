@@ -42,9 +42,6 @@ export async function POST(_request: Request, context: RouteContext) {
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unable to create invite";
-    if (message.includes("already has an active login")) {
-      return NextResponse.json({ error: message, code: "ALREADY_ACTIVE" }, { status: 409 });
-    }
     return NextResponse.json({ error: message }, { status: 400 });
   }
 }

@@ -6,10 +6,13 @@ import { studentEmailDomainForSchoolSlug } from "@/lib/services/student-login";
 const INVITE_TTL_MS = 14 * 24 * 60 * 60 * 1000;
 const BCRYPT_ROUNDS = 12;
 
+export type StudentInvitePurpose = "SETUP" | "RESET";
+
 export type StudentInvitePreview = {
   fullName: string;
   username: string;
   schoolName: string;
+  purpose: StudentInvitePurpose;
   alreadyActive: boolean;
   expired: boolean;
   used: boolean;
@@ -55,9 +58,8 @@ export async function createOrRefreshStudentLoginInvite(
     },
   });
   if (!student) throw new Error("Student not found");
-  if (student.user?.passwordSetAt) {
-    throw new Error("Student already has an active login");
-  }
+
+  const purpose: StudentInvitePurpose = student.user?.passwordSetAt ? "RESET" : "SETUP";
 
   const token = generateInviteToken();
   const tokenHash = hashInviteToken(token);
@@ -68,11 +70,13 @@ export async function createOrRefreshStudentLoginInvite(
     create: {
       studentId,
       tokenHash,
+      purpose,
       expiresAt,
       createdById,
     },
     update: {
       tokenHash,
+      purpose,
       expiresAt,
       usedAt: null,
       createdById,
@@ -103,6 +107,7 @@ export async function previewStudentLoginInvite(token: string): Promise<StudentI
   if (!invite) return null;
 
   const { student } = invite;
+  const purpose = invite.purpose === "RESET" ? "RESET" : "SETUP";
   const alreadyActive = Boolean(student.user?.passwordSetAt);
   const used = Boolean(invite.usedAt);
   const expired = invite.expiresAt.getTime() < Date.now();
@@ -111,6 +116,7 @@ export async function previewStudentLoginInvite(token: string): Promise<StudentI
     fullName: `${student.firstName} ${student.lastName}`,
     username: student.studentNumber,
     schoolName: student.school.name,
+    purpose,
     alreadyActive,
     expired,
     used,
@@ -140,8 +146,13 @@ export async function completeStudentLoginInvite(input: {
   }
 
   const student = invite.student;
-  if (student.user?.passwordSetAt) {
-    return { ok: false, error: "This account is already set up. Sign in on the login page." };
+  const purpose: StudentInvitePurpose = invite.purpose === "RESET" ? "RESET" : "SETUP";
+
+  if (purpose === "SETUP" && student.user?.passwordSetAt) {
+    return { ok: false, error: "This account is already set up. Ask your coach for a new login link." };
+  }
+  if (purpose === "RESET" && !student.user?.passwordSetAt) {
+    return { ok: false, error: "This link is for password reset, but the account is not set up yet." };
   }
 
   const schoolSlug = student.school.slug ?? "school";
@@ -179,6 +190,8 @@ export async function completeStudentLoginInvite(input: {
           lastName: student.lastName,
         },
       });
+    } else if (purpose === "RESET") {
+      throw new Error("INVITE_UNAVAILABLE");
     } else {
       const created = await tx.user.create({
         data: {

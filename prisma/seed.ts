@@ -826,6 +826,58 @@ async function main() {
     console.log(
       `${tenant.shortName}: ${roster.length} athletes. Coach ${tenant.coachEmail} / ${DEMO_PASSWORD}. Sample student: ${sample}`
     );
+
+    if (tenant.slug === "demo") {
+      const { DEMO_CLASS_LOGIN } = await import("../src/lib/tenants");
+      const demoSn = DEMO_CLASS_LOGIN.studentNumber;
+      let demoProfile = await prisma.studentProfile.findFirst({
+        where: { schoolId: school.id, studentNumber: demoSn },
+        include: { user: true },
+      });
+      if (!demoProfile) {
+        demoProfile = await prisma.studentProfile.create({
+          data: {
+            schoolId: school.id,
+            studentNumber: demoSn,
+            firstName: "Demo",
+            lastName: "Student",
+            dateOfBirth: new Date(2010, 0, 1),
+            gender: "F",
+            participationType: "PE",
+            anonymousId: "demo-class",
+            enrollments: {
+              create: { schoolYearId: schoolYear.id, gradeLevel: 2028 },
+            },
+          },
+          include: { user: true },
+        });
+      }
+      const demoHash = await bcrypt.hash(DEMO_CLASS_LOGIN.password, 12);
+      if (demoProfile.user) {
+        await prisma.user.update({
+          where: { id: demoProfile.user.id },
+          data: { passwordHash: demoHash, passwordSetAt: new Date() },
+        });
+      } else {
+        const demoUser = await prisma.user.create({
+          data: {
+            email: DEMO_CLASS_LOGIN.email,
+            passwordHash: demoHash,
+            role: "STUDENT",
+            firstName: demoProfile.firstName,
+            lastName: demoProfile.lastName,
+            passwordSetAt: new Date(),
+          },
+        });
+        await prisma.studentProfile.update({
+          where: { id: demoProfile.id },
+          data: { userId: demoUser.id },
+        });
+      }
+      console.log(
+        `Demo class login: ${DEMO_CLASS_LOGIN.username} / ${DEMO_CLASS_LOGIN.password} (${DEMO_CLASS_LOGIN.email})`
+      );
+    }
   }
 
   console.log("Seed complete.");

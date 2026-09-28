@@ -3,6 +3,7 @@ import { Card } from "@/components/ui/card";
 import { loginAction } from "./actions";
 import { TenantLoginCards } from "@/components/auth/tenant-login-cards";
 import type { TenantLoginInfo } from "@/lib/queries/tenant-login";
+import { DEMO_CLASS_LOGIN } from "@/lib/tenants";
 
 function LoginForm({
   error,
@@ -22,6 +23,19 @@ function LoginForm({
         <p className="text-xs uppercase tracking-widest text-accent">Measure → Compare → Improve</p>
         <h1 className="mt-2 text-2xl font-bold">Athletic Performance Platform</h1>
         <p className="mt-1 text-sm text-muted">Sign in with email, or pick a school system below.</p>
+        <form action={loginAction} className="mt-4 flex flex-wrap items-center gap-2 rounded-xl border border-card-border bg-background/40 px-3 py-3">
+          <span className="text-xs font-semibold uppercase tracking-wide text-muted">{DEMO_CLASS_LOGIN.displayName}</span>
+          <input type="hidden" name="email" value={DEMO_CLASS_LOGIN.username} />
+          <input type="hidden" name="password" value={DEMO_CLASS_LOGIN.password} />
+          <button
+            type="submit"
+            className="rounded-lg border border-sky-400/40 bg-sky-500/10 px-3 py-1.5 text-xs font-semibold text-sky-200 hover:bg-sky-500/20"
+          >
+            Sign in as demo ({DEMO_CLASS_LOGIN.username})
+          </button>
+          <span className="text-[11px] text-muted">or use the form below</span>
+        </form>
+
         <form action={loginAction} className="mt-6 space-y-4">
           {next ? <input type="hidden" name="next" value={next} /> : null}
           <label className="block text-sm">

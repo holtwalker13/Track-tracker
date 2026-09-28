@@ -17,7 +17,7 @@ function PeriodPillsInner() {
 
   function select(period: LeaderboardPeriod) {
     const params = new URLSearchParams(searchParams.toString());
-    if (period === "week") params.delete("period");
+    if (period === "semester") params.delete("period");
     else params.set("period", period);
     const qs = params.toString();
     router.push(qs ? `${pathname}?${qs}` : pathname);

@@ -13,7 +13,7 @@ export const LEADERBOARD_PERIODS: {
   { id: "semester", label: "Semester", shortLabel: "Semester" },
 ];
 
-export const DEFAULT_LEADERBOARD_PERIOD: LeaderboardPeriod = "week";
+export const DEFAULT_LEADERBOARD_PERIOD: LeaderboardPeriod = "semester";
 
 export function isLeaderboardPeriod(v: string | null | undefined): v is LeaderboardPeriod {
   return LEADERBOARD_PERIODS.some((p) => p.id === v);

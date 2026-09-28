@@ -3,6 +3,7 @@ import { rankResults } from "@/lib/services/leaderboard";
 import type { ScoringDirection } from "@/lib/constants";
 import { GRADE_LEVELS } from "@/lib/grades";
 import {
+  DEFAULT_LEADERBOARD_PERIOD,
   periodDateRange,
   type LeaderboardPeriod,
 } from "@/lib/leaderboard-periods";
@@ -222,7 +223,7 @@ export async function getLeaderboard(
     if (classStudentIds.length === 0) return { activity, entries: [] };
   }
 
-  const period = opts.period ?? "week";
+  const period = opts.period ?? DEFAULT_LEADERBOARD_PERIOD;
   const range = periodDateRange(
     period,
     new Date(),

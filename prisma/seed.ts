@@ -386,6 +386,7 @@ async function seedRoster(opts: {
         role: "STUDENT",
         firstName: athlete.firstName,
         lastName: athlete.lastName,
+        passwordSetAt: new Date(),
       },
     });
 
@@ -715,6 +716,7 @@ async function main() {
           role: "STUDENT",
           firstName: "Kendall",
           lastName: "Leland",
+          passwordSetAt: new Date(),
         },
       });
       const kendall = await prisma.studentProfile.create({

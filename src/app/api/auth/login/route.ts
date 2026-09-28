@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/db";
 import { SESSION_COOKIE, sessionCookieOptions, relativeRedirect } from "@/lib/auth/cookie";
+import { studentUsesBlockedSharedDemoPassword } from "@/lib/auth/demo-login-guard";
 import { signSessionToken } from "@/lib/auth/session";
 
 async function readCredentials(request: Request): Promise<{
@@ -59,6 +60,13 @@ export async function POST(request: Request) {
   }
 
   if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
+    if (wantsJson) {
+      return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
+    }
+    return relativeRedirect("/login?error=1");
+  }
+
+  if (await studentUsesBlockedSharedDemoPassword(user)) {
     if (wantsJson) {
       return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
     }

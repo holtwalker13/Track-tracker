@@ -2,11 +2,14 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { CoachLoginLinkButton } from "@/components/admin/coach-login-link-button";
+import type { CoachLoginStatus } from "@/lib/services/coach-login-invite";
 
 type CoachRow = {
   coachProfileId: string;
   email: string;
   fullName: string;
+  loginStatus: CoachLoginStatus;
   classes: { id: string; name: string; programKind: string | null }[];
 };
 
@@ -54,7 +57,6 @@ export function CoachStaffPanel({ schoolSlug }: { schoolSlug: string | null }) {
         firstName: fd.get("firstName"),
         lastName: fd.get("lastName"),
         email: fd.get("email"),
-        password: fd.get("password"),
       }),
     });
     const data = await res.json();
@@ -63,7 +65,9 @@ export function CoachStaffPanel({ schoolSlug }: { schoolSlug: string | null }) {
       setError(data.error ?? "Could not create coach");
       return;
     }
-    setMsg(`Created ${data.email}. They sign in and manage their own classes and testing groups.`);
+    setMsg(
+      `Created ${data.email}. Copy the setup link or show the QR code next to their name so they can set a password on their device.`
+    );
     e.currentTarget.reset();
     await load();
     router.refresh();
@@ -74,10 +78,9 @@ export function CoachStaffPanel({ schoolSlug }: { schoolSlug: string | null }) {
       <div>
         <h2 className="font-semibold">Coach accounts</h2>
         <p className="mt-1 text-sm text-muted">
-          Athletic directors and app admins add coaches here. Each coach belongs to this school only.
-          Coaches browse the full roster but run live tests only for athletes in{" "}
-          <strong className="font-medium text-foreground">their classes or training groups</strong>{" "}
-          (schools assign kids on the Classes page).
+          Add coaches here, then send a <strong className="font-medium text-foreground">setup link or QR code</strong>{" "}
+          (same as student roster login). They confirm name and email and create a password. Coaches browse the full
+          roster but run live tests only for athletes in their classes or training groups.
         </p>
       </div>
 
@@ -104,18 +107,7 @@ export function CoachStaffPanel({ schoolSlug }: { schoolSlug: string | null }) {
             required
             type="email"
             name="email"
-            placeholder={schoolSlug ? `coach.name@${schoolSlug}.demo` : "coach@school.demo"}
-            className="mt-1 w-full rounded-lg border border-card-border bg-background px-3 py-2"
-          />
-        </label>
-        <label className="block text-sm sm:col-span-2">
-          Temporary password
-          <input
-            required
-            type="password"
-            name="password"
-            minLength={8}
-            autoComplete="new-password"
+            placeholder={schoolSlug ? `ty.crowden@${schoolSlug}.demo` : "coach@school.demo"}
             className="mt-1 w-full rounded-lg border border-card-border bg-background px-3 py-2"
           />
         </label>
@@ -139,16 +131,23 @@ export function CoachStaffPanel({ schoolSlug }: { schoolSlug: string | null }) {
         ) : (
           <ul className="mt-2 divide-y divide-card-border rounded-xl border border-card-border">
             {coaches.map((c) => (
-              <li key={c.coachProfileId} className="px-3 py-3 text-sm">
-                <p className="font-medium">{c.fullName}</p>
-                <p className="font-mono text-xs text-muted">{c.email}</p>
-                {c.classes.length > 0 ? (
-                  <p className="mt-1 text-xs text-muted">
-                    Groups: {c.classes.map((cl) => cl.name).join(", ")}
-                  </p>
-                ) : (
-                  <p className="mt-1 text-xs text-muted">No classes assigned yet — coach creates them after login.</p>
-                )}
+              <li key={c.coachProfileId} className="flex flex-wrap items-start justify-between gap-3 px-3 py-3 text-sm">
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium">{c.fullName}</p>
+                  <p className="font-mono text-xs text-muted">{c.email}</p>
+                  {c.classes.length > 0 ? (
+                    <p className="mt-1 text-xs text-muted">
+                      Groups: {c.classes.map((cl) => cl.name).join(", ")}
+                    </p>
+                  ) : (
+                    <p className="mt-1 text-xs text-muted">No classes yet — coach creates them after login.</p>
+                  )}
+                </div>
+                <CoachLoginLinkButton
+                  coachProfileId={c.coachProfileId}
+                  fullName={c.fullName}
+                  loginStatus={c.loginStatus}
+                />
               </li>
             ))}
           </ul>

@@ -1,10 +1,17 @@
 import bcrypt from "bcryptjs";
-import { createHash, randomBytes } from "crypto";
 import { prisma } from "@/lib/db";
 import { studentEmailDomainForSchoolSlug } from "@/lib/services/student-login";
+import {
+  generateInviteToken,
+  hashInviteToken,
+  INVITE_TTL_MS,
+  inviteJoinPath,
+  validateAccountPassword,
+} from "@/lib/services/login-invite-token";
 
-const INVITE_TTL_MS = 14 * 24 * 60 * 60 * 1000;
 const BCRYPT_ROUNDS = 12;
+
+export { hashInviteToken, generateInviteToken } from "@/lib/services/login-invite-token";
 
 export type StudentInvitePurpose = "SETUP" | "RESET";
 
@@ -18,14 +25,6 @@ export type StudentInvitePreview = {
   used: boolean;
 };
 
-export function hashInviteToken(token: string): string {
-  return createHash("sha256").update(token, "utf8").digest("hex");
-}
-
-export function generateInviteToken(): string {
-  return randomBytes(32).toString("base64url");
-}
-
 /** Stable login email tied to roster student ID (not shown in the invite URL). */
 export function studentLoginEmailForNumber(studentNumber: string, schoolSlug: string): string {
   const local = studentNumber.toLowerCase().replace(/[^a-z0-9]/g, "") || "student";
@@ -34,16 +33,11 @@ export function studentLoginEmailForNumber(studentNumber: string, schoolSlug: st
 }
 
 export function studentJoinPath(token: string): string {
-  const qs = new URLSearchParams({ token });
-  return `/student/join?${qs.toString()}`;
+  return inviteJoinPath("/student/join", token);
 }
 
 export function validateStudentPassword(password: string): string | null {
-  if (password.length < 8) return "Password must be at least 8 characters.";
-  if (password.length > 128) return "Password must be at most 128 characters.";
-  if (!/[a-zA-Z]/.test(password)) return "Password must include at least one letter.";
-  if (!/[0-9]/.test(password)) return "Password must include at least one number.";
-  return null;
+  return validateAccountPassword(password);
 }
 
 export async function createOrRefreshStudentLoginInvite(

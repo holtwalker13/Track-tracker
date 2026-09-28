@@ -25,7 +25,7 @@ export async function POST(request: Request) {
       email: String(body.email ?? ""),
       firstName: String(body.firstName ?? ""),
       lastName: String(body.lastName ?? ""),
-      password: String(body.password ?? ""),
+      createdByUserId: session.userId,
     });
     return NextResponse.json({ ok: true, ...created });
   } catch (err) {

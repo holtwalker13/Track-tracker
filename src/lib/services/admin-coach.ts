@@ -1,20 +1,16 @@
-import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/db";
-
-const BCRYPT_ROUNDS = 12;
-
-export function validateCoachPassword(password: string): string | null {
-  if (password.length < 8) return "Password must be at least 8 characters.";
-  if (password.length > 128) return "Password must be at most 128 characters.";
-  return null;
-}
+import {
+  coachLoginStatusFromRow,
+  createOrRefreshCoachLoginInvite,
+  placeholderPasswordHash,
+} from "@/lib/services/coach-login-invite";
 
 export type CreateSchoolCoachInput = {
   schoolId: string;
   email: string;
   firstName: string;
   lastName: string;
-  password: string;
+  createdByUserId?: string;
 };
 
 export async function createSchoolCoach(input: CreateSchoolCoachInput) {
@@ -24,16 +20,13 @@ export async function createSchoolCoach(input: CreateSchoolCoachInput) {
   if (!email.includes("@")) throw new Error("Valid email is required");
   if (!firstName || !lastName) throw new Error("First and last name are required");
 
-  const passwordError = validateCoachPassword(input.password);
-  if (passwordError) throw new Error(passwordError);
-
   const school = await prisma.school.findUnique({ where: { id: input.schoolId }, select: { id: true } });
   if (!school) throw new Error("School not found");
 
   const existing = await prisma.user.findUnique({ where: { email }, select: { id: true } });
   if (existing) throw new Error("Email is already in use");
 
-  const passwordHash = await bcrypt.hash(input.password, BCRYPT_ROUNDS);
+  const passwordHash = await placeholderPasswordHash();
 
   const user = await prisma.user.create({
     data: {
@@ -42,7 +35,7 @@ export async function createSchoolCoach(input: CreateSchoolCoachInput) {
       role: "COACH",
       firstName,
       lastName,
-      passwordSetAt: new Date(),
+      passwordSetAt: null,
     },
   });
 
@@ -50,14 +43,32 @@ export async function createSchoolCoach(input: CreateSchoolCoachInput) {
     data: { userId: user.id, schoolId: input.schoolId },
   });
 
-  return { userId: user.id, coachProfileId: profile.id, email };
+  const invite = await createOrRefreshCoachLoginInvite(profile.id, input.createdByUserId);
+
+  return {
+    userId: user.id,
+    coachProfileId: profile.id,
+    email,
+    urlPath: invite.urlPath,
+    expiresAt: invite.expiresAt.toISOString(),
+  };
 }
 
 export async function listSchoolCoaches(schoolId: string) {
   const rows = await prisma.coachProfile.findMany({
     where: { schoolId },
     include: {
-      user: { select: { id: true, email: true, firstName: true, lastName: true, createdAt: true } },
+      user: {
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+          createdAt: true,
+          passwordSetAt: true,
+        },
+      },
+      loginInvite: { select: { usedAt: true, expiresAt: true } },
       classes: { select: { id: true, name: true, programKind: true } },
     },
     orderBy: { user: { lastName: "asc" } },
@@ -70,6 +81,7 @@ export async function listSchoolCoaches(schoolId: string) {
     lastName: r.user.lastName,
     fullName: `${r.user.firstName} ${r.user.lastName}`,
     createdAt: r.user.createdAt,
+    loginStatus: coachLoginStatusFromRow({ user: r.user, loginInvite: r.loginInvite }),
     classes: r.classes,
   }));
 }

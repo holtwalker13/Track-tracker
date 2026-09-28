@@ -1,5 +1,14 @@
 export const DEMO_PASSWORD = "rekcart";
 
+/** Quick student login for General Demo (login form: demo / demo1234). */
+export const DEMO_CLASS_LOGIN = {
+  username: "demo",
+  email: "demo@demo.local",
+  password: "demo1234",
+  studentNumber: "DEMO",
+  displayName: "Demo class",
+} as const;
+
 export type TenantSlug = "demo" | "jhs" | "chs";
 
 export type TenantConfig = {

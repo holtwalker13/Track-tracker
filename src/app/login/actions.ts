@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/db";
 import { SESSION_COOKIE, sessionCookieOptions } from "@/lib/auth/cookie";
+import { studentUsesBlockedSharedDemoPassword } from "@/lib/auth/demo-login-guard";
 import { signSessionToken } from "@/lib/auth/session";
 
 export async function loginAction(formData: FormData) {
@@ -29,7 +30,11 @@ export async function loginAction(formData: FormData) {
     redirect("/login?error=1");
   }
 
-  if (user.role === "STUDENT" && !user.passwordSetAt) {
+  if (await studentUsesBlockedSharedDemoPassword(user)) {
+    redirect("/login?error=1");
+  }
+
+  if ((user.role === "STUDENT" || user.role === "COACH") && !user.passwordSetAt) {
     redirect("/login?error=setup");
   }
 

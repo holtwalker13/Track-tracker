@@ -1,6 +1,6 @@
 import bcrypt from "bcryptjs";
+import { randomBytes } from "crypto";
 import { prisma } from "@/lib/db";
-import { DEMO_PASSWORD } from "@/lib/tenants";
 
 export function studentEmailDomainForSchoolSlug(schoolSlug: string): string {
   if (schoolSlug === "demo") return "demo.local";
@@ -24,7 +24,7 @@ async function nextStudentLoginEmail(schoolId: string, schoolSlug: string): Prom
   return `student${max + 1}@${domain}`;
 }
 
-/** Create (or return existing) login user for a roster student. Password matches demo schools. */
+/** Create (or return existing) login user for a roster row. Password is set only via invite link. */
 export async function ensureStudentLoginUser(
   profile: {
     id: string;
@@ -44,8 +44,7 @@ export async function ensureStudentLoginUser(
   }
 
   const email = await nextStudentLoginEmail(schoolId, schoolSlug);
-  const password = process.env.DEMO_PASSWORD || DEMO_PASSWORD;
-  const passwordHash = await bcrypt.hash(password, 10);
+  const passwordHash = await bcrypt.hash(randomBytes(32).toString("hex"), 10);
 
   const user = await prisma.user.create({
     data: {
@@ -54,7 +53,7 @@ export async function ensureStudentLoginUser(
       role: "STUDENT",
       firstName: profile.firstName,
       lastName: profile.lastName,
-      passwordSetAt: new Date(),
+      passwordSetAt: null,
     },
   });
 

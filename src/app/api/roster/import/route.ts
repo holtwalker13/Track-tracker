@@ -4,7 +4,6 @@ import { prisma } from "@/lib/db";
 import { headerIndex, parseCsv } from "@/lib/csv";
 import { DEFAULT_CLASS_YEAR, isClassYear } from "@/lib/grades";
 import { genderFromFirstName } from "@/lib/gender";
-import { ensureStudentLoginUser } from "@/lib/services/student-login";
 
 function parseGender(raw: string | undefined, firstName: string, index: number): "M" | "F" {
   const v = (raw ?? "").trim().toLowerCase();
@@ -68,12 +67,6 @@ export async function POST(request: Request) {
   const coach = await prisma.coachProfile.findFirst({
     where: { userId: session.userId, schoolId: session.schoolId },
   });
-
-  const school = await prisma.school.findUniqueOrThrow({
-    where: { id: session.schoolId },
-    select: { slug: true },
-  });
-  const schoolSlug = school.slug ?? "school";
 
   const existing = await prisma.studentProfile.findMany({
     where: { schoolId: session.schoolId },
@@ -168,31 +161,9 @@ export async function POST(request: Request) {
           },
         },
       });
-      await ensureStudentLoginUser(
-        {
-          id: student.id,
-          firstName: student.firstName,
-          lastName: student.lastName,
-          userId: student.userId,
-        },
-        session.schoolId,
-        schoolSlug
-      );
       createdStudents += 1;
     } else {
       existingStudents += 1;
-      if (!student.userId) {
-        await ensureStudentLoginUser(
-          {
-            id: student.id,
-            firstName: student.firstName,
-            lastName: student.lastName,
-            userId: student.userId,
-          },
-          session.schoolId,
-          schoolSlug
-        );
-      }
       await prisma.studentEnrollment.upsert({
         where: {
           studentId_schoolYearId: { studentId: student.id, schoolYearId: schoolYear.id },

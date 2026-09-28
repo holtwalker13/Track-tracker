@@ -54,6 +54,7 @@ export async function ensureStudentLoginUser(
       role: "STUDENT",
       firstName: profile.firstName,
       lastName: profile.lastName,
+      passwordSetAt: new Date(),
     },
   });
 
@@ -77,10 +78,27 @@ export async function backfillStudentLoginsForSchool(schoolId: string, schoolSlu
   }
 }
 
+/** Demo/backfill studentN@ accounts created before passwordSetAt existed. */
+export async function backfillLegacyDemoStudentPasswordSetAt() {
+  const users = await prisma.user.findMany({
+    where: { role: "STUDENT", passwordSetAt: null },
+    select: { id: true, email: true },
+  });
+  for (const user of users) {
+    if (/^student\d+@/i.test(user.email)) {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { passwordSetAt: new Date() },
+      });
+    }
+  }
+}
+
 export async function firstStudentLoginEmailForSchool(
   schoolId: string,
   schoolSlug: string
 ): Promise<string | null> {
+  await backfillLegacyDemoStudentPasswordSetAt();
   await backfillStudentLoginsForSchool(schoolId, schoolSlug);
   const user = await prisma.user.findFirst({
     where: { role: "STUDENT", studentProfile: { schoolId } },

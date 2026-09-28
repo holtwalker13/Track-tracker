@@ -40,16 +40,39 @@ export async function POST(request: Request) {
   const { email, password, next } = await readCredentials(request);
   const wantsJson = (request.headers.get("content-type") ?? "").includes("application/json");
 
-  const user = await prisma.user.findUnique({
+  let user = await prisma.user.findUnique({
     where: { email },
     include: { coachProfile: true, studentProfile: true },
   });
+
+  if (!user && !email.includes("@")) {
+    const profile = await prisma.studentProfile.findFirst({
+      where: { studentNumber: email.toUpperCase() },
+      include: {
+        user: { include: { coachProfile: true, studentProfile: true } },
+        school: { select: { slug: true } },
+      },
+    });
+    if (profile?.user) {
+      user = profile.user;
+    }
+  }
 
   if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
     if (wantsJson) {
       return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
     }
     return relativeRedirect("/login?error=1");
+  }
+
+  if (user.role === "STUDENT" && !user.passwordSetAt) {
+    if (wantsJson) {
+      return NextResponse.json(
+        { error: "Finish account setup using the link from your coach." },
+        { status: 403 }
+      );
+    }
+    return relativeRedirect("/login?error=setup");
   }
 
   const schoolId = user.coachProfile?.schoolId ?? user.studentProfile?.schoolId;

@@ -41,7 +41,12 @@ function LoginForm({
               autoComplete="current-password"
             />
           </label>
-          {error && <p className="text-sm text-red-400">Invalid credentials</p>}
+          {error === "setup" && (
+            <p className="text-sm text-amber-300">
+              Use the login link from your coach to set your password first.
+            </p>
+          )}
+          {error && error !== "setup" && <p className="text-sm text-red-400">Invalid credentials</p>}
           <button
             type="submit"
             className="w-full rounded-lg bg-accent py-3 font-semibold text-background"

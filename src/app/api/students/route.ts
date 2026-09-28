@@ -2,8 +2,6 @@ import { NextResponse } from "next/server";
 import { requireSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { isClassYear } from "@/lib/grades";
-import { ensureStudentLoginUser } from "@/lib/services/student-login";
-
 export async function POST(request: Request) {
   const session = await requireSession(["COACH", "ADMIN"]);
   if (!session?.schoolId) {
@@ -69,12 +67,6 @@ export async function POST(request: Request) {
     }
   }
 
-  const school = await prisma.school.findUniqueOrThrow({
-    where: { id: session.schoolId },
-    select: { slug: true },
-  });
-  const schoolSlug = school.slug ?? "school";
-
   const student = await prisma.studentProfile.create({
     data: {
       schoolId: session.schoolId,
@@ -102,16 +94,5 @@ export async function POST(request: Request) {
     },
   });
 
-  const loginEmail = await ensureStudentLoginUser(
-    {
-      id: student.id,
-      firstName: student.firstName,
-      lastName: student.lastName,
-      userId: student.userId,
-    },
-    session.schoolId,
-    schoolSlug
-  );
-
-  return NextResponse.json({ ok: true, studentId: student.id, loginEmail });
+  return NextResponse.json({ ok: true, studentId: student.id });
 }

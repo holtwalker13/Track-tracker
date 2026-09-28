@@ -23,6 +23,8 @@ import { AthleteProfileCard } from "@/components/athletes/athlete-profile-card";
 import { genderFullLabel } from "@/lib/gender";
 import { leaderboardHighlightFromSearch } from "@/lib/leaderboard-link";
 import { KPI_METRIC_META } from "@/lib/kpi-targets";
+import { StudentLoginLinkButton } from "@/components/athletes/student-login-link-button";
+import { studentLoginStatusFromRow } from "@/lib/services/student-login-invite";
 
 export default async function StudentProfilePage({
   params,
@@ -38,6 +40,8 @@ export default async function StudentProfilePage({
   const student = await prisma.studentProfile.findUnique({
     where: { id },
     include: {
+      user: { select: { passwordSetAt: true } },
+      loginInvite: { select: { usedAt: true, expiresAt: true } },
       enrollments: {
         where: { schoolYear: { isCurrent: true } },
         include: { schoolYear: true },
@@ -79,6 +83,11 @@ export default async function StudentProfilePage({
   const ranks = { ...activityRanks };
 
   const fullName = `${student.firstName} ${student.lastName}`;
+  const loginStatus = studentLoginStatusFromRow({
+    userId: student.userId,
+    user: student.user,
+    loginInvite: student.loginInvite,
+  });
   const sections = student.classEnrollments
     .filter((e) => !isGraduatingClassName(e.class.name))
     .map((e) => ({ id: e.class.id, label: classSectionLabel(e.class) }));
@@ -111,6 +120,18 @@ export default async function StudentProfilePage({
           enrolledClassIds: student.classEnrollments.map((e) => e.classId),
         }}
       />
+
+      <div className="mb-6 flex flex-wrap items-center gap-3 rounded-xl border border-card-border bg-card/40 px-4 py-3">
+        <p className="text-sm text-muted">
+          Copy the link icons to send {student.firstName} a setup or password-reset link (green check = login
+          already active).
+        </p>
+        <StudentLoginLinkButton
+          studentId={student.id}
+          fullName={fullName}
+          loginStatus={loginStatus}
+        />
+      </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
         <SprintPotentialCard

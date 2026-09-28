@@ -29,7 +29,7 @@ export async function loginAction(formData: FormData) {
     redirect("/login?error=1");
   }
 
-  if (user.role === "STUDENT" && !user.passwordSetAt) {
+  if ((user.role === "STUDENT" || user.role === "COACH") && !user.passwordSetAt) {
     redirect("/login?error=setup");
   }
 

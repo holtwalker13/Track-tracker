@@ -1,19 +1,19 @@
 "use client";
 
 import { InviteLinkActions } from "@/components/auth/invite-link-actions";
-import type { StudentLoginStatus } from "@/lib/services/student-login-invite";
+import type { CoachLoginStatus } from "@/lib/services/coach-login-invite";
 
-export function StudentLoginLinkButton({
-  studentId,
+export function CoachLoginLinkButton({
+  coachProfileId,
   fullName,
   loginStatus,
 }: {
-  studentId: string;
+  coachProfileId: string;
   fullName: string;
-  loginStatus: StudentLoginStatus;
+  loginStatus: CoachLoginStatus;
 }) {
   async function fetchUrlPath() {
-    const res = await fetch(`/api/students/${studentId}/login-invite`, { method: "POST" });
+    const res = await fetch(`/api/admin/coaches/${coachProfileId}/login-invite`, { method: "POST" });
     const data = await res.json();
     if (!res.ok) {
       const msg = typeof data.error === "string" ? data.error : "Could not create link";
@@ -28,6 +28,11 @@ export function StudentLoginLinkButton({
       active={loginStatus === "active"}
       pendingInvite={loginStatus === "invite"}
       fetchUrlPath={fetchUrlPath}
+      copyTitle={
+        loginStatus === "active"
+          ? `Copy password reset link for coach ${fullName}`
+          : `Copy coach setup link for ${fullName}`
+      }
     />
   );
 }

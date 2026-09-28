@@ -147,7 +147,21 @@ model CoachProfile {
   schoolId String
   school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
-  classes Class[]
+  classes     Class[]
+  loginInvite CoachLoginInvite?
+}
+
+model CoachLoginInvite {
+  id              String       @id @default(cuid())
+  coachProfileId  String       @unique
+  coachProfile    CoachProfile @relation(fields: [coachProfileId], references: [id], onDelete: Cascade)
+  tokenHash       String       @unique
+  expiresAt       DateTime
+  usedAt          DateTime?
+  createdById     String?
+  createdAt       DateTime     @default(now())
+
+  @@index([expiresAt])
 }
 
 model StudentProfile {

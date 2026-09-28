@@ -320,8 +320,8 @@ export function RosterTable({
         </tbody>
       </table>
       <p className="border-t border-card-border px-3 py-2 text-xs text-muted">
-        {athletes.length} athlete{athletes.length === 1 ? "" : "s"} · copy/link icons = student login or password
-        reset link · eye = visible to other students · slashed eye = name hidden on student leaderboards
+        {athletes.length} athlete{athletes.length === 1 ? "" : "s"} · copy/link + QR = student setup or password
+        reset · eye = visible to other students · slashed eye = name hidden on student leaderboards
       </p>
     </div>
   );

@@ -65,10 +65,15 @@ export async function POST(request: Request) {
     return relativeRedirect("/login?error=1");
   }
 
-  if (user.role === "STUDENT" && !user.passwordSetAt) {
+  if ((user.role === "STUDENT" || user.role === "COACH") && !user.passwordSetAt) {
     if (wantsJson) {
       return NextResponse.json(
-        { error: "Finish account setup using the link from your coach." },
+        {
+          error:
+            user.role === "COACH"
+              ? "Finish account setup using the link or QR code from your admin."
+              : "Finish account setup using the link from your coach.",
+        },
         { status: 403 }
       );
     }

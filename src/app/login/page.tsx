@@ -43,7 +43,7 @@ function LoginForm({
           </label>
           {error === "setup" && (
             <p className="text-sm text-amber-300">
-              Use the login link from your coach to set your password first.
+              Use the setup link or QR code from your coach or admin to create your password first.
             </p>
           )}
           {error && error !== "setup" && <p className="text-sm text-red-400">Invalid credentials</p>}

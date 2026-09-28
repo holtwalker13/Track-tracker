@@ -284,6 +284,7 @@ async function seedCoaches(schoolId: string, emailDomain: string, hash: string) 
           role: "COACH",
           firstName: first,
           lastName: "Coach",
+          passwordSetAt: new Date(),
         },
       });
       return prisma.coachProfile.create({

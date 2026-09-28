@@ -76,12 +76,10 @@ export function StudentLoginLinkButton({
         >
           {pending ? (
             <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-          ) : copied ? (
-            <Check className="h-4 w-4" aria-hidden />
           ) : (
             <>
-              <Copy className="h-4 w-4" aria-hidden />
-              <Link2 className="h-3.5 w-3.5 opacity-70" aria-hidden />
+              <Copy className={cn("h-4 w-4", copied && "text-emerald-300")} aria-hidden />
+              <Link2 className={cn("h-3.5 w-3.5 opacity-70", copied && "text-emerald-300")} aria-hidden />
             </>
           )}
         </button>

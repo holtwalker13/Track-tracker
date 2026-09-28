@@ -21,12 +21,15 @@ export function NewTestingSessionForm({
   classes,
   sameDayCount = 0,
   strengthActivities,
+  kpiActivities,
   surface = "card",
 }: {
   classes: { id: string; name: string; period: string | null }[];
   sameDayCount?: number;
   /** School lift library (catalog + custom). Used for weight room sections. */
   strengthActivities?: LiftingSessionActivityMeta[];
+  /** KPI library with ranked-first ordering from the coach's active set. */
+  kpiActivities?: { slug: string; name: string; ranked?: boolean }[];
   /** `card` = inline page block; `none` = body inside a modal shell */
   surface?: "card" | "none";
 }) {
@@ -58,7 +61,20 @@ export function NewTestingSessionForm({
     strengthActivities && strengthActivities.length > 0
       ? strengthActivities
       : LIFTING_SESSION_ACTIVITIES;
-  const sessionActivities = liftingOnly ? liftCatalog : KPI_METRIC_META;
+
+  const kpiCatalog = useMemo(() => {
+    const base = kpiActivities?.length
+      ? kpiActivities
+      : KPI_METRIC_META.map((m) => ({ slug: m.slug, name: m.name, ranked: true }));
+    return [...base].sort((a, b) => {
+      const ar = a.ranked === false ? 1 : 0;
+      const br = b.ranked === false ? 1 : 0;
+      if (ar !== br) return ar - br;
+      return a.name.localeCompare(b.name);
+    });
+  }, [kpiActivities]);
+
+  const sessionActivities = liftingOnly ? liftCatalog : kpiCatalog;
 
   const defaultName = defaultSessionNameForClass(
     selectedClass?.name ?? "Performance Test",
@@ -163,8 +179,15 @@ export function NewTestingSessionForm({
         <legend className="text-sm font-medium text-muted">
           {liftingOnly ? "Lifts" : "Events"}
         </legend>
+        {!liftingOnly && (
+          <p className="mt-1 text-xs text-muted">
+            Ranked KPIs from your active set appear first. Unranked stay available but sort below.
+          </p>
+        )}
         <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
-          {sessionActivities.map((m) => (
+          {sessionActivities.map((m) => {
+            const ranked = "ranked" in m ? m.ranked !== false : true;
+            return (
             <label
               key={m.slug}
               className="group relative flex cursor-pointer flex-col items-start gap-2 rounded-2xl border border-card-border bg-background/50 px-3.5 py-3.5 text-left transition duration-150 hover:-translate-y-0.5 hover:border-sky-400/50 hover:bg-sky-400/10 hover:shadow-[0_8px_24px_rgba(56,189,248,0.12)] active:translate-y-0 active:scale-[0.97] has-[:checked]:border-sky-400/70 has-[:checked]:bg-sky-500/15 has-[:checked]:shadow-[0_0_20px_rgba(56,189,248,0.16)] has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-sky-400"
@@ -173,7 +196,7 @@ export function NewTestingSessionForm({
                 type="checkbox"
                 name="activity"
                 value={m.slug}
-                defaultChecked
+                defaultChecked={ranked}
                 className="peer sr-only"
               />
               <span className="pointer-events-none absolute right-2.5 top-2.5 flex h-5 w-5 items-center justify-center rounded-full border border-card-border bg-background/80 text-transparent transition peer-checked:border-sky-400 peer-checked:bg-sky-500 peer-checked:text-white">
@@ -181,8 +204,14 @@ export function NewTestingSessionForm({
               </span>
               <ActivityIcon slug={m.slug} className="pointer-events-none h-6 w-6" />
               <span className="pointer-events-none pr-5 text-sm font-semibold leading-snug">{m.name}</span>
+              {!liftingOnly && !ranked ? (
+                <span className="pointer-events-none text-[10px] font-semibold uppercase tracking-wider text-muted">
+                  Unranked
+                </span>
+              ) : null}
             </label>
-          ))}
+            );
+          })}
         </div>
       </fieldset>
       {error && <p className="text-sm text-sport-red">{error}</p>}

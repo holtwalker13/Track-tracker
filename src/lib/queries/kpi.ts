@@ -45,8 +45,21 @@ export async function ensureSchoolKpiTargets(schoolId: string): Promise<void> {
 export async function getSchoolKpiBands(
   schoolId: string,
   gender?: string | null,
-  ageBracket: string = DEFAULT_AGE_BRACKET
+  ageBracket: string = DEFAULT_AGE_BRACKET,
+  kpiSetId?: string | null
 ): Promise<KpiBand[]> {
+  // Prefer coach KPI set targets when available
+  if (kpiSetId) {
+    const { getKpiSetBands } = await import("@/lib/services/kpi-sets");
+    return getKpiSetBands(kpiSetId, gender, ageBracket);
+  }
+
+  const { resolveSchoolKpiSetId, getKpiSetBands } = await import("@/lib/services/kpi-sets");
+  const resolved = await resolveSchoolKpiSetId(schoolId);
+  if (resolved) {
+    return getKpiSetBands(resolved, gender, ageBracket);
+  }
+
   await ensureSchoolKpiTargets(schoolId);
   const g: "F" | "M" = gender === "M" ? "M" : "F";
   const rows = await prisma.schoolKpiTarget.findMany({

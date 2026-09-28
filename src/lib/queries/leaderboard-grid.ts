@@ -13,6 +13,18 @@ export async function getLeaderboardActivities(schoolId: string) {
     select: { metricSlug: true },
   });
   const hiddenSlugs = hidden.map((h) => h.metricSlug);
+
+  // Unranked KPIs (no medal targets in the school default / any ranked set metric) stay off leaderboards
+  const rankedRows = await prisma.kpiSetMetric.findMany({
+    where: {
+      ranked: true,
+      kpiSet: { schoolId },
+    },
+    select: { metricSlug: true },
+  });
+  const rankedSlugs = new Set(rankedRows.map((r) => r.metricSlug));
+  const hasKpiSets = await prisma.kpiSet.count({ where: { schoolId } });
+
   const activities = await prisma.activity.findMany({
     where: {
       OR: [{ schoolId: null }, { schoolId }],
@@ -23,7 +35,13 @@ export async function getLeaderboardActivities(schoolId: string) {
     include: { category: true },
     orderBy: { name: "asc" },
   });
-  return [...activities].sort((a, b) => {
+
+  const filtered =
+    hasKpiSets > 0
+      ? activities.filter((a) => rankedSlugs.has(a.slug))
+      : activities;
+
+  return [...filtered].sort((a, b) => {
     const ai = featured.indexOf(a.slug);
     const bi = featured.indexOf(b.slug);
     if (ai !== -1 || bi !== -1) {
@@ -31,6 +49,7 @@ export async function getLeaderboardActivities(schoolId: string) {
       if (bi === -1) return -1;
       return ai - bi;
     }
+    // Ranked order preference: featured already handled; keep name sort
     return a.name.localeCompare(b.name);
   });
 }

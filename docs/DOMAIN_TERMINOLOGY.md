@@ -34,7 +34,10 @@ Canonical vocabulary for this codebase. **Do not rename database columns** witho
 | **Best attempt** | best mark | `isBestAttempt` within a session/activity |
 | **Personal record (PR)** | PR | `isPersonalRecord` on best qualifying mark |
 | **Benchmark** | norm, percentile dataset | `BenchmarkDataset` / `BenchmarkValue` |
-| **KPI target** | medal band, school standard | `SchoolKpiTarget` |
+| **KPI target** | medal band, school standard | `SchoolKpiTarget` (legacy school sync) |
+| **KPI set** | sport pack, medal pack | `KpiSet` — coach-owned Gold/Silver/Bronze pack per sport |
+| **Ranked KPI** | medal KPI, leaderboard KPI | `KpiSetMetric.ranked = true` — has medal targets; shown first in session builder; listed on leaderboards |
+| **Unranked KPI** | blank medals, off-leaderboard | `KpiSetMetric.ranked = false` — blank G/S/B; kept in library but not on leaderboards |
 
 **Workout-specific:** **Program/template** (`WorkoutTemplate`), **assignment** (`WorkoutAssignment`), **session** (`WorkoutSession`), **set log** (`WorkoutSetLog`).
 

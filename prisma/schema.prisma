@@ -57,6 +57,7 @@ model School {
   testingSessions TestingSession[]
   performanceResults PerformanceResult[]
   kpiTargets         SchoolKpiTarget[]
+  kpiSets            KpiSet[]
   customActivities   Activity[]
   hiddenKpis         SchoolHiddenKpi[]
   workoutTemplates   WorkoutTemplate[]
@@ -146,9 +147,15 @@ model CoachProfile {
   user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   schoolId String
   school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  // Active KPI set the coach is editing / applying when building sessions
+  activeKpiSetId String?
+  activeKpiSet   KpiSet? @relation("CoachActiveKpiSet", fields: [activeKpiSetId], references: [id], onDelete: SetNull)
 
   classes     Class[]
   loginInvite CoachLoginInvite?
+  kpiSets     KpiSet[] @relation("CoachOwnedKpiSets")
+
+  @@index([activeKpiSetId])
 }
 
 model CoachLoginInvite {
@@ -162,6 +169,67 @@ model CoachLoginInvite {
   createdAt       DateTime     @default(now())
 
   @@index([expiresAt])
+}
+
+// Coach-owned Gold/Silver/Bronze target packs, scoped to a sport/activity.
+// Public sets can be browsed and duplicated by other coaches without mutating the original.
+model KpiSet {
+  id             String   @id @default(cuid())
+  schoolId       String
+  school         School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  coachProfileId String
+  coach          CoachProfile @relation("CoachOwnedKpiSets", fields: [coachProfileId], references: [id], onDelete: Cascade)
+  name           String
+  // Sport / activity this pack applies to (see src/lib/sports.ts)
+  sport          String
+  description    String?
+  isPublic       Boolean  @default(false)
+  // School-wide fallback used when no sport-specific set matches
+  isDefault      Boolean  @default(false)
+  duplicatedFromId String?
+  duplicatedFrom   KpiSet?  @relation("KpiSetDuplicates", fields: [duplicatedFromId], references: [id], onDelete: SetNull)
+  duplicates       KpiSet[] @relation("KpiSetDuplicates")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  metrics KpiSetMetric[]
+  targets KpiSetTarget[]
+  activeForCoaches CoachProfile[] @relation("CoachActiveKpiSet")
+
+  @@index([schoolId])
+  @@index([coachProfileId])
+  @@index([isPublic])
+  @@index([sport])
+  @@index([schoolId, isDefault])
+}
+
+// Which library KPIs are in this set, and whether they are ranked (leaderboard / medal) or unranked.
+model KpiSetMetric {
+  id         String  @id @default(cuid())
+  kpiSetId   String
+  kpiSet     KpiSet  @relation(fields: [kpiSetId], references: [id], onDelete: Cascade)
+  metricSlug String
+  // true = Gold/Silver/Bronze targets apply and KPI can appear on leaderboards
+  ranked     Boolean @default(true)
+  sortOrder  Int     @default(0)
+
+  @@unique([kpiSetId, metricSlug])
+  @@index([kpiSetId, ranked])
+}
+
+model KpiSetTarget {
+  id         String @id @default(cuid())
+  kpiSetId   String
+  kpiSet     KpiSet @relation(fields: [kpiSetId], references: [id], onDelete: Cascade)
+  gender     String
+  medal      String
+  metricSlug String
+  target     Float
+  ageBracket String @default("high-9-12")
+
+  @@unique([kpiSetId, gender, medal, metricSlug, ageBracket])
+  @@index([kpiSetId, gender])
+  @@index([kpiSetId, ageBracket])
 }
 
 model StudentProfile {

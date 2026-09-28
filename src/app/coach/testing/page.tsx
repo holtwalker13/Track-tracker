@@ -13,6 +13,8 @@ import {
 } from "@/components/testing/session-results-accordion";
 import { isWithinLiveWindow } from "@/lib/constants";
 import { classesForCoachTesting, testingSessionsForCoachView } from "@/lib/queries/coach-classes";
+import { KPI_METRIC_META } from "@/lib/kpi-targets";
+import { ensureCoachActiveKpiSet } from "@/lib/services/kpi-sets";
 
 export default async function TestingSessionsPage() {
   const session = await requireSchoolSession();
@@ -38,6 +40,43 @@ export default async function TestingSessionsPage() {
     name: l.name,
   }));
 
+  let kpiActivities: { slug: string; name: string; ranked: boolean }[] = KPI_METRIC_META.map((m) => ({
+    slug: m.slug,
+    name: m.name,
+    ranked: true,
+  }));
+  try {
+    const ctx = await ensureCoachActiveKpiSet(session.userId, session.schoolId);
+    const rankedMap = new Map(
+      ctx.activeSet.metrics.map((m: { metricSlug: string; ranked: boolean }) => [m.metricSlug, m.ranked])
+    );
+    const slugList = [
+      ...KPI_METRIC_META.map((m) => m.slug),
+      ...[...rankedMap.keys()].filter((s) => !KPI_METRIC_META.some((m) => m.slug === s)),
+    ];
+    const catalog = await prisma.activity.findMany({
+      where: {
+        OR: [{ schoolId: null }, { schoolId: session.schoolId }],
+        slug: { in: slugList },
+      },
+      select: { slug: true, name: true },
+    });
+    const nameBySlug = new Map(catalog.map((a) => [a.slug, a.name]));
+    const hidden = await prisma.schoolHiddenKpi.findMany({
+      where: { schoolId: session.schoolId },
+      select: { metricSlug: true },
+    });
+    const hiddenSet = new Set(hidden.map((h) => h.metricSlug));
+    const slugs = slugList.filter((s) => !hiddenSet.has(s));
+    kpiActivities = slugs.map((slug) => ({
+      slug,
+      name: nameBySlug.get(slug) ?? KPI_METRIC_META.find((m) => m.slug === slug)?.name ?? slug,
+      ranked: rankedMap.has(slug) ? Boolean(rankedMap.get(slug)) : false,
+    }));
+  } catch {
+    // Admin without coach profile — keep default catalog
+  }
+
   return (
     <AppShell title="Testing" nav={COACH_NAV}>
       <p className="mb-4 max-w-3xl text-sm text-muted">
@@ -51,6 +90,7 @@ export default async function TestingSessionsPage() {
         classes={classes}
         sameDayCount={sameDayCount}
         strengthActivities={strengthActivities}
+        kpiActivities={kpiActivities}
       />
       {classes.length === 0 ? (
         <p className="mt-3 text-sm text-amber-300/90">

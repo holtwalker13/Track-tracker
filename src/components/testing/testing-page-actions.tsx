@@ -10,10 +10,12 @@ export function TestingPageActions({
   classes,
   sameDayCount,
   strengthActivities,
+  kpiActivities,
 }: {
   classes: { id: string; name: string; period: string | null }[];
   sameDayCount?: number;
   strengthActivities?: LiftingSessionActivityMeta[];
+  kpiActivities?: { slug: string; name: string; ranked?: boolean }[];
 }) {
   const [open, setOpen] = useState(false);
 
@@ -35,6 +37,7 @@ export function TestingPageActions({
             classes={classes}
             sameDayCount={sameDayCount}
             strengthActivities={strengthActivities}
+            kpiActivities={kpiActivities}
             surface="none"
           />
         </CoachModal>

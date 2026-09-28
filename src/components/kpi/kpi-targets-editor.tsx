@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Dumbbell, Plus, Pencil, Trash2, X } from "lucide-react";
+import { Copy, Dumbbell, Plus, Pencil, Trash2, X, Globe, Lock } from "lucide-react";
 import { LiftBuilderModal } from "@/components/lifts/lift-builder-modal";
 import { MEDAL_LABELS, MEDALS, type Medal } from "@/lib/kpi-targets";
 import {
@@ -13,6 +13,7 @@ import {
   KPI_UNITS,
   type AgeBracketId,
 } from "@/lib/age-brackets";
+import { COACHING_SPORTS, sportLabel } from "@/lib/sports";
 import { cn } from "@/lib/utils";
 
 type MetricInfo = {
@@ -20,7 +21,6 @@ type MetricInfo = {
   name: string;
   unit: string;
   categorySlug?: string;
-  direction?: "HIGHER_BETTER" | "LOWER_BETTER";
   custom?: boolean;
 };
 
@@ -28,19 +28,85 @@ export type TargetCell = {
   gender: "F" | "M";
   medal: Medal;
   metricSlug: string;
+  /** null = blank / leave unset */
+  target: number | null;
+  ageBracket: string;
+};
+
+type SetCoach = {
+  id: string;
+  user: { firstName: string; lastName: string; email: string };
+};
+
+type SetMetric = {
+  metricSlug: string;
+  ranked: boolean;
+  sortOrder: number;
+};
+
+type SetTarget = {
+  gender: string;
+  medal: string;
+  metricSlug: string;
   target: number;
   ageBracket: string;
 };
 
+export type KpiSetSummary = {
+  id: string;
+  name: string;
+  sport: string;
+  description: string | null;
+  isPublic: boolean;
+  isDefault: boolean;
+  coachProfileId: string;
+  schoolId: string;
+  coach: SetCoach;
+  metrics: SetMetric[];
+  targets: SetTarget[];
+};
+
+function cellsFromSet(set: KpiSetSummary): TargetCell[] {
+  return set.targets.map((t) => ({
+    gender: t.gender === "M" ? "M" : "F",
+    medal: t.medal as Medal,
+    metricSlug: t.metricSlug,
+    target: t.target,
+    ageBracket: t.ageBracket || DEFAULT_AGE_BRACKET,
+  }));
+}
+
+function rankedMapFromSet(set: KpiSetSummary): Record<string, boolean> {
+  const map: Record<string, boolean> = {};
+  for (const m of set.metrics) map[m.metricSlug] = m.ranked;
+  return map;
+}
+
 export function KpiTargetsEditor({
   initial,
   metrics,
+  initialSets,
+  initialActiveSetId,
+  publicSets: initialPublicSets,
 }: {
   initial: TargetCell[];
   metrics: MetricInfo[];
+  initialSets: KpiSetSummary[];
+  initialActiveSetId: string;
+  publicSets: KpiSetSummary[];
 }) {
   const router = useRouter();
-  const [cells, setCells] = useState(initial);
+  const [ownSets, setOwnSets] = useState(initialSets);
+  const [publicSets, setPublicSets] = useState(initialPublicSets);
+  const [activeSetId, setActiveSetId] = useState(initialActiveSetId);
+  const activeSet = ownSets.find((s) => s.id === activeSetId) ?? ownSets[0] ?? null;
+
+  const [cells, setCells] = useState(() =>
+    activeSet ? cellsFromSet(activeSet) : initial
+  );
+  const [rankedBySlug, setRankedBySlug] = useState<Record<string, boolean>>(() =>
+    activeSet ? rankedMapFromSet(activeSet) : {}
+  );
   const [metricList, setMetricList] = useState(metrics);
   const [bracket, setBracket] = useState<AgeBracketId>(DEFAULT_AGE_BRACKET);
   const [gender, setGender] = useState<"F" | "M">("F");
@@ -48,24 +114,45 @@ export function KpiTargetsEditor({
   const [builderOpen, setBuilderOpen] = useState(false);
   const [kpiBuilderDefaults, setKpiBuilderDefaults] = useState<KpiBuilderDefaults | undefined>();
   const [liftBuilderOpen, setLiftBuilderOpen] = useState(false);
-  const [editMetric, setEditMetric] = useState<MetricInfo | null>(null);
+  const [editing, setEditing] = useState<MetricInfo | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [duplicateSource, setDuplicateSource] = useState<KpiSetSummary | null>(null);
+  const [browsePublic, setBrowsePublic] = useState(false);
 
-  useEffect(() => setCells(initial), [initial]);
   useEffect(() => setMetricList(metrics), [metrics]);
 
-  function value(slug: string, medal: Medal) {
-    return (
-      cells.find(
-        (c) =>
-          c.gender === gender &&
-          c.medal === medal &&
-          c.metricSlug === slug &&
-          c.ageBracket === bracket
-      )?.target ?? ""
-    );
+  function loadSet(set: KpiSetSummary) {
+    setActiveSetId(set.id);
+    setCells(cellsFromSet(set));
+    setRankedBySlug(rankedMapFromSet(set));
+    setStatus("idle");
   }
 
-  function setValue(slug: string, medal: Medal, target: number) {
+  async function activateSet(id: string) {
+    const set = ownSets.find((s) => s.id === id);
+    if (!set) return;
+    loadSet(set);
+    await fetch("/api/kpi-sets", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "activate", kpiSetId: id }),
+    });
+  }
+
+  function value(slug: string, medal: Medal): string {
+    const cell = cells.find(
+      (c) =>
+        c.gender === gender &&
+        c.medal === medal &&
+        c.metricSlug === slug &&
+        c.ageBracket === bracket
+    );
+    if (!cell || cell.target == null) return "";
+    return String(cell.target);
+  }
+
+  function setValue(slug: string, medal: Medal, raw: string) {
+    const target = raw.trim() === "" ? null : Number(raw);
     setCells((prev) => {
       const next = prev.filter(
         (c) =>
@@ -76,20 +163,71 @@ export function KpiTargetsEditor({
             c.ageBracket === bracket
           )
       );
-      next.push({ gender, medal, metricSlug: slug, target, ageBracket: bracket });
+      if (target != null && Number.isFinite(target)) {
+        next.push({ gender, medal, metricSlug: slug, target, ageBracket: bracket });
+      }
+      const stillHas = next.some((c) => c.metricSlug === slug && c.target != null);
+      setRankedBySlug((rankedPrev) => ({
+        ...rankedPrev,
+        [slug]: stillHas ? true : rankedPrev[slug] ?? false,
+      }));
       return next;
     });
     setStatus("idle");
   }
 
-  async function save() {
-    setStatus("saving");
-    const res = await fetch("/api/kpi-targets", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ cells }),
+  function toggleRanked(slug: string) {
+    setRankedBySlug((prev) => {
+      const nextRanked = !prev[slug];
+      if (!nextRanked) {
+        setCells((cellsPrev) => cellsPrev.filter((c) => c.metricSlug !== slug));
+      }
+      return { ...prev, [slug]: nextRanked };
     });
-    setStatus(res.ok ? "saved" : "error");
+    setStatus("idle");
+  }
+
+  async function save() {
+    if (!activeSet) return;
+    setStatus("saving");
+    const metricsPayload = metricList.map((m, index) => ({
+      metricSlug: m.slug,
+      ranked: Boolean(rankedBySlug[m.slug]),
+      sortOrder: index,
+    }));
+    const res = await fetch(`/api/kpi-sets/${activeSet.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "save-targets",
+        cells,
+        metrics: metricsPayload,
+      }),
+    });
+    if (!res.ok) {
+      setStatus("error");
+      return;
+    }
+    const data = await res.json();
+    if (data.set) {
+      setOwnSets((prev) => prev.map((s) => (s.id === data.set.id ? data.set : s)));
+      loadSet(data.set);
+    }
+    setStatus("saved");
+  }
+
+  async function togglePublic() {
+    if (!activeSet) return;
+    const res = await fetch(`/api/kpi-sets/${activeSet.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ isPublic: !activeSet.isPublic }),
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+    if (data.set) {
+      setOwnSets((prev) => prev.map((s) => (s.id === data.set.id ? data.set : s)));
+    }
   }
 
   async function deleteMetric(slug: string) {
@@ -111,33 +249,58 @@ export function KpiTargetsEditor({
     }
     setMetricList((prev) => prev.filter((m) => m.slug !== slug));
     setCells((prev) => prev.filter((c) => c.metricSlug !== slug));
+    setRankedBySlug((prev) => {
+      const next = { ...prev };
+      delete next[slug];
+      return next;
+    });
     router.refresh();
   }
 
+  async function renameMetric(slug: string, name: string) {
+    const res = await fetch("/api/kpi-targets", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ slug, name }),
+    });
+    if (!res.ok) {
+      window.alert("Could not rename KPI.");
+      return false;
+    }
+    setMetricList((prev) => prev.map((m) => (m.slug === slug ? { ...m, name } : m)));
+    setEditing(null);
+    router.refresh();
+    return true;
+  }
+
   const visibleMetrics = useMemo(() => {
-    // For younger brackets, hide strength-relative lifts by default unless custom
+    let list = metricList;
     if (bracket === "elem-k-2" || bracket === "elem-3-5") {
-      return metricList.filter(
+      list = list.filter(
         (m) =>
           m.custom ||
           !["squat-relative", "hang-clean-relative", "20-meter-start"].includes(m.slug)
       );
     }
-    return metricList;
-  }, [bracket, metricList]);
+    // Ranked first, then unranked
+    return [...list].sort((a, b) => {
+      const ar = rankedBySlug[a.slug] ? 0 : 1;
+      const br = rankedBySlug[b.slug] ? 0 : 1;
+      if (ar !== br) return ar - br;
+      return a.name.localeCompare(b.name);
+    });
+  }, [bracket, metricList, rankedBySlug]);
+
+  const rankedCount = visibleMetrics.filter((m) => rankedBySlug[m.slug]).length;
 
   return (
     <div>
-      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <p className="max-w-2xl text-sm text-muted">
-          Set Gold / Silver / Bronze by gender and age band. Build PE metrics with{" "}
-          <strong className="font-medium text-foreground">Build KPI</strong>, or add weight-room lifts
-          (lb / reps / × BW) with <strong className="font-medium text-foreground">Build lift</strong>{" "}
-          — same targets here, programs on{" "}
-          <Link href="/coach/programs" className="text-accent hover:underline">
-            Workout programs
-          </Link>
-          .
+          Build <strong className="font-medium text-foreground">KPI sets</strong> per sport with
+          Gold / Silver / Bronze targets. Leave medals blank to mark a KPI{" "}
+          <strong className="font-medium text-foreground">unranked</strong> (hidden from
+          leaderboards). Ranked KPIs always sort to the top when building sessions.
         </p>
         <div className="flex shrink-0 flex-wrap gap-2">
           <button
@@ -162,6 +325,115 @@ export function KpiTargetsEditor({
         </div>
       </div>
 
+      <div className="mb-6 space-y-3 rounded-2xl border border-card-border bg-card p-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <label className="block min-w-[16rem] flex-1 text-sm">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted">
+              Active KPI set
+            </span>
+            <select
+              value={activeSet?.id ?? ""}
+              onChange={(e) => activateSet(e.target.value)}
+              className="mt-1 w-full rounded-lg border border-card-border bg-background px-3 py-2.5"
+            >
+              {ownSets.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name} · {sportLabel(s.sport)}
+                  {s.isDefault ? " (default)" : ""}
+                </option>
+              ))}
+            </select>
+          </label>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setCreateOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-card-border px-3 py-2 text-sm font-medium hover:bg-sky-400/10"
+            >
+              <Plus className="h-4 w-4" />
+              New set
+            </button>
+            <button
+              type="button"
+              onClick={() => setBrowsePublic((v) => !v)}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-card-border px-3 py-2 text-sm font-medium hover:bg-sky-400/10"
+            >
+              <Globe className="h-4 w-4" />
+              {browsePublic ? "Hide public sets" : "Browse public sets"}
+            </button>
+            {activeSet && (
+              <button
+                type="button"
+                onClick={togglePublic}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-card-border px-3 py-2 text-sm font-medium hover:bg-sky-400/10"
+                title={
+                  activeSet.isPublic
+                    ? "Make private"
+                    : "Make public so other coaches can duplicate"
+                }
+              >
+                {activeSet.isPublic ? (
+                  <>
+                    <Globe className="h-4 w-4 text-sky-300" />
+                    Public
+                  </>
+                ) : (
+                  <>
+                    <Lock className="h-4 w-4" />
+                    Private
+                  </>
+                )}
+              </button>
+            )}
+          </div>
+        </div>
+        {activeSet?.description ? (
+          <p className="text-sm text-muted">{activeSet.description}</p>
+        ) : null}
+        <p className="text-xs text-muted">
+          {rankedCount} ranked · {visibleMetrics.length - rankedCount} unranked in this age band
+        </p>
+      </div>
+
+      {browsePublic && (
+        <div className="mb-6 space-y-3 rounded-2xl border border-card-border bg-card p-4">
+          <h3 className="text-sm font-semibold">Public KPI sets from other coaches</h3>
+          {publicSets.length === 0 ? (
+            <p className="text-sm text-muted">No public sets yet.</p>
+          ) : (
+            <ul className="divide-y divide-card-border/60">
+              {publicSets.map((s) => (
+                <li
+                  key={s.id}
+                  className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between"
+                >
+                  <div>
+                    <p className="font-medium">
+                      {s.name}{" "}
+                      <span className="text-sm font-normal text-muted">
+                        · {sportLabel(s.sport)}
+                      </span>
+                    </p>
+                    <p className="text-xs text-muted">
+                      {s.coach.user.firstName} {s.coach.user.lastName}
+                      {s.description ? ` — ${s.description}` : ""}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setDuplicateSource(s)}
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-sky-400/20 px-3 py-2 text-sm font-semibold text-sky-300 ring-1 ring-sky-400/40"
+                  >
+                    <Copy className="h-4 w-4" />
+                    Duplicate
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+
       <div className="mb-4 space-y-3">
         <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted">Age band</p>
         <div className="flex flex-wrap gap-2">
@@ -182,10 +454,12 @@ export function KpiTargetsEditor({
           ))}
         </div>
         <div className="grid max-w-xs grid-cols-2 rounded-lg bg-card p-1">
-          {([
-            { id: "F" as const, label: "Girls" },
-            { id: "M" as const, label: "Boys" },
-          ]).map((g) => (
+          {(
+            [
+              { id: "F" as const, label: "Girls" },
+              { id: "M" as const, label: "Boys" },
+            ] as const
+          ).map((g) => (
             <button
               key={g.id}
               type="button"
@@ -202,10 +476,11 @@ export function KpiTargetsEditor({
       </div>
 
       <div className="overflow-x-auto rounded-2xl border border-card-border bg-card p-4">
-        <table className="w-full min-w-[36rem] text-left text-sm">
+        <table className="w-full min-w-[42rem] text-left text-sm">
           <thead>
             <tr className="border-b border-card-border text-muted">
               <th className="py-2 pr-3 font-medium">Metric</th>
+              <th className="py-2 pr-3 font-medium">Class</th>
               {MEDALS.map((medal) => (
                 <th key={medal} className="py-2 pr-3 font-medium">
                   <span
@@ -225,50 +500,86 @@ export function KpiTargetsEditor({
             </tr>
           </thead>
           <tbody>
-            {visibleMetrics.map((meta) => (
-              <tr key={meta.slug} className="border-b border-card-border/60">
-                <td className="py-2 pr-3 font-medium">
-                  {meta.name}
-                  <span className="mt-0.5 block text-xs font-normal text-muted">
-                    {meta.unit}
-                    {meta.custom ? " · custom" : ""}
-                  </span>
-                </td>
-                {MEDALS.map((medal) => (
-                  <td key={medal} className="py-2 pr-3">
-                    <input
-                      type="number"
-                      step="any"
-                      value={value(meta.slug, medal)}
-                      onChange={(e) =>
-                        setValue(meta.slug, medal, Number(e.target.value) || 0)
-                      }
-                      className="w-24 rounded-md border border-card-border bg-background px-2 py-1 font-mono tabular-nums"
-                    />
-                  </td>
-                ))}
-                <td className="py-2">
-                  <div className="flex items-center gap-0.5">
-                    <button
-                      type="button"
-                      onClick={() => setEditMetric(meta)}
-                      className="rounded-md p-1.5 text-muted hover:bg-sky-400/10 hover:text-sky-300"
-                      aria-label={`Edit ${meta.name}`}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => deleteMetric(meta.slug)}
-                      className="rounded-md p-1.5 text-muted hover:bg-sport-red/10 hover:text-sport-red"
-                      aria-label={`Delete ${meta.name}`}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
+            {visibleMetrics.map((meta, index) => {
+              const ranked = Boolean(rankedBySlug[meta.slug]);
+              const prevRanked =
+                index === 0 ? true : Boolean(rankedBySlug[visibleMetrics[index - 1]!.slug]);
+              const showDivider = index > 0 && prevRanked && !ranked;
+              return (
+                <Fragment key={meta.slug}>
+                  {showDivider ? (
+                    <tr className="border-b border-card-border/40">
+                      <td colSpan={6} className="py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
+                        Unranked — not on leaderboards
+                      </td>
+                    </tr>
+                  ) : null}
+                  {index === 0 && ranked ? (
+                    <tr className="border-b border-card-border/40">
+                      <td colSpan={6} className="py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-sky-300/80">
+                        Ranked — medal targets
+                      </td>
+                    </tr>
+                  ) : null}
+                  <tr className="border-b border-card-border/60">
+                    <td className="py-2 pr-3 font-medium">
+                      {meta.name}
+                      <span className="mt-0.5 block text-xs font-normal text-muted">
+                        {meta.unit}
+                        {meta.custom ? " · custom" : ""}
+                      </span>
+                    </td>
+                    <td className="py-2 pr-3">
+                      <button
+                        type="button"
+                        onClick={() => toggleRanked(meta.slug)}
+                        className={cn(
+                          "rounded-md px-2 py-1 text-xs font-semibold ring-1",
+                          ranked
+                            ? "bg-sky-400/15 text-sky-300 ring-sky-400/40"
+                            : "bg-background text-muted ring-card-border"
+                        )}
+                      >
+                        {ranked ? "Ranked" : "Unranked"}
+                      </button>
+                    </td>
+                    {MEDALS.map((medal) => (
+                      <td key={medal} className="py-2 pr-3">
+                        <input
+                          type="number"
+                          step="any"
+                          disabled={!ranked}
+                          placeholder={ranked ? "" : "—"}
+                          value={ranked ? value(meta.slug, medal) : ""}
+                          onChange={(e) => setValue(meta.slug, medal, e.target.value)}
+                          className="w-24 rounded-md border border-card-border bg-background px-2 py-1 font-mono tabular-nums disabled:opacity-40"
+                        />
+                      </td>
+                    ))}
+                    <td className="py-2">
+                      <div className="flex items-center gap-0.5">
+                        <button
+                          type="button"
+                          onClick={() => setEditing(meta)}
+                          className="rounded-md p-1.5 text-muted hover:bg-sky-400/10 hover:text-sky-300"
+                          aria-label={`Edit ${meta.name}`}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => deleteMetric(meta.slug)}
+                          className="rounded-md p-1.5 text-muted hover:bg-sport-red/10 hover:text-sport-red"
+                          aria-label={`Delete ${meta.name}`}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                </Fragment>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -277,13 +588,19 @@ export function KpiTargetsEditor({
         <button
           type="button"
           onClick={save}
-          disabled={status === "saving"}
+          disabled={status === "saving" || !activeSet}
           className="rounded-lg bg-accent px-4 py-2 font-medium text-background disabled:opacity-60"
         >
-          {status === "saving" ? "Saving…" : "Save school targets"}
+          {status === "saving" ? "Saving…" : "Save KPI set"}
         </button>
-        {status === "saved" && <p className="text-sm text-success">Saved for this school.</p>}
+        {status === "saved" && <p className="text-sm text-success">Saved for this set.</p>}
         {status === "error" && <p className="text-sm text-sport-red">Could not save. Try again.</p>}
+        <p className="text-xs text-muted">
+          Programs on{" "}
+          <Link href="/coach/programs" className="text-accent hover:underline">
+            Workout programs
+          </Link>
+        </p>
       </div>
 
       {builderOpen && (
@@ -292,6 +609,7 @@ export function KpiTargetsEditor({
           onClose={() => setBuilderOpen(false)}
           onCreated={(m) => {
             setMetricList((prev) => [...prev, m]);
+            setRankedBySlug((prev) => ({ ...prev, [m.slug]: false }));
             setBuilderOpen(false);
             router.refresh();
           }}
@@ -312,25 +630,498 @@ export function KpiTargetsEditor({
                 custom: true,
               },
             ]);
+            setRankedBySlug((prev) => ({ ...prev, [lift.slug]: false }));
             setLiftBuilderOpen(false);
             router.refresh();
           }}
         />
       )}
 
-      {editMetric && (
-        <KpiBuilderModal
-          mode="edit"
-          editMetric={editMetric}
-          onClose={() => setEditMetric(null)}
-          onCreated={() => {}}
-          onUpdated={(m) => {
-            setMetricList((prev) => prev.map((row) => (row.slug === m.slug ? { ...row, ...m } : row)));
-            setEditMetric(null);
-            router.refresh();
+      {editing && (
+        <KpiRenameModal
+          metric={editing}
+          onClose={() => setEditing(null)}
+          onSave={renameMetric}
+        />
+      )}
+
+      {createOpen && (
+        <CreateKpiSetModal
+          onClose={() => setCreateOpen(false)}
+          onCreated={(set) => {
+            setOwnSets((prev) => [...prev, set]);
+            loadSet(set);
+            setCreateOpen(false);
           }}
         />
       )}
+
+      {duplicateSource && (
+        <DuplicateKpiSetModal
+          source={duplicateSource}
+          onClose={() => setDuplicateSource(null)}
+          onCreated={(set) => {
+            setOwnSets((prev) => [...prev, set]);
+            setPublicSets((prev) => prev);
+            loadSet(set);
+            setDuplicateSource(null);
+            setBrowsePublic(false);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function CreateKpiSetModal({
+  onClose,
+  onCreated,
+}: {
+  onClose: () => void;
+  onCreated: (set: KpiSetSummary) => void;
+}) {
+  const [name, setName] = useState("");
+  const [sport, setSport] = useState("track");
+  const [isPublic, setIsPublic] = useState(false);
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  async function submit() {
+    setSaving(true);
+    setError("");
+    const res = await fetch("/api/kpi-sets", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, sport, isPublic, makeActive: true }),
+    });
+    const data = await res.json().catch(() => ({}));
+    setSaving(false);
+    if (!res.ok) {
+      setError(data.error ?? "Could not create set");
+      return;
+    }
+    onCreated(data.set);
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center p-3 sm:items-center sm:p-4">
+      <button
+        type="button"
+        aria-label="Close"
+        className="absolute inset-0 bg-black/60 backdrop-blur-[2px]"
+        onClick={onClose}
+      />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="New KPI set"
+        className="relative z-10 w-full max-w-md rounded-2xl border border-card-border bg-card p-4 shadow-2xl"
+      >
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-lg font-semibold">New KPI set</h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-card-border text-muted"
+            aria-label="Cancel"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <label className="block text-sm">
+          Name
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Crowden Track"
+            className="mt-1 w-full rounded-lg border border-card-border bg-background px-3 py-2.5"
+          />
+        </label>
+        <label className="mt-3 block text-sm">
+          Sport / activity
+          <select
+            value={sport}
+            onChange={(e) => setSport(e.target.value)}
+            className="mt-1 w-full rounded-lg border border-card-border bg-background px-3 py-2.5"
+          >
+            {COACHING_SPORTS.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="mt-3 flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={isPublic}
+            onChange={(e) => setIsPublic(e.target.checked)}
+          />
+          Make public (other coaches can duplicate)
+        </label>
+        {error && <p className="mt-2 text-sm text-red-400">{error}</p>}
+        <div className="mt-4 flex gap-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 rounded-lg border border-card-border py-2.5 text-sm font-medium text-muted"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={submit}
+            disabled={saving || !name.trim()}
+            className="flex-1 rounded-lg bg-accent py-2.5 text-sm font-semibold text-background disabled:opacity-50"
+          >
+            {saving ? "Creating…" : "Create set"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DuplicateKpiSetModal({
+  source,
+  onClose,
+  onCreated,
+}: {
+  source: KpiSetSummary;
+  onClose: () => void;
+  onCreated: (set: KpiSetSummary) => void;
+}) {
+  const [name, setName] = useState(`${source.name} (copy)`);
+  const [sport, setSport] = useState(source.sport);
+  const [isPublic, setIsPublic] = useState(false);
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [step, setStep] = useState<"confirm" | "form">("confirm");
+
+  // Editable medal values seeded from source
+  const [cells, setCells] = useState<TargetCell[]>(() => cellsFromSet(source));
+  const [rankedBySlug, setRankedBySlug] = useState(() => rankedMapFromSet(source));
+  const [gender, setGender] = useState<"F" | "M">("F");
+  const [bracket, setBracket] = useState<AgeBracketId>(DEFAULT_AGE_BRACKET);
+
+  const metricNames = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const m of source.metrics) map.set(m.metricSlug, m.metricSlug);
+    return map;
+  }, [source.metrics]);
+
+  function value(slug: string, medal: Medal): string {
+    const cell = cells.find(
+      (c) =>
+        c.gender === gender &&
+        c.medal === medal &&
+        c.metricSlug === slug &&
+        c.ageBracket === bracket
+    );
+    if (!cell || cell.target == null) return "";
+    return String(cell.target);
+  }
+
+  function setValue(slug: string, medal: Medal, raw: string) {
+    const target = raw.trim() === "" ? null : Number(raw);
+    setCells((prev) => {
+      const next = prev.filter(
+        (c) =>
+          !(
+            c.gender === gender &&
+            c.medal === medal &&
+            c.metricSlug === slug &&
+            c.ageBracket === bracket
+          )
+      );
+      if (target != null && Number.isFinite(target)) {
+        next.push({ gender, medal, metricSlug: slug, target, ageBracket: bracket });
+      }
+      return next;
+    });
+  }
+
+  async function submit() {
+    setSaving(true);
+    setError("");
+    const metrics = source.metrics.map((m) => ({
+      metricSlug: m.metricSlug,
+      ranked: Boolean(rankedBySlug[m.metricSlug]),
+      sortOrder: m.sortOrder,
+    }));
+    const res = await fetch(`/api/kpi-sets/${source.id}/duplicate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name,
+        sport,
+        isPublic,
+        cells,
+        metrics,
+        makeActive: true,
+      }),
+    });
+    const data = await res.json().catch(() => ({}));
+    setSaving(false);
+    if (!res.ok) {
+      setError(data.error ?? "Could not duplicate");
+      return;
+    }
+    onCreated(data.set);
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center p-3 sm:items-center sm:p-4">
+      <button
+        type="button"
+        aria-label="Close"
+        className="absolute inset-0 bg-black/60 backdrop-blur-[2px]"
+        onClick={onClose}
+      />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Duplicate KPI set"
+        className="relative z-10 flex max-h-[92vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-card-border bg-card shadow-2xl"
+      >
+        <div className="flex items-center justify-between border-b border-card-border px-4 py-3">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-sky-300/80">
+              Duplicate
+            </p>
+            <h2 className="text-lg font-semibold">{source.name}</h2>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-card-border text-muted"
+            aria-label="Cancel"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="space-y-4 overflow-y-auto px-4 py-4">
+          {step === "confirm" ? (
+            <>
+              <p className="text-sm text-muted">
+                Duplicate{" "}
+                <strong className="font-medium text-foreground">{source.name}</strong> from{" "}
+                {source.coach.user.firstName} {source.coach.user.lastName}? You will assign it to a
+                sport and can edit Gold / Silver / Bronze without changing the original.
+              </p>
+              <button
+                type="button"
+                onClick={() => setStep("form")}
+                className="w-full rounded-lg bg-accent py-2.5 text-sm font-semibold text-background"
+              >
+                Continue
+              </button>
+            </>
+          ) : (
+            <>
+              <label className="block text-sm">
+                Name for your copy
+                <input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-card-border bg-background px-3 py-2.5"
+                />
+              </label>
+              <label className="block text-sm">
+                Assign to sport / activity
+                <select
+                  value={sport}
+                  onChange={(e) => setSport(e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-card-border bg-background px-3 py-2.5"
+                >
+                  {COACHING_SPORTS.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={isPublic}
+                  onChange={(e) => setIsPublic(e.target.checked)}
+                />
+                Make my copy public
+              </label>
+
+              <div className="grid grid-cols-2 gap-2">
+                {(
+                  [
+                    { id: "F" as const, label: "Girls" },
+                    { id: "M" as const, label: "Boys" },
+                  ] as const
+                ).map((g) => (
+                  <button
+                    key={g.id}
+                    type="button"
+                    onClick={() => setGender(g.id)}
+                    className={cn(
+                      "rounded-md px-3 py-2 text-sm font-semibold",
+                      gender === g.id ? "bg-sky-500 text-white" : "border border-card-border text-muted"
+                    )}
+                  >
+                    {g.label}
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex flex-wrap gap-1">
+                {AGE_BRACKETS.map((b) => (
+                  <button
+                    key={b.id}
+                    type="button"
+                    onClick={() => setBracket(b.id)}
+                    className={cn(
+                      "rounded-full px-2.5 py-1 text-xs font-medium",
+                      bracket === b.id
+                        ? "bg-sky-400/20 text-sky-300 ring-1 ring-sky-400/50"
+                        : "border border-card-border text-muted"
+                    )}
+                  >
+                    {b.shortLabel}
+                  </button>
+                ))}
+              </div>
+
+              <div className="space-y-2 rounded-xl border border-card-border bg-background/50 p-3">
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted">
+                  Your medal values (source unchanged)
+                </p>
+                {[...metricNames.keys()].map((slug) => (
+                  <div key={slug} className="grid grid-cols-4 gap-2 text-xs">
+                    <span className="self-center truncate font-medium" title={slug}>
+                      {slug}
+                    </span>
+                    {MEDALS.map((medal) => (
+                      <label key={medal} className="block">
+                        <span
+                          className={
+                            medal === "gold"
+                              ? "text-sport-gold"
+                              : medal === "silver"
+                                ? "text-sport-silver"
+                                : "text-sport-bronze"
+                          }
+                        >
+                          {MEDAL_LABELS[medal]}
+                        </span>
+                        <input
+                          type="number"
+                          step="any"
+                          value={value(slug, medal)}
+                          onChange={(e) => setValue(slug, medal, e.target.value)}
+                          className="mt-1 w-full rounded-md border border-card-border bg-card px-2 py-1.5 font-mono"
+                        />
+                      </label>
+                    ))}
+                  </div>
+                ))}
+              </div>
+
+              {error && <p className="text-sm text-red-400">{error}</p>}
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="flex-1 rounded-lg border border-card-border py-2.5 text-sm font-medium text-muted"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={submit}
+                  disabled={saving || !name.trim()}
+                  className="flex-1 rounded-lg bg-accent py-2.5 text-sm font-semibold text-background disabled:opacity-50"
+                >
+                  {saving ? "Duplicating…" : "Duplicate set"}
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function KpiRenameModal({
+  metric,
+  onClose,
+  onSave,
+}: {
+  metric: MetricInfo;
+  onClose: () => void;
+  onSave: (slug: string, name: string) => Promise<boolean>;
+}) {
+  const [name, setName] = useState(metric.name);
+  const [saving, setSaving] = useState(false);
+
+  async function submit() {
+    if (!name.trim()) return;
+    setSaving(true);
+    await onSave(metric.slug, name.trim());
+    setSaving(false);
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center p-3 sm:items-center sm:p-4">
+      <button
+        type="button"
+        aria-label="Close"
+        className="absolute inset-0 bg-black/60 backdrop-blur-[2px]"
+        onClick={onClose}
+      />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Rename KPI"
+        className="relative z-10 w-full max-w-sm rounded-2xl border border-card-border bg-card p-4 shadow-2xl"
+      >
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-lg font-semibold">Rename KPI</h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-card-border text-muted"
+            aria-label="Cancel"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <label className="block text-sm">
+          Title
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="mt-1 w-full rounded-lg border border-card-border bg-background px-3 py-2.5"
+          />
+        </label>
+        <p className="mt-2 text-xs text-muted">Unit: {metric.unit}</p>
+        <div className="mt-4 flex gap-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 rounded-lg border border-card-border py-2.5 text-sm font-medium text-muted"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={submit}
+            disabled={saving || !name.trim()}
+            className="flex-1 rounded-lg bg-accent py-2.5 text-sm font-semibold text-background disabled:opacity-50"
+          >
+            {saving ? "Saving…" : "Save"}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -346,27 +1137,16 @@ const LIFT_UNIT_IDS = new Set(["lb", "reps", "x BW"]);
 function KpiBuilderModal({
   onClose,
   onCreated,
-  onUpdated,
   defaults,
-  mode = "create",
-  editMetric,
 }: {
   onClose: () => void;
   onCreated: (m: MetricInfo) => void;
-  onUpdated?: (m: MetricInfo) => void;
   defaults?: KpiBuilderDefaults;
-  mode?: "create" | "edit";
-  editMetric?: MetricInfo;
 }) {
-  const isEdit = mode === "edit" && editMetric != null;
-  const [title, setTitle] = useState(isEdit ? editMetric.name : "");
-  const [categorySlug, setCategorySlug] = useState<string>(
-    isEdit ? editMetric.categorySlug ?? "flexibility" : defaults?.categorySlug ?? "flexibility"
-  );
-  const [unit, setUnit] = useState(isEdit ? editMetric.unit : defaults?.unit ?? "reps");
-  const [direction, setDirection] = useState<"HIGHER_BETTER" | "LOWER_BETTER">(
-    isEdit ? editMetric.direction ?? "HIGHER_BETTER" : "HIGHER_BETTER"
-  );
+  const [title, setTitle] = useState("");
+  const [categorySlug, setCategorySlug] = useState<string>(defaults?.categorySlug ?? "flexibility");
+  const [unit, setUnit] = useState(defaults?.unit ?? "reps");
+  const [direction, setDirection] = useState<"HIGHER_BETTER" | "LOWER_BETTER">("HIGHER_BETTER");
   const [brackets, setBrackets] = useState<AgeBracketId[]>(
     defaults?.ageBrackets ?? ["elem-3-5", "middle-6-8"]
   );
@@ -376,8 +1156,6 @@ function KpiBuilderModal({
   >({});
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
-  const [loading, setLoading] = useState(isEdit);
-  const [loggedResultCount, setLoggedResultCount] = useState(0);
 
   const unitOptions = useMemo(() => {
     if (categorySlug === "strength") {
@@ -387,46 +1165,9 @@ function KpiBuilderModal({
   }, [categorySlug]);
 
   useEffect(() => {
-    if (isEdit || !unit) return;
     const unitMeta = KPI_UNITS.find((u) => u.id === unit);
     if (unitMeta) setDirection(unitMeta.directionDefault);
-  }, [unit, isEdit]);
-
-  useEffect(() => {
-    if (!isEdit || !editMetric) return;
-    let cancelled = false;
-    (async () => {
-      setLoading(true);
-      try {
-        const res = await fetch(
-          `/api/kpi-targets?slug=${encodeURIComponent(editMetric.slug)}`
-        );
-        const data = await res.json();
-        if (cancelled || !res.ok) return;
-        setTitle(data.activity.name);
-        setCategorySlug(data.activity.categorySlug);
-        setUnit(data.activity.unit);
-        setDirection(
-          data.activity.direction === "LOWER_BETTER" ? "LOWER_BETTER" : "HIGHER_BETTER"
-        );
-        setBrackets(
-          (data.ageBrackets ?? []).filter((b: string) =>
-            AGE_BRACKETS.some((x) => x.id === b)
-          ) as AgeBracketId[]
-        );
-        setGenders(
-          (data.genders ?? ["F", "M"]).filter((g: string) => g === "F" || g === "M")
-        );
-        setTargets(data.targets ?? {});
-        setLoggedResultCount(Number(data.resultCount) || 0);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [isEdit, editMetric]);
+  }, [unit]);
 
   useEffect(() => {
     if (categorySlug === "strength" && !LIFT_UNIT_IDS.has(unit)) {
@@ -459,7 +1200,9 @@ function KpiBuilderModal({
     }));
   }
 
-  function buildNumericTargets() {
+  async function onSave() {
+    setSaving(true);
+    setError("");
     const numericTargets: Record<string, Record<string, Record<string, number>>> = {};
     for (const b of brackets) {
       numericTargets[b] = {};
@@ -473,59 +1216,34 @@ function KpiBuilderModal({
         }
       }
     }
-    return numericTargets;
-  }
 
-  async function onSave(acknowledgeLoggedData = false) {
-    setSaving(true);
-    setError("");
-    const numericTargets = buildNumericTargets();
-
-    const payload = {
-      action: isEdit ? "update" : "create",
-      ...(isEdit ? { slug: editMetric!.slug, acknowledgeLoggedData } : {}),
-      title,
-      categorySlug,
-      unit,
-      direction,
-      ageBrackets: brackets,
-      genders,
-      targets: numericTargets,
-    };
-
-    const res = await fetch(isEdit ? "/api/kpi-targets" : "/api/kpi-targets", {
-      method: isEdit ? "PATCH" : "POST",
+    const res = await fetch("/api/kpi-targets", {
+      method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({
+        action: "create",
+        title,
+        categorySlug,
+        unit,
+        direction,
+        ageBrackets: brackets,
+        genders,
+        targets: numericTargets,
+      }),
     });
     setSaving(false);
     const data = await res.json().catch(() => ({}));
-    if (res.status === 409 && data.requiresAcknowledgement) {
-      const count = data.resultCount ?? loggedResultCount;
-      const ok = window.confirm(
-        `This KPI has ${count} logged test result${count === 1 ? "" : "s"}. Changing the definition (unit, scoring, or name) can make past marks harder to compare. Save anyway?`
-      );
-      if (ok) void onSave(true);
-      return;
-    }
     if (!res.ok) {
-      setError(data.error ?? (isEdit ? "Could not update KPI" : "Could not create KPI"));
+      setError(data.error ?? "Could not create KPI");
       return;
     }
-    const saved: MetricInfo = {
+    onCreated({
       slug: data.activity.slug,
       name: data.activity.name,
-      unit: data.activity.unit ?? unit,
-      categorySlug: data.activity.categorySlug ?? categorySlug,
-      direction:
-        data.activity.direction === "LOWER_BETTER" ? "LOWER_BETTER" : "HIGHER_BETTER",
-      custom: isEdit ? editMetric!.custom : true,
-    };
-    if (isEdit) {
-      onUpdated?.(saved);
-    } else {
-      onCreated(saved);
-    }
+      unit,
+      categorySlug,
+      custom: true,
+    });
   }
 
   return (
@@ -547,9 +1265,7 @@ function KpiBuilderModal({
             <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-sky-300/80">
               KPI builder
             </p>
-            <h2 className="text-lg font-semibold">
-              {isEdit ? "Edit KPI" : "New school metric"}
-            </h2>
+            <h2 className="text-lg font-semibold">New school metric</h2>
           </div>
           <button
             type="button"
@@ -562,16 +1278,6 @@ function KpiBuilderModal({
         </div>
 
         <div className="space-y-4 overflow-y-auto px-4 py-4 sm:px-5">
-          {loading ? (
-            <p className="text-sm text-muted">Loading KPI…</p>
-          ) : null}
-          {!loading && loggedResultCount > 0 ? (
-            <p className="rounded-lg border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-100/90">
-              <strong className="font-semibold">{loggedResultCount}</strong> logged test
-              result{loggedResultCount === 1 ? "" : "s"} use this KPI. Saving changes to unit,
-              scoring, category, or title can affect how past data is interpreted.
-            </p>
-          ) : null}
           {categorySlug === "strength" ? (
             <p className="text-sm text-muted">
               Strength category — use lb, reps, or × BW. For the dedicated lift flow (same API), you
@@ -689,7 +1395,7 @@ function KpiBuilderModal({
           {brackets.length > 0 && genders.length > 0 && (
             <div className="space-y-3 rounded-xl border border-card-border bg-background/50 p-3">
               <p className="text-xs font-semibold uppercase tracking-wider text-muted">
-                Optional medal targets
+                Optional medal targets (leave blank = unranked)
               </p>
               {brackets.map((b) => (
                 <div key={b} className="space-y-2">
@@ -741,11 +1447,11 @@ function KpiBuilderModal({
           </button>
           <button
             type="button"
-            onClick={() => void onSave()}
-            disabled={saving || loading || !title.trim() || brackets.length === 0}
+            onClick={onSave}
+            disabled={saving || !title.trim() || brackets.length === 0}
             className="flex-1 rounded-lg bg-accent py-2.5 text-sm font-semibold text-background disabled:opacity-50"
           >
-            {saving ? "Saving…" : isEdit ? "Save changes" : "Save KPI"}
+            {saving ? "Saving…" : "Save KPI"}
           </button>
         </div>
       </div>

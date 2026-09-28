@@ -1,6 +1,9 @@
 import { prisma } from "@/lib/db";
-import { createOrRefreshCoachLoginInvite, placeholderPasswordHash } from "@/lib/services/coach-login-invite";
-import { coachLoginStatusFromRow } from "@/lib/services/coach-login-invite";
+import {
+  coachLoginStatusFromRow,
+  createOrRefreshCoachLoginInvite,
+  placeholderPasswordHash,
+} from "@/lib/services/coach-login-invite";
 
 export type CreateSchoolCoachInput = {
   schoolId: string;

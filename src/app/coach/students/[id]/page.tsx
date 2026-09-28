@@ -23,6 +23,8 @@ import { AthleteProfileCard } from "@/components/athletes/athlete-profile-card";
 import { genderFullLabel } from "@/lib/gender";
 import { leaderboardHighlightFromSearch } from "@/lib/leaderboard-link";
 import { KPI_METRIC_META } from "@/lib/kpi-targets";
+import { StudentLoginLinkButton } from "@/components/athletes/student-login-link-button";
+import { studentLoginStatusFromRow } from "@/lib/services/student-login-invite";
 
 export default async function StudentProfilePage({
   params,

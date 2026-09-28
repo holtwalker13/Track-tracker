@@ -12,13 +12,25 @@ export async function loginAction(formData: FormData) {
   const password = String(formData.get("password") ?? "");
   const nextRaw = String(formData.get("next") ?? "");
 
-  const user = await prisma.user.findUnique({
+  let user = await prisma.user.findUnique({
     where: { email },
     include: { coachProfile: true, studentProfile: true },
   });
 
+  if (!user && !email.includes("@")) {
+    const profile = await prisma.studentProfile.findFirst({
+      where: { studentNumber: email.toUpperCase() },
+      include: { user: { include: { coachProfile: true, studentProfile: true } } },
+    });
+    if (profile?.user) user = profile.user;
+  }
+
   if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
     redirect("/login?error=1");
+  }
+
+  if (user.role === "STUDENT" && !user.passwordSetAt) {
+    redirect("/login?error=setup");
   }
 
   const schoolId = user.coachProfile?.schoolId ?? user.studentProfile?.schoolId;

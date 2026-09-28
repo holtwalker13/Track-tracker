@@ -2,6 +2,10 @@ import { prisma } from "@/lib/db";
 import { formatActivityValue } from "@/lib/format";
 import { gradeLevelWhere } from "@/lib/grades";
 import type { AthleteGender } from "@/lib/gender";
+import {
+  studentLoginStatusFromRow,
+  type StudentLoginStatus,
+} from "@/lib/services/student-login-invite";
 
 export const ROSTER_COLUMNS: { slug: string; label: string }[] = [
   { slug: "weight", label: "BW" },
@@ -32,6 +36,7 @@ export type RosterAthlete = {
   className: string | null;
   classPeriod: string | null;
   nameHidden: boolean;
+  loginStatus: StudentLoginStatus;
   marks: Record<string, RosterMark>;
 };
 
@@ -74,6 +79,8 @@ export async function getClassRoster(
     include: {
       student: {
         include: {
+          user: { select: { passwordSetAt: true } },
+          loginInvite: { select: { usedAt: true, expiresAt: true } },
           classEnrollments: {
             include: { class: true },
             orderBy: { class: { name: "asc" } },
@@ -135,6 +142,11 @@ export async function getClassRoster(
       className: preferred?.class.name ?? null,
       classPeriod: preferred?.class.period ?? null,
       nameHidden: e.student.nameHidden,
+      loginStatus: studentLoginStatusFromRow({
+        userId: e.student.userId,
+        user: e.student.user,
+        loginInvite: e.student.loginInvite,
+      }),
       marks: marksByStudent.get(e.studentId) ?? {},
     };
   });

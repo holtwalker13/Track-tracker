@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
 import { ROSTER_COLUMNS, type RosterAthlete } from "@/lib/queries/roster";
+import { StudentLoginLinkButton } from "@/components/athletes/student-login-link-button";
 import { classYearShort } from "@/lib/grades";
 import { cn } from "@/lib/utils";
 
@@ -16,6 +17,7 @@ type SortKey =
   | "sports"
   | "participationType"
   | "nameHidden"
+  | "loginStatus"
   | (typeof ROSTER_COLUMNS)[number]["slug"];
 
 function participationLabel(value: string | null) {
@@ -57,6 +59,10 @@ export function RosterTable({
         const av = hiddenById[a.studentId] ? 1 : 0;
         const bv = hiddenById[b.studentId] ? 1 : 0;
         return (av - bv) * dir;
+      }
+      if (sortKey === "loginStatus") {
+        const order = { none: 0, invite: 1, active: 2 };
+        return (order[a.loginStatus] - order[b.loginStatus]) * dir;
       }
       const markSlug = ROSTER_COLUMNS.find((c) => c.slug === sortKey)?.slug;
       if (markSlug) {
@@ -215,6 +221,7 @@ export function RosterTable({
               </button>
             </th>
             <Header label="Visible" sortId="nameHidden" />
+            <Header label="Login" sortId="loginStatus" />
             <Header label="ID" sortId="studentNumber" />
             {showClass && <Header label="Year" sortId="classYear" />}
             <Header label="Hour / Class" sortId="classPeriod" />
@@ -264,6 +271,13 @@ export function RosterTable({
                     {hidden ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </td>
+                <td className="px-3 py-2">
+                  <StudentLoginLinkButton
+                    studentId={a.studentId}
+                    fullName={a.fullName}
+                    loginStatus={a.loginStatus}
+                  />
+                </td>
                 <td className="px-3 py-2 font-mono text-xs tabular-nums text-muted">{a.studentNumber}</td>
                 {showClass && (
                   <td className="px-3 py-2 tabular-nums text-muted">
@@ -306,8 +320,8 @@ export function RosterTable({
         </tbody>
       </table>
       <p className="border-t border-card-border px-3 py-2 text-xs text-muted">
-        {athletes.length} athlete{athletes.length === 1 ? "" : "s"} · eye = visible to other students ·
-        slashed eye = name hidden on student leaderboards (coaches still see names)
+        {athletes.length} athlete{athletes.length === 1 ? "" : "s"} · login link = one-time student setup (name +
+        password) · eye = visible to other students · slashed eye = name hidden on student leaderboards
       </p>
     </div>
   );

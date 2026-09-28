@@ -20,6 +20,7 @@ type MetricInfo = {
   name: string;
   unit: string;
   categorySlug?: string;
+  direction?: "HIGHER_BETTER" | "LOWER_BETTER";
   custom?: boolean;
 };
 
@@ -47,7 +48,7 @@ export function KpiTargetsEditor({
   const [builderOpen, setBuilderOpen] = useState(false);
   const [kpiBuilderDefaults, setKpiBuilderDefaults] = useState<KpiBuilderDefaults | undefined>();
   const [liftBuilderOpen, setLiftBuilderOpen] = useState(false);
-  const [editing, setEditing] = useState<MetricInfo | null>(null);
+  const [editMetric, setEditMetric] = useState<MetricInfo | null>(null);
 
   useEffect(() => setCells(initial), [initial]);
   useEffect(() => setMetricList(metrics), [metrics]);
@@ -111,22 +112,6 @@ export function KpiTargetsEditor({
     setMetricList((prev) => prev.filter((m) => m.slug !== slug));
     setCells((prev) => prev.filter((c) => c.metricSlug !== slug));
     router.refresh();
-  }
-
-  async function renameMetric(slug: string, name: string) {
-    const res = await fetch("/api/kpi-targets", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ slug, name }),
-    });
-    if (!res.ok) {
-      window.alert("Could not rename KPI.");
-      return false;
-    }
-    setMetricList((prev) => prev.map((m) => (m.slug === slug ? { ...m, name } : m)));
-    setEditing(null);
-    router.refresh();
-    return true;
   }
 
   const visibleMetrics = useMemo(() => {
@@ -266,7 +251,7 @@ export function KpiTargetsEditor({
                   <div className="flex items-center gap-0.5">
                     <button
                       type="button"
-                      onClick={() => setEditing(meta)}
+                      onClick={() => setEditMetric(meta)}
                       className="rounded-md p-1.5 text-muted hover:bg-sky-400/10 hover:text-sky-300"
                       aria-label={`Edit ${meta.name}`}
                     >
@@ -333,88 +318,19 @@ export function KpiTargetsEditor({
         />
       )}
 
-      {editing && (
-        <KpiRenameModal
-          metric={editing}
-          onClose={() => setEditing(null)}
-          onSave={renameMetric}
+      {editMetric && (
+        <KpiBuilderModal
+          mode="edit"
+          editMetric={editMetric}
+          onClose={() => setEditMetric(null)}
+          onCreated={() => {}}
+          onUpdated={(m) => {
+            setMetricList((prev) => prev.map((row) => (row.slug === m.slug ? { ...row, ...m } : row)));
+            setEditMetric(null);
+            router.refresh();
+          }}
         />
       )}
-    </div>
-  );
-}
-
-function KpiRenameModal({
-  metric,
-  onClose,
-  onSave,
-}: {
-  metric: MetricInfo;
-  onClose: () => void;
-  onSave: (slug: string, name: string) => Promise<boolean>;
-}) {
-  const [name, setName] = useState(metric.name);
-  const [saving, setSaving] = useState(false);
-
-  async function submit() {
-    if (!name.trim()) return;
-    setSaving(true);
-    await onSave(metric.slug, name.trim());
-    setSaving(false);
-  }
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center p-3 sm:items-center sm:p-4">
-      <button
-        type="button"
-        aria-label="Close"
-        className="absolute inset-0 bg-black/60 backdrop-blur-[2px]"
-        onClick={onClose}
-      />
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label="Rename KPI"
-        className="relative z-10 w-full max-w-sm rounded-2xl border border-card-border bg-card p-4 shadow-2xl"
-      >
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Rename KPI</h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-card-border text-muted"
-            aria-label="Cancel"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-        <label className="block text-sm">
-          Title
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="mt-1 w-full rounded-lg border border-card-border bg-background px-3 py-2.5"
-          />
-        </label>
-        <p className="mt-2 text-xs text-muted">Unit: {metric.unit}</p>
-        <div className="mt-4 flex gap-2">
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex-1 rounded-lg border border-card-border py-2.5 text-sm font-medium text-muted"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={submit}
-            disabled={saving || !name.trim()}
-            className="flex-1 rounded-lg bg-accent py-2.5 text-sm font-semibold text-background disabled:opacity-50"
-          >
-            {saving ? "Saving…" : "Save"}
-          </button>
-        </div>
-      </div>
     </div>
   );
 }
@@ -430,16 +346,27 @@ const LIFT_UNIT_IDS = new Set(["lb", "reps", "x BW"]);
 function KpiBuilderModal({
   onClose,
   onCreated,
+  onUpdated,
   defaults,
+  mode = "create",
+  editMetric,
 }: {
   onClose: () => void;
   onCreated: (m: MetricInfo) => void;
+  onUpdated?: (m: MetricInfo) => void;
   defaults?: KpiBuilderDefaults;
+  mode?: "create" | "edit";
+  editMetric?: MetricInfo;
 }) {
-  const [title, setTitle] = useState("");
-  const [categorySlug, setCategorySlug] = useState<string>(defaults?.categorySlug ?? "flexibility");
-  const [unit, setUnit] = useState(defaults?.unit ?? "reps");
-  const [direction, setDirection] = useState<"HIGHER_BETTER" | "LOWER_BETTER">("HIGHER_BETTER");
+  const isEdit = mode === "edit" && editMetric != null;
+  const [title, setTitle] = useState(isEdit ? editMetric.name : "");
+  const [categorySlug, setCategorySlug] = useState<string>(
+    isEdit ? editMetric.categorySlug ?? "flexibility" : defaults?.categorySlug ?? "flexibility"
+  );
+  const [unit, setUnit] = useState(isEdit ? editMetric.unit : defaults?.unit ?? "reps");
+  const [direction, setDirection] = useState<"HIGHER_BETTER" | "LOWER_BETTER">(
+    isEdit ? editMetric.direction ?? "HIGHER_BETTER" : "HIGHER_BETTER"
+  );
   const [brackets, setBrackets] = useState<AgeBracketId[]>(
     defaults?.ageBrackets ?? ["elem-3-5", "middle-6-8"]
   );
@@ -449,6 +376,8 @@ function KpiBuilderModal({
   >({});
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(isEdit);
+  const [loggedResultCount, setLoggedResultCount] = useState(0);
 
   const unitOptions = useMemo(() => {
     if (categorySlug === "strength") {
@@ -458,9 +387,46 @@ function KpiBuilderModal({
   }, [categorySlug]);
 
   useEffect(() => {
+    if (isEdit || !unit) return;
     const unitMeta = KPI_UNITS.find((u) => u.id === unit);
     if (unitMeta) setDirection(unitMeta.directionDefault);
-  }, [unit]);
+  }, [unit, isEdit]);
+
+  useEffect(() => {
+    if (!isEdit || !editMetric) return;
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      try {
+        const res = await fetch(
+          `/api/kpi-targets?slug=${encodeURIComponent(editMetric.slug)}`
+        );
+        const data = await res.json();
+        if (cancelled || !res.ok) return;
+        setTitle(data.activity.name);
+        setCategorySlug(data.activity.categorySlug);
+        setUnit(data.activity.unit);
+        setDirection(
+          data.activity.direction === "LOWER_BETTER" ? "LOWER_BETTER" : "HIGHER_BETTER"
+        );
+        setBrackets(
+          (data.ageBrackets ?? []).filter((b: string) =>
+            AGE_BRACKETS.some((x) => x.id === b)
+          ) as AgeBracketId[]
+        );
+        setGenders(
+          (data.genders ?? ["F", "M"]).filter((g: string) => g === "F" || g === "M")
+        );
+        setTargets(data.targets ?? {});
+        setLoggedResultCount(Number(data.resultCount) || 0);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isEdit, editMetric]);
 
   useEffect(() => {
     if (categorySlug === "strength" && !LIFT_UNIT_IDS.has(unit)) {
@@ -493,9 +459,7 @@ function KpiBuilderModal({
     }));
   }
 
-  async function onSave() {
-    setSaving(true);
-    setError("");
+  function buildNumericTargets() {
     const numericTargets: Record<string, Record<string, Record<string, number>>> = {};
     for (const b of brackets) {
       numericTargets[b] = {};
@@ -509,34 +473,59 @@ function KpiBuilderModal({
         }
       }
     }
+    return numericTargets;
+  }
 
-    const res = await fetch("/api/kpi-targets", {
-      method: "POST",
+  async function onSave(acknowledgeLoggedData = false) {
+    setSaving(true);
+    setError("");
+    const numericTargets = buildNumericTargets();
+
+    const payload = {
+      action: isEdit ? "update" : "create",
+      ...(isEdit ? { slug: editMetric!.slug, acknowledgeLoggedData } : {}),
+      title,
+      categorySlug,
+      unit,
+      direction,
+      ageBrackets: brackets,
+      genders,
+      targets: numericTargets,
+    };
+
+    const res = await fetch(isEdit ? "/api/kpi-targets" : "/api/kpi-targets", {
+      method: isEdit ? "PATCH" : "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "create",
-        title,
-        categorySlug,
-        unit,
-        direction,
-        ageBrackets: brackets,
-        genders,
-        targets: numericTargets,
-      }),
+      body: JSON.stringify(payload),
     });
     setSaving(false);
     const data = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      setError(data.error ?? "Could not create KPI");
+    if (res.status === 409 && data.requiresAcknowledgement) {
+      const count = data.resultCount ?? loggedResultCount;
+      const ok = window.confirm(
+        `This KPI has ${count} logged test result${count === 1 ? "" : "s"}. Changing the definition (unit, scoring, or name) can make past marks harder to compare. Save anyway?`
+      );
+      if (ok) void onSave(true);
       return;
     }
-    onCreated({
+    if (!res.ok) {
+      setError(data.error ?? (isEdit ? "Could not update KPI" : "Could not create KPI"));
+      return;
+    }
+    const saved: MetricInfo = {
       slug: data.activity.slug,
       name: data.activity.name,
-      unit,
-      categorySlug,
-      custom: true,
-    });
+      unit: data.activity.unit ?? unit,
+      categorySlug: data.activity.categorySlug ?? categorySlug,
+      direction:
+        data.activity.direction === "LOWER_BETTER" ? "LOWER_BETTER" : "HIGHER_BETTER",
+      custom: isEdit ? editMetric!.custom : true,
+    };
+    if (isEdit) {
+      onUpdated?.(saved);
+    } else {
+      onCreated(saved);
+    }
   }
 
   return (
@@ -558,7 +547,9 @@ function KpiBuilderModal({
             <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-sky-300/80">
               KPI builder
             </p>
-            <h2 className="text-lg font-semibold">New school metric</h2>
+            <h2 className="text-lg font-semibold">
+              {isEdit ? "Edit KPI" : "New school metric"}
+            </h2>
           </div>
           <button
             type="button"
@@ -571,6 +562,16 @@ function KpiBuilderModal({
         </div>
 
         <div className="space-y-4 overflow-y-auto px-4 py-4 sm:px-5">
+          {loading ? (
+            <p className="text-sm text-muted">Loading KPI…</p>
+          ) : null}
+          {!loading && loggedResultCount > 0 ? (
+            <p className="rounded-lg border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-100/90">
+              <strong className="font-semibold">{loggedResultCount}</strong> logged test
+              result{loggedResultCount === 1 ? "" : "s"} use this KPI. Saving changes to unit,
+              scoring, category, or title can affect how past data is interpreted.
+            </p>
+          ) : null}
           {categorySlug === "strength" ? (
             <p className="text-sm text-muted">
               Strength category — use lb, reps, or × BW. For the dedicated lift flow (same API), you
@@ -740,11 +741,11 @@ function KpiBuilderModal({
           </button>
           <button
             type="button"
-            onClick={onSave}
-            disabled={saving || !title.trim() || brackets.length === 0}
+            onClick={() => void onSave()}
+            disabled={saving || loading || !title.trim() || brackets.length === 0}
             className="flex-1 rounded-lg bg-accent py-2.5 text-sm font-semibold text-background disabled:opacity-50"
           >
-            {saving ? "Saving…" : "Save KPI"}
+            {saving ? "Saving…" : isEdit ? "Save changes" : "Save KPI"}
           </button>
         </div>
       </div>

@@ -75,37 +75,131 @@ export async function createSchoolActivity(input: {
     input.ageBrackets?.filter((b) => isAgeBracketId(String(b))) ?? [DEFAULT_AGE_BRACKET];
   const genders = input.genders?.filter((g) => g === "F" || g === "M") ?? ["F", "M"];
 
-  if (input.targets) {
-    const rows: {
-      schoolId: string;
-      gender: string;
-      medal: string;
-      metricSlug: string;
-      target: number;
-      ageBracket: string;
-    }[] = [];
-    for (const bracket of ageBrackets) {
-      for (const gender of genders) {
-        for (const medal of MEDALS) {
-          const target = Number(input.targets?.[bracket]?.[gender]?.[medal]);
-          if (!Number.isFinite(target)) continue;
-          rows.push({
-            schoolId: input.schoolId,
-            gender,
-            medal,
-            metricSlug: activity.slug,
-            target,
-            ageBracket: bracket,
-          });
-        }
-      }
-    }
-    if (rows.length) {
-      await prisma.schoolKpiTarget.createMany({ data: rows, skipDuplicates: true });
-    }
-  }
+  await upsertSchoolKpiTargetRows(
+    input.schoolId,
+    activity.slug,
+    input.targets,
+    ageBrackets,
+    genders
+  );
 
   return activity;
+}
+
+export async function upsertSchoolKpiTargetRows(
+  schoolId: string,
+  metricSlug: string,
+  targets: Record<string, Record<string, Record<string, number>>> | undefined,
+  ageBrackets: string[],
+  genders: Array<"F" | "M">
+) {
+  if (!targets) return;
+  for (const bracket of ageBrackets) {
+    for (const gender of genders) {
+      for (const medal of MEDALS) {
+        const target = Number(targets[bracket]?.[gender]?.[medal]);
+        if (!Number.isFinite(target)) continue;
+        await prisma.schoolKpiTarget.upsert({
+          where: {
+            schoolId_gender_medal_metricSlug_ageBracket: {
+              schoolId,
+              gender,
+              medal,
+              metricSlug,
+              ageBracket: bracket,
+            },
+          },
+          create: {
+            schoolId,
+            gender,
+            medal,
+            metricSlug,
+            target,
+            ageBracket: bracket,
+          },
+          update: { target },
+        });
+      }
+    }
+  }
+}
+
+export async function updateSchoolActivity(input: {
+  schoolId: string;
+  slug: string;
+  title: string;
+  categorySlug: string;
+  unit: string;
+  direction: "HIGHER_BETTER" | "LOWER_BETTER";
+  ageBrackets?: string[];
+  genders?: Array<"F" | "M">;
+  targets?: Record<string, Record<string, Record<string, number>>>;
+}) {
+  const title = input.title.trim();
+  if (!title) throw new Error("Title is required");
+
+  if (!KPI_CATEGORIES.some((c) => c.slug === input.categorySlug)) {
+    throw new Error("Invalid category");
+  }
+
+  const activity = await prisma.activity.findFirst({
+    where: {
+      slug: input.slug,
+      OR: [{ schoolId: input.schoolId }, { schoolId: null }],
+    },
+  });
+  if (!activity) throw new Error("KPI not found");
+
+  let category = await prisma.activityCategory.findUnique({
+    where: { slug: input.categorySlug },
+  });
+  if (!category) {
+    category = await prisma.activityCategory.create({
+      data: {
+        slug: input.categorySlug,
+        name: KPI_CATEGORIES.find((c) => c.slug === input.categorySlug)?.name ?? input.categorySlug,
+        sortOrder: 50,
+      },
+    });
+  }
+
+  const updated = await prisma.activity.update({
+    where: { id: activity.id },
+    data: {
+      name: title,
+      categoryId: category.id,
+      unit: input.unit,
+      scoringDirection: input.direction,
+      acceptsDecimals: input.unit !== "reps",
+      bodyweightInfluenced: input.unit === "x BW",
+    },
+    include: { category: true },
+  });
+
+  const ageBrackets =
+    input.ageBrackets?.filter((b) => isAgeBracketId(String(b))) ?? [DEFAULT_AGE_BRACKET];
+  const genders = input.genders?.filter((g) => g === "F" || g === "M") ?? ["F", "M"];
+
+  await upsertSchoolKpiTargetRows(
+    input.schoolId,
+    input.slug,
+    input.targets,
+    ageBrackets,
+    genders
+  );
+
+  return updated;
+}
+
+export async function loggedResultCountForActivitySlug(slug: string): Promise<number> {
+  const activity = await prisma.activity.findFirst({
+    where: { slug },
+    select: { id: true },
+  });
+  if (!activity) return 0;
+  return prisma.performanceResult.count({
+    where: { activityId: activity.id, status: { not: "SUPERSEDED" } },
+  });
 }
 
 export async function deleteSchoolCustomActivity(schoolId: string, slug: string) {

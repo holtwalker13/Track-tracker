@@ -11,6 +11,8 @@ import {
 import {
   createSchoolActivity,
   deleteSchoolCustomActivity,
+  loggedResultCountForActivitySlug,
+  updateSchoolActivity,
 } from "@/lib/services/school-activity-create";
 
 /** Save target cells (existing + custom metrics). */
@@ -161,7 +163,7 @@ export async function DELETE(request: Request) {
   return NextResponse.json({ ok: true, hidden: true });
 }
 
-/** Rename a KPI activity. */
+/** Update KPI definition (same fields as create) or legacy name-only patch. */
 export async function PATCH(request: Request) {
   const session = await requireSession(["COACH", "ADMIN"]);
   if (!session?.schoolId) {
@@ -169,34 +171,174 @@ export async function PATCH(request: Request) {
   }
   const body = await request.json();
   const slug = String(body.slug ?? "").trim();
-  const name = String(body.name ?? "").trim();
-  if (!slug || !name) {
-    return NextResponse.json({ error: "slug and name required" }, { status: 400 });
+  if (!slug) {
+    return NextResponse.json({ error: "slug required" }, { status: 400 });
   }
 
-  const activity = await prisma.activity.findFirst({
+  const fullUpdate =
+    body.action === "update" ||
+    body.categorySlug != null ||
+    body.unit != null ||
+    body.direction != null;
+
+  if (!fullUpdate) {
+    const name = String(body.name ?? "").trim();
+    if (!name) {
+      return NextResponse.json({ error: "slug and name required" }, { status: 400 });
+    }
+    const activity = await prisma.activity.findFirst({
+      where: {
+        slug,
+        OR: [{ schoolId: session.schoolId }, { schoolId: null }],
+      },
+    });
+    if (!activity) {
+      return NextResponse.json({ error: "KPI not found" }, { status: 404 });
+    }
+    await prisma.activity.update({
+      where: { id: activity.id },
+      data: { name },
+    });
+    return NextResponse.json({ ok: true, name });
+  }
+
+  const title = String(body.title ?? body.name ?? "").trim();
+  const categorySlug = String(body.categorySlug ?? "").trim();
+  const unit = String(body.unit ?? "").trim();
+  const direction =
+    body.direction === "LOWER_BETTER" ? "LOWER_BETTER" : "HIGHER_BETTER";
+  const ageBrackets = Array.isArray(body.ageBrackets)
+    ? body.ageBrackets.filter((b: string) => isAgeBracketId(String(b)))
+    : [DEFAULT_AGE_BRACKET];
+  const genders = Array.isArray(body.genders)
+    ? body.genders.filter((g: string) => g === "F" || g === "M")
+    : ["F", "M"];
+
+  if (!title) {
+    return NextResponse.json({ error: "Title is required" }, { status: 400 });
+  }
+  if (!KPI_UNITS.some((u) => u.id === unit)) {
+    return NextResponse.json({ error: "Invalid unit" }, { status: 400 });
+  }
+
+  const existing = await prisma.activity.findFirst({
     where: {
       slug,
       OR: [{ schoolId: session.schoolId }, { schoolId: null }],
     },
+    include: { category: true },
   });
-  if (!activity) {
+  if (!existing) {
     return NextResponse.json({ error: "KPI not found" }, { status: 404 });
   }
 
-  // Prefer updating school-owned copy; for global catalog update name in place (single-tenant).
-  await prisma.activity.update({
-    where: { id: activity.id },
-    data: { name },
-  });
+  const definitionChanged =
+    existing.name !== title ||
+    existing.category.slug !== categorySlug ||
+    existing.unit !== unit ||
+    existing.scoringDirection !== direction;
 
-  return NextResponse.json({ ok: true, name });
+  const resultCount = await loggedResultCountForActivitySlug(slug);
+  if (resultCount > 0 && definitionChanged && !body.acknowledgeLoggedData) {
+    return NextResponse.json(
+      {
+        error: "This KPI has logged test results. Confirm to save changes anyway.",
+        resultCount,
+        requiresAcknowledgement: true,
+      },
+      { status: 409 }
+    );
+  }
+
+  try {
+    const activity = await updateSchoolActivity({
+      schoolId: session.schoolId,
+      slug,
+      title,
+      categorySlug,
+      unit,
+      direction,
+      ageBrackets,
+      genders: genders as Array<"F" | "M">,
+      targets: body.targets as
+        | Record<string, Record<string, Record<string, number>>>
+        | undefined,
+    });
+    return NextResponse.json({
+      ok: true,
+      activity: {
+        id: activity.id,
+        slug: activity.slug,
+        name: activity.name,
+        unit: activity.unit,
+        categorySlug: activity.category.slug,
+        direction: activity.scoringDirection,
+      },
+      resultCount,
+    });
+  } catch (e) {
+    return NextResponse.json(
+      { error: e instanceof Error ? e.message : "Could not update KPI" },
+      { status: 400 }
+    );
+  }
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   const session = await requireSession(["COACH", "ADMIN"]);
   if (!session?.schoolId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const slug = new URL(request.url).searchParams.get("slug")?.trim();
+  if (slug) {
+    const activity = await prisma.activity.findFirst({
+      where: {
+        slug,
+        OR: [{ schoolId: session.schoolId }, { schoolId: null }],
+      },
+      include: { category: true },
+    });
+    if (!activity) {
+      return NextResponse.json({ error: "KPI not found" }, { status: 404 });
+    }
+
+    const [resultCount, targetRows] = await Promise.all([
+      loggedResultCountForActivitySlug(slug),
+      prisma.schoolKpiTarget.findMany({
+        where: { schoolId: session.schoolId, metricSlug: slug },
+      }),
+    ]);
+
+    const targets: Record<string, Record<string, Record<string, string>>> = {};
+    for (const row of targetRows) {
+      const b = row.ageBracket || DEFAULT_AGE_BRACKET;
+      targets[b] ??= {};
+      targets[b]![row.gender] ??= {};
+      targets[b]![row.gender]![row.medal] = String(row.target);
+    }
+
+    const bracketSet = new Set<string>();
+    const genderSet = new Set<string>();
+    for (const row of targetRows) {
+      bracketSet.add(row.ageBracket || DEFAULT_AGE_BRACKET);
+      genderSet.add(row.gender);
+    }
+
+    return NextResponse.json({
+      activity: {
+        slug: activity.slug,
+        name: activity.name,
+        unit: activity.unit,
+        categorySlug: activity.category.slug,
+        direction: activity.scoringDirection,
+        custom: activity.schoolId === session.schoolId,
+      },
+      resultCount,
+      targets,
+      ageBrackets: bracketSet.size ? [...bracketSet] : [DEFAULT_AGE_BRACKET],
+      genders: genderSet.size ? [...genderSet] : ["F", "M"],
+    });
   }
 
   const [targets, customActivities, categories, hidden] = await Promise.all([

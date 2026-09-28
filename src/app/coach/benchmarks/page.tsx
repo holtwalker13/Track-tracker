@@ -28,7 +28,7 @@ export default async function BenchmarksPage() {
     }),
     prisma.activity.findMany({
       where: { schoolId: null, slug: { in: KPI_METRIC_META.map((m) => m.slug) } },
-      select: { slug: true, name: true, unit: true },
+      include: { category: true },
     }),
     prisma.schoolHiddenKpi.findMany({
       where: { schoolId: session.schoolId },
@@ -37,7 +37,7 @@ export default async function BenchmarksPage() {
   ]);
 
   const hiddenSet = new Set(hidden.map((h) => h.metricSlug));
-  const catalogName = new Map(catalogActivities.map((a) => [a.slug, a]));
+  const catalogBySlug = new Map(catalogActivities.map((a) => [a.slug, a]));
 
   const initial: TargetCell[] = rows
     .filter((r) => MEDALS.includes(r.medal as Medal) && !hiddenSet.has(r.metricSlug))
@@ -51,11 +51,15 @@ export default async function BenchmarksPage() {
 
   const metrics = [
     ...KPI_METRIC_META.filter((m) => !hiddenSet.has(m.slug)).map((m) => {
-      const live = catalogName.get(m.slug);
+      const live = catalogBySlug.get(m.slug);
       return {
         slug: m.slug,
         name: live?.name ?? m.name,
         unit: live?.unit ?? m.unit,
+        categorySlug: live?.category.slug,
+        direction: (live?.scoringDirection === "LOWER_BETTER"
+          ? "LOWER_BETTER"
+          : "HIGHER_BETTER") as "HIGHER_BETTER" | "LOWER_BETTER",
         custom: false as const,
       };
     }),
@@ -66,6 +70,9 @@ export default async function BenchmarksPage() {
         name: a.name,
         unit: a.unit,
         categorySlug: a.category.slug,
+        direction: (a.scoringDirection === "LOWER_BETTER"
+          ? "LOWER_BETTER"
+          : "HIGHER_BETTER") as "HIGHER_BETTER" | "LOWER_BETTER",
         custom: true as const,
       })),
   ];

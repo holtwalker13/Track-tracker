@@ -356,8 +356,8 @@ export function LiveTestingStudio({
           {saving ? <span className="text-xs text-slate-400">Saving…</span> : null}
         </div>
 
-        <div className="grid gap-3 border-b border-white/10 px-3 py-3 sm:grid-cols-2 sm:px-4">
-          <div className="rounded-xl bg-white/5 px-3 py-2">
+        <div className="border-b border-white/10 px-3 py-3 sm:px-4">
+          <div className="rounded-xl bg-white/5 px-3 py-2.5">
             <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
               Previous best
             </p>
@@ -365,23 +365,6 @@ export function LiveTestingStudio({
               {row.previousBest != null
                 ? formatActivityValue(row.previousBest, activityUnit, activitySlug)
                 : "—"}
-            </p>
-          </div>
-          <div className="rounded-xl bg-white/5 px-3 py-2">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-              Status
-            </p>
-            <p className="mt-0.5 text-sm font-semibold">
-              {row.pr || row.celebrateLabel ? (
-                <span className="inline-flex items-center gap-1.5 text-emerald-300">
-                  <Trophy className="h-4 w-4 text-sport-gold" />
-                  {row.celebrateLabel ?? "New Record!"}
-                </span>
-              ) : row.saved ? (
-                <span className="text-sky-300">Saved</span>
-              ) : (
-                <span className="text-slate-400">Ready to log</span>
-              )}
             </p>
           </div>
         </div>

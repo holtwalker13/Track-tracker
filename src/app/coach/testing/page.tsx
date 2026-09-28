@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { AppShell } from "@/components/layout/app-shell";
 import { COACH_NAV } from "@/lib/navigation";
 import { requireSchoolSession } from "@/lib/auth/session";
@@ -11,6 +12,7 @@ import {
   type SessionActivitySummary,
 } from "@/components/testing/session-results-accordion";
 import { isWithinLiveWindow } from "@/lib/constants";
+import { classesForCoachTesting, testingSessionsForCoachView } from "@/lib/queries/coach-classes";
 
 export default async function TestingSessionsPage() {
   const session = await requireSchoolSession();
@@ -20,39 +22,8 @@ export default async function TestingSessionsPage() {
   const dayEnd = new Date(today.toISOString().slice(0, 10) + "T23:59:59.999");
 
   const [sessions, classes, sameDayCount, schoolLifts] = await Promise.all([
-    prisma.testingSession.findMany({
-      where: { schoolId: session.schoolId },
-      include: {
-        schoolYear: true,
-        activities: {
-          include: { activity: true },
-          orderBy: { sortOrder: "asc" },
-        },
-        class: true,
-        students: {
-          include: {
-            student: { select: { id: true, firstName: true, lastName: true } },
-          },
-        },
-        results: {
-          where: { status: { not: "SUPERSEDED" } },
-          select: {
-            studentId: true,
-            activityId: true,
-            status: true,
-            resultValue: true,
-            displayValue: true,
-            isBestAttempt: true,
-          },
-        },
-      },
-      orderBy: { testingDate: "desc" },
-    }),
-    prisma.class.findMany({
-      where: { schoolId: session.schoolId },
-      orderBy: [{ period: "asc" }, { name: "asc" }],
-      select: { id: true, name: true, period: true },
-    }),
+    testingSessionsForCoachView(session),
+    classesForCoachTesting(session),
     prisma.testingSession.count({
       where: {
         schoolId: session.schoolId,
@@ -69,11 +40,24 @@ export default async function TestingSessionsPage() {
 
   return (
     <AppShell title="Testing" nav={COACH_NAV}>
+      <p className="mb-4 max-w-3xl text-sm text-muted">
+        Start live tests only for a class or training group you lead. Add athletes on{" "}
+        <Link href="/coach/classes" className="text-sky-300 hover:underline">
+          Classes
+        </Link>
+        ; the full roster stays visible for reference.
+      </p>
       <TestingPageActions
         classes={classes}
         sameDayCount={sameDayCount}
         strengthActivities={strengthActivities}
       />
+      {classes.length === 0 ? (
+        <p className="mt-3 text-sm text-amber-300/90">
+          You do not lead any classes yet. Create a training group under Classes, add your athletes, then
+          return here to test.
+        </p>
+      ) : null}
       <div className="space-y-3">
         {sessions.length === 0 ? (
           <p className="text-sm text-muted">

@@ -10,6 +10,7 @@ import {
   shouldCelebrate,
   type PeriodBoardHit,
 } from "@/lib/services/testing-celebration";
+import { coachCanAdministerTestingSession } from "@/lib/auth/coach-scope";
 
 export async function POST(request: Request) {
   const session = await requireSession(["COACH", "ADMIN"]);
@@ -37,6 +38,13 @@ export async function POST(request: Request) {
   });
   if (!sessionRec || sessionRec.schoolId !== session.schoolId) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  if (!(await coachCanAdministerTestingSession(session, testingSessionId))) {
+    return NextResponse.json(
+      { error: "You can only record results for your own class or training group." },
+      { status: 403 }
+    );
   }
 
   if (

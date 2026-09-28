@@ -15,6 +15,9 @@ export async function POST(request: Request) {
   const period = String(body.period ?? "").trim() || null;
   const gradeRaw = body.gradeLevel != null && body.gradeLevel !== "" ? Number(body.gradeLevel) : null;
   const gradeLevel = gradeRaw != null && isClassYear(gradeRaw) ? gradeRaw : null;
+  const programKindRaw = String(body.programKind ?? "").toUpperCase();
+  const programKind =
+    programKindRaw === "SCHOLASTIC" || programKindRaw === "TRAINING" ? programKindRaw : null;
 
   const coach = await prisma.coachProfile.findFirst({
     where: { userId: session.userId, schoolId: session.schoolId },
@@ -27,6 +30,7 @@ export async function POST(request: Request) {
       name,
       period,
       gradeLevel,
+      programKind,
     },
   });
 

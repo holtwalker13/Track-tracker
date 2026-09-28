@@ -3,6 +3,7 @@ import { requireSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { KPI_METRIC_META } from "@/lib/kpi-targets";
 import { classSectionLabel, isGraduatingClassName } from "@/lib/periods";
+import { coachCanAdministerTestsForClass } from "@/lib/auth/coach-scope";
 
 export async function POST(request: Request) {
   const session = await requireSession(["COACH", "ADMIN"]);
@@ -43,6 +44,15 @@ export async function POST(request: Request) {
     include: { enrollments: true },
   });
   if (!cls) return NextResponse.json({ error: "Class not found" }, { status: 404 });
+  if (!(await coachCanAdministerTestsForClass(session, cls.id))) {
+    return NextResponse.json(
+      {
+        error:
+          "You can only start tests for a class or training group you lead. Open Classes and use your group, or ask an admin.",
+      },
+      { status: 403 }
+    );
+  }
   if (isGraduatingClassName(cls.name)) {
     return NextResponse.json(
       { error: "Use a period / semester section, not a graduating class cohort" },

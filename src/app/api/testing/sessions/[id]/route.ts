@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { isWithinLiveWindow } from "@/lib/constants";
+import { coachCanAdministerTestingSession } from "@/lib/auth/coach-scope";
 
 export async function PATCH(
   request: Request,
@@ -18,6 +19,10 @@ export async function PATCH(
   if (!rec) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const body = await request.json();
+
+  if (!(await coachCanAdministerTestingSession(session, id))) {
+    return NextResponse.json({ error: "Not allowed for this session" }, { status: 403 });
+  }
 
   // Live controls: pause / resume / close / lock recording
   if (body.action) {
@@ -115,6 +120,10 @@ export async function DELETE(
     },
   });
   if (!rec) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  if (!(await coachCanAdministerTestingSession(session, id))) {
+    return NextResponse.json({ error: "Not allowed for this session" }, { status: 403 });
+  }
 
   const resultCount = await prisma.performanceResult.count({
     where: { testingSessionId: id },

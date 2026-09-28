@@ -23,8 +23,9 @@ export default async function ClassesPage() {
   return (
     <AppShell title="Classes" nav={COACH_NAV}>
       <p className="mb-6 max-w-3xl text-sm text-muted">
-        Create or import classes. An athlete can sit in more than one — graduating year, a weights
-        period, and a speed group at the same time.
+        Create or import classes and training groups. You lead the groups you create — live testing
+        only includes athletes you add here. The school roster stays visible for everyone; your
+        groups control who you test.
         {showJhsHelp
           ? " This JHS roster starts empty: add weightlifting periods, then upload a spreadsheet."
           : null}
@@ -40,6 +41,7 @@ export default async function ClassesPage() {
               <span>
                 <span className="font-semibold">{c.name}</span>
                 <span className="ml-2 text-sm text-muted">
+                  {c.programKind === "TRAINING" ? "Training · " : c.programKind === "SCHOLASTIC" ? "Class · " : ""}
                   {c.period ? `${c.period} · ` : ""}
                   {c.gradeLevel ? classYearLabel(c.gradeLevel) : "mixed"}
                 </span>

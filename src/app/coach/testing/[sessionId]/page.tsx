@@ -9,6 +9,7 @@ import { LiveSessionControls } from "@/components/testing/live-session-controls"
 import { isLiveRecordingOpen, isWithinLiveWindow } from "@/lib/constants";
 import { classSectionLabel } from "@/lib/periods";
 import { SessionDateEditor } from "@/components/testing/session-date-editor";
+import { coachCanAdministerTestingSession } from "@/lib/auth/coach-scope";
 
 export default async function LiveTestingPage({
   params,
@@ -37,6 +38,7 @@ export default async function LiveTestingPage({
     },
   });
   if (!testingSession || testingSession.schoolId !== session.schoolId) notFound();
+  if (!(await coachCanAdministerTestingSession(session, sessionId))) notFound();
 
   const activitySlug = sp.activity ?? testingSession.activities[0]?.activity.slug;
   const sessionActivity = testingSession.activities.find(

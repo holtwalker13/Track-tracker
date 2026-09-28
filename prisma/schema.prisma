@@ -220,6 +220,8 @@ model Class {
   name      String
   period    String?
   gradeLevel Int?
+  // SCHOLASTIC = in-school class; TRAINING = club/sport group (e.g. track outside period)
+  programKind String?
 
   enrollments ClassEnrollment[]
   sessions    TestingSession[]

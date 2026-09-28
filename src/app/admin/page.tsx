@@ -7,6 +7,7 @@ import { CreateClassForm } from "@/components/classes/class-forms";
 import { AddStudentForm } from "@/components/athletes/add-student-form";
 import { ImportRosterForm } from "@/components/roster/import-roster-form";
 import { EnterSchoolButton } from "@/components/admin/enter-school-button";
+import { CoachStaffPanel } from "@/components/admin/coach-staff-panel";
 import { tenantBySlug } from "@/lib/tenants";
 
 export default async function AdminPage() {
@@ -27,6 +28,8 @@ export default async function AdminPage() {
         select: { id: true, name: true, period: true },
       })
     : [];
+
+  const activeSchool = schools.find((s) => s.id === session.schoolId);
 
   return (
     <AppShell title="App admin" nav={ADMIN_NAV}>
@@ -64,6 +67,7 @@ export default async function AdminPage() {
 
       {session.schoolId ? (
         <div className="grid gap-4 lg:grid-cols-2">
+          <CoachStaffPanel schoolSlug={activeSchool?.slug ?? null} />
           <CreateClassForm />
           <AddStudentForm classes={classes} />
           <div className="lg:col-span-2">

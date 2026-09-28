@@ -59,8 +59,6 @@ export async function createOrRefreshStudentLoginInvite(
   });
   if (!student) throw new Error("Student not found");
 
-  const purpose: StudentInvitePurpose = student.user?.passwordSetAt ? "RESET" : "SETUP";
-
   const token = generateInviteToken();
   const tokenHash = hashInviteToken(token);
   const expiresAt = new Date(Date.now() + INVITE_TTL_MS);
@@ -70,17 +68,14 @@ export async function createOrRefreshStudentLoginInvite(
     create: {
       studentId,
       tokenHash,
-      purpose,
       expiresAt,
       createdById,
     },
     update: {
       tokenHash,
-      purpose,
       expiresAt,
       usedAt: null,
       createdById,
-      createdAt: new Date(),
     },
   });
 
@@ -107,10 +102,10 @@ export async function previewStudentLoginInvite(token: string): Promise<StudentI
   if (!invite) return null;
 
   const { student } = invite;
-  const purpose = invite.purpose === "RESET" ? "RESET" : "SETUP";
   const alreadyActive = Boolean(student.user?.passwordSetAt);
   const used = Boolean(invite.usedAt);
   const expired = invite.expiresAt.getTime() < Date.now();
+  const purpose: StudentInvitePurpose = alreadyActive ? "RESET" : "SETUP";
 
   return {
     fullName: `${student.firstName} ${student.lastName}`,
@@ -146,7 +141,7 @@ export async function completeStudentLoginInvite(input: {
   }
 
   const student = invite.student;
-  const purpose: StudentInvitePurpose = invite.purpose === "RESET" ? "RESET" : "SETUP";
+  const purpose: StudentInvitePurpose = student.user?.passwordSetAt ? "RESET" : "SETUP";
 
   if (purpose === "SETUP" && student.user?.passwordSetAt) {
     return { ok: false, error: "This account is already set up. Ask your coach for a new login link." };

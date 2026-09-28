@@ -41,7 +41,15 @@ export async function POST(_request: Request, context: RouteContext) {
       expiresAt: invite.expiresAt.toISOString(),
     });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Unable to create invite";
+    console.error("[login-invite]", err);
+    const raw = err instanceof Error ? err.message : "";
+    const needsMigration =
+      raw.includes("studentLoginInvite") ||
+      raw.includes("StudentLoginInvite") ||
+      raw.includes("passwordSetAt");
+    const message = needsMigration
+      ? "Login links are not available until the database is updated (run db push on deploy)."
+      : "Unable to create login link. Try again or contact support.";
     return NextResponse.json({ error: message }, { status: 400 });
   }
 }

@@ -191,8 +191,6 @@ model StudentLoginInvite {
   studentId   String         @unique
   student     StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
   tokenHash   String         @unique
-  // SETUP = first-time login; RESET = coach re-sent link to set a new password
-  purpose     String         @default("SETUP")
   expiresAt   DateTime
   usedAt      DateTime?
   createdById String?

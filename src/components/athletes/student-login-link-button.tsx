@@ -25,7 +25,8 @@ export function StudentLoginLinkButton({
       const res = await fetch(`/api/students/${studentId}/login-invite`, { method: "POST" });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error ?? "Could not create link");
+        const msg = typeof data.error === "string" ? data.error : "Could not create link";
+        setError(msg.length > 120 ? "Could not create link" : msg);
         return;
       }
       const url = `${window.location.origin}${data.urlPath}`;

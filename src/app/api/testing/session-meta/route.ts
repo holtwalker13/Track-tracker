@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
+import { coachCanAdministerTestingSession } from "@/lib/auth/coach-scope";
 
 export async function GET(request: Request) {
   const session = await requireSession(["COACH", "ADMIN"]);
@@ -19,6 +20,9 @@ export async function GET(request: Request) {
   });
   if (!testingSession || testingSession.schoolId !== session.schoolId) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+  if (!(await coachCanAdministerTestingSession(session, sessionId))) {
+    return NextResponse.json({ error: "Not allowed" }, { status: 403 });
   }
 
   return NextResponse.json({

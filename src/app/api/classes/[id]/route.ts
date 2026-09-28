@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { isClassYear } from "@/lib/grades";
+import { claimClassForCoach, coachCanManageClass, coachProfileForSession } from "@/lib/auth/coach-scope";
 
 export async function PATCH(
   request: Request,
@@ -16,6 +17,18 @@ export async function PATCH(
     where: { id, schoolId: session.schoolId },
   });
   if (!cls) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  if (!(await coachCanManageClass(session, id))) {
+    return NextResponse.json(
+      { error: "This class is led by another coach." },
+      { status: 403 }
+    );
+  }
+
+  const profile = await coachProfileForSession(session);
+  if (profile && cls.coachId == null) {
+    await claimClassForCoach(id, profile.id);
+  }
 
   const body = await request.json();
   const name = String(body.name ?? "").trim();
@@ -32,9 +45,20 @@ export async function PATCH(
     gradeLevel = n;
   }
 
+  let programKind: string | null | undefined = undefined;
+  if (body.programKind !== undefined) {
+    const pk = String(body.programKind ?? "").toUpperCase();
+    programKind = pk === "SCHOLASTIC" || pk === "TRAINING" ? pk : null;
+  }
+
   const updated = await prisma.class.update({
     where: { id },
-    data: { name, period, gradeLevel },
+    data: {
+      name,
+      period,
+      gradeLevel,
+      ...(programKind !== undefined ? { programKind } : {}),
+    },
   });
 
   return NextResponse.json({ ok: true, class: updated });
@@ -53,6 +77,10 @@ export async function DELETE(
     where: { id, schoolId: session.schoolId },
   });
   if (!cls) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  if (!(await coachCanManageClass(session, id))) {
+    return NextResponse.json({ error: "This class is led by another coach." }, { status: 403 });
+  }
 
   await prisma.class.delete({ where: { id } });
   return NextResponse.json({ ok: true });

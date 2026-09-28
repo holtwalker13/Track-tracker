@@ -20,6 +20,11 @@ export function CreateClassForm({ surface = "card" }: { surface?: "card" | "none
     if (!name && type === "weights") {
       name = period ? `${period} Weights` : "Weightlifting";
     }
+    if (!name && type === "training") {
+      name = "Track Training";
+    }
+    const programKind =
+      type === "training" ? "TRAINING" : type === "weights" || type === "pe" ? "SCHOLASTIC" : null;
     const res = await fetch("/api/classes", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -27,6 +32,7 @@ export function CreateClassForm({ surface = "card" }: { surface?: "card" | "none
         name,
         period,
         gradeLevel: fd.get("gradeLevel"),
+        programKind,
       }),
     });
     const data = await res.json();
@@ -63,6 +69,7 @@ export function CreateClassForm({ surface = "card" }: { surface?: "card" | "none
           <option value="weights">Weightlifting</option>
           <option value="pe">PE</option>
           <option value="speed">Speed</option>
+          <option value="training">Training program (sport / club)</option>
         </select>
       </label>
       <label className="block text-sm">

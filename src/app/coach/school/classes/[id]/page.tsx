@@ -7,7 +7,7 @@ import { classYearLabel } from "@/lib/grades";
 import { listStudents } from "@/lib/queries/coach";
 import { ClassRosterEditor } from "@/components/classes/class-roster-editor";
 import { ClassMetaEditor } from "@/components/classes/class-meta-editor";
-import { coachDisplayName } from "@/components/classes/class-coach-select";
+import { coachDisplayName } from "@/lib/coach-display";
 
 export default async function SchoolClassDetailPage({
   params,

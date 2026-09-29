@@ -3,10 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { GRADE_LEVELS, classYearShort } from "@/lib/grades";
-import {
-  coachDisplayName,
-  type ClassCoachOption,
-} from "@/components/classes/class-coach-select";
+import { coachDisplayName, type ClassCoachOption } from "@/lib/coach-display";
 
 export function ClassMetaEditor({
   classId,

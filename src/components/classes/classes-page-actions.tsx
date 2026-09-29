@@ -5,7 +5,7 @@ import { useState } from "react";
 import { CoachModal } from "@/components/ui/coach-modal";
 import { CreateClassForm, CreateWeightsPeriodsButton } from "@/components/classes/class-forms";
 import { ImportRosterForm } from "@/components/roster/import-roster-form";
-import type { ClassCoachOption } from "@/components/classes/class-coach-select";
+import type { ClassCoachOption } from "@/lib/coach-display";
 
 export function ClassesPageActions({
   coaches,

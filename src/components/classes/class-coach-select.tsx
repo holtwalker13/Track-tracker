@@ -2,16 +2,10 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-
-export type ClassCoachOption = {
-  id: string;
-  firstName: string;
-  lastName: string;
-};
-
-export function coachDisplayName(c: ClassCoachOption) {
-  return `${c.firstName} ${c.lastName}`.trim() || "Coach";
-}
+import {
+  coachDisplayName,
+  type ClassCoachOption,
+} from "@/lib/coach-display";
 
 /** Inline reassignment control for class list rows. */
 export function ClassCoachInlineSelect({

@@ -6,8 +6,8 @@ import { prisma } from "@/lib/db";
 import { CreateClassForm } from "@/components/classes/class-forms";
 import { AddStudentForm } from "@/components/athletes/add-student-form";
 import { ImportRosterForm } from "@/components/roster/import-roster-form";
+import Link from "next/link";
 import { EnterSchoolButton } from "@/components/admin/enter-school-button";
-import { CoachStaffPanel } from "@/components/admin/coach-staff-panel";
 import { tenantBySlug } from "@/lib/tenants";
 
 export default async function AdminPage() {
@@ -29,13 +29,16 @@ export default async function AdminPage() {
       })
     : [];
 
-  const activeSchool = schools.find((s) => s.id === session.schoolId);
-
   return (
     <AppShell title="App admin" nav={ADMIN_NAV}>
       <p className="mb-6 max-w-3xl text-sm text-muted">
         Pick a school system to work in. Coach and student logins stay locked to their own school.
         From here you can add weightlifting classes, add students, or upload a roster spreadsheet.
+        Add coach accounts under{" "}
+        <Link href="/coach/school/coaches" className="text-accent hover:underline">
+          School → Coaches
+        </Link>
+        .
       </p>
       <ul className="mb-10 grid gap-3 md:grid-cols-3">
         {schools.map((school) => {
@@ -67,7 +70,6 @@ export default async function AdminPage() {
 
       {session.schoolId ? (
         <div className="grid gap-4 lg:grid-cols-2">
-          <CoachStaffPanel schoolSlug={activeSchool?.slug ?? null} />
           <CreateClassForm />
           <AddStudentForm classes={classes} />
           <div className="lg:col-span-2">

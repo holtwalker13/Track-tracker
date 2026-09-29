@@ -36,7 +36,7 @@ export function isNavActive(pathname: string, href: string): boolean {
 export const SCHOOL_HUB_TABS = [
   { href: "/coach/school/roster", label: "Roster" },
   { href: "/coach/school/classes", label: "Classes" },
-  { href: "/coach/school/overview", label: "School" },
+  { href: "/coach/school/coaches", label: "Coaches" },
 ] as const;
 
 export const COMPETE_HUB_TABS = [

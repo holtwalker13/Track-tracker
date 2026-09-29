@@ -12,10 +12,12 @@ import { cn } from "@/lib/utils";
 import { todayDateString } from "@/lib/services/workouts";
 import { CoachModal } from "@/components/ui/coach-modal";
 
-/** Days visible in the horizontal viewport (Mon–Fri by default). */
-const VISIBLE_DAYS = 5;
+/** Desktop/tablet: Mon–Fri window. Mobile: 3 days with today centered. */
+const DESKTOP_VISIBLE_DAYS = 5;
+const MOBILE_VISIBLE_DAYS = 3;
 /** Monday index within a Sun–Sat week. */
 const MONDAY_OFFSET = 1;
+const MOBILE_MQ = "(max-width: 639px)";
 
 type TemplateOption = { id: string; name: string };
 
@@ -40,6 +42,8 @@ export function ProgramsWeekCalendar({
   const [pending, startTransition] = useTransition();
   const scrollerRef = useRef<HTMLDivElement>(null);
   const [assignments, setAssignments] = useState(initialAssignments);
+  // Mobile-first until matchMedia runs (avoids a wide flash on phones).
+  const [visibleDays, setVisibleDays] = useState(MOBILE_VISIBLE_DAYS);
 
   const [addDate, setAddDate] = useState<string | null>(null);
   const [addTemplateId, setAddTemplateId] = useState(templates[0]?.id ?? "");
@@ -57,6 +61,15 @@ export function ProgramsWeekCalendar({
     if (!addTemplateId && templates[0]) setAddTemplateId(templates[0].id);
   }, [templates, addTemplateId]);
 
+  useEffect(() => {
+    const mq = window.matchMedia(MOBILE_MQ);
+    const apply = () =>
+      setVisibleDays(mq.matches ? MOBILE_VISIBLE_DAYS : DESKTOP_VISIBLE_DAYS);
+    apply();
+    mq.addEventListener("change", apply);
+    return () => mq.removeEventListener("change", apply);
+  }, []);
+
   const byDate = new Map<string, CalendarAssignment[]>();
   for (const a of assignments) {
     const list = byDate.get(a.date) ?? [];
@@ -72,17 +85,35 @@ export function ProgramsWeekCalendar({
     const el = scrollerRef.current;
     if (!el) return;
 
-    function scrollToMonday() {
+    const dayList = Array.from({ length: weeks * 7 }, (_, i) =>
+      format(addDays(parseISO(weekStart), i), "yyyy-MM-dd")
+    );
+
+    function scrollIntoViewWindow() {
       if (!el) return;
-      const dayWidth = el.clientWidth / VISIBLE_DAYS;
+      const dayWidth = el.clientWidth / visibleDays;
+      const today = todayDateString();
+      const todayIndex = dayList.indexOf(today);
+
+      if (visibleDays === MOBILE_VISIBLE_DAYS) {
+        // Center today (or selected day if today isn't in range).
+        const focus =
+          todayIndex >= 0 ? todayIndex : Math.max(0, dayList.indexOf(selectedDate));
+        const maxStart = Math.max(0, dayList.length - visibleDays);
+        const startIndex = Math.min(maxStart, Math.max(0, focus - 1));
+        el.scrollLeft = startIndex * dayWidth;
+        return;
+      }
+
+      // Desktop: Mon–Fri window for the first week.
       el.scrollLeft = MONDAY_OFFSET * dayWidth;
     }
 
-    scrollToMonday();
-    const ro = new ResizeObserver(scrollToMonday);
+    scrollIntoViewWindow();
+    const ro = new ResizeObserver(scrollIntoViewWindow);
     ro.observe(el);
     return () => ro.disconnect();
-  }, [weekStart, weeks, days.length]);
+  }, [weekStart, weeks, visibleDays, selectedDate]);
 
   function setParams(patch: Record<string, string | null>) {
     const params = new URLSearchParams(searchParams.toString());
@@ -193,7 +224,9 @@ export function ProgramsWeekCalendar({
         <div>
           <h2 className="text-base font-semibold">Week calendar</h2>
           <p className="text-xs text-muted">
-            + adds a workout · tap a workout to edit or remove
+            + adds a workout · tap to edit/remove
+            <span className="sm:hidden"> · 3-day view, today centered</span>
+            <span className="hidden sm:inline"> · Mon–Fri default · scroll for Sun/Sat</span>
           </p>
         </div>
         <div className="flex items-center gap-1">
@@ -230,7 +263,7 @@ export function ProgramsWeekCalendar({
         <div
           className="grid gap-1.5 sm:gap-2"
           style={{
-            width: `${(days.length / VISIBLE_DAYS) * 100}%`,
+            width: `${(days.length / visibleDays) * 100}%`,
             gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))`,
           }}
         >

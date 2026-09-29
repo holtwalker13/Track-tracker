@@ -55,7 +55,6 @@ export default async function SchoolClassDetailPage({
 
   const coachLabel = cls.coach
     ? coachDisplayName({
-        id: cls.coach.id,
         firstName: cls.coach.user.firstName,
         lastName: cls.coach.user.lastName,
       })

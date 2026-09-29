@@ -57,7 +57,7 @@ export async function loginAction(formData: FormData) {
         ? "/student"
         : user.role === "ADMIN"
           ? "/admin"
-          : "/coach/school";
+          : "/coach/school/roster";
 
   redirect(next);
 }

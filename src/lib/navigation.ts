@@ -24,7 +24,7 @@ export function isNavActive(pathname: string, href: string): boolean {
   if (href === "/coach" || href === "/student") {
     return pathname === href;
   }
-  if (href === "/coach/school") {
+  if (href === "/coach/school/roster") {
     return pathname === "/coach/school" || pathname.startsWith("/coach/school/");
   }
   if (href === "/coach/compete") {
@@ -34,9 +34,9 @@ export function isNavActive(pathname: string, href: string): boolean {
 }
 
 export const SCHOOL_HUB_TABS = [
-  { href: "/coach/school", label: "School" },
   { href: "/coach/school/roster", label: "Roster" },
   { href: "/coach/school/classes", label: "Classes" },
+  { href: "/coach/school/overview", label: "School" },
 ] as const;
 
 export const COMPETE_HUB_TABS = [
@@ -45,7 +45,7 @@ export const COMPETE_HUB_TABS = [
 ] as const;
 
 export const COACH_NAV: NavItem[] = [
-  { href: "/coach/school", label: "School", icon: "classes" },
+  { href: "/coach/school/roster", label: "School", icon: "classes" },
   { href: "/coach/testing", label: "Testing", icon: "clipboard" },
   { href: "/coach/programs", label: "Programs", icon: "workout" },
   { href: "/coach/benchmarks", label: "KPIs", icon: "target" },

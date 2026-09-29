@@ -23,17 +23,32 @@ export function isNavActive(pathname: string, href: string): boolean {
   if (href === "/coach" || href === "/student") {
     return pathname === href;
   }
+  if (href === "/coach/school") {
+    return pathname === "/coach/school" || pathname.startsWith("/coach/school/");
+  }
+  if (href === "/coach/compete") {
+    return pathname === "/coach/compete" || pathname.startsWith("/coach/compete/");
+  }
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
+export const SCHOOL_HUB_TABS = [
+  { href: "/coach/school", label: "School" },
+  { href: "/coach/school/roster", label: "Roster" },
+  { href: "/coach/school/classes", label: "Classes" },
+] as const;
+
+export const COMPETE_HUB_TABS = [
+  { href: "/coach/compete/leaderboards", label: "Leaderboards" },
+  { href: "/coach/compete/compare", label: "Compare" },
+] as const;
+
 export const COACH_NAV: NavItem[] = [
-  { href: "/coach/leaderboards", label: "Leaderboards", icon: "trophy" },
-  { href: "/coach/students", label: "Roster", icon: "users" },
+  { href: "/coach/school", label: "School", icon: "classes" },
   { href: "/coach/testing", label: "Testing", icon: "clipboard" },
   { href: "/coach/programs", label: "Programs", icon: "workout" },
-  { href: "/coach/classes", label: "Classes", icon: "classes" },
-  { href: "/coach/benchmarks", label: "KPI targets", icon: "target" },
-  { href: "/coach/compare", label: "Compare", icon: "compare" },
+  { href: "/coach/benchmarks", label: "KPIs", icon: "target" },
+  { href: "/coach/compete", label: "Compete", icon: "trophy" },
 ];
 
 export const ADMIN_NAV: NavItem[] = [

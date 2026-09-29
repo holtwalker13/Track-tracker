@@ -81,7 +81,7 @@ export default async function TestingSessionsPage() {
     <AppShell title="Testing" nav={COACH_NAV}>
       <p className="mb-4 max-w-3xl text-sm text-muted">
         Start live tests only for a class or training group you lead. Add athletes on{" "}
-        <Link href="/coach/classes" className="text-sky-300 hover:underline">
+        <Link href="/coach/school/classes" className="text-sky-300 hover:underline">
           Classes
         </Link>
         ; the full roster stays visible for reference.

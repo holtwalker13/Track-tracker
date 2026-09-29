@@ -1,0 +1,59 @@
+import Link from "next/link";
+import { requireSchoolSession } from "@/lib/auth/session";
+import { prisma } from "@/lib/db";
+import { classYearLabel } from "@/lib/grades";
+import { ClassesPageActions } from "@/components/classes/classes-page-actions";
+
+export default async function SchoolClassesPage() {
+  const session = await requireSchoolSession();
+
+  const [classes, school] = await Promise.all([
+    prisma.class.findMany({
+      where: { schoolId: session.schoolId },
+      include: { _count: { select: { enrollments: true } } },
+      orderBy: [{ gradeLevel: "asc" }, { name: "asc" }],
+    }),
+    prisma.school.findUnique({ where: { id: session.schoolId }, select: { slug: true } }),
+  ]);
+
+  const showJhsHelp = school?.slug === "jhs";
+
+  return (
+    <>
+      <p className="mb-6 max-w-3xl text-sm text-muted">
+        Create or import classes and training groups. You lead the groups you create — live testing
+        only includes athletes you add here. The school roster stays visible for everyone; your
+        groups control who you test.
+        {showJhsHelp
+          ? " This JHS roster starts empty: add weightlifting periods, then upload a spreadsheet."
+          : null}
+      </p>
+      <ClassesPageActions />
+      <ul className="mt-4 space-y-2">
+        {classes.map((c) => (
+          <li key={c.id}>
+            <Link
+              href={`/coach/classes/${c.id}`}
+              className="flex items-center justify-between rounded-xl border border-card-border bg-card px-4 py-3 hover:border-foreground/30"
+            >
+              <span>
+                <span className="font-semibold">{c.name}</span>
+                <span className="ml-2 text-sm text-muted">
+                  {c.programKind === "TRAINING"
+                    ? "Training · "
+                    : c.programKind === "SCHOLASTIC"
+                      ? "Class · "
+                      : ""}
+                  {c.period ? `${c.period} · ` : ""}
+                  {c.gradeLevel ? classYearLabel(c.gradeLevel) : "mixed"}
+                </span>
+              </span>
+              <span className="text-sm text-muted">{c._count.enrollments} athletes</span>
+            </Link>
+          </li>
+        ))}
+        {classes.length === 0 && <li className="text-sm text-muted">No classes yet.</li>}
+      </ul>
+    </>
+  );
+}

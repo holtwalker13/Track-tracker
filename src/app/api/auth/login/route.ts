@@ -34,7 +34,7 @@ function safeNext(next: string | undefined, role: string): string {
   }
   if (role === "STUDENT") return "/student";
   if (role === "ADMIN") return "/admin";
-  return "/coach/leaderboards";
+  return "/coach/school";
 }
 
 export async function POST(request: Request) {

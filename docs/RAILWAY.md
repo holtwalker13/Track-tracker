@@ -47,6 +47,8 @@ Settings → **Networking** → **Generate domain**.
 
 Redeploy the app after Postgres and variables are attached. Boot runs `prisma db push` to sync tables, then starts the app. Seed only runs if you set `FORCE_SEED=1` (one deploy), or use local Docker for a full reload.
 
+**Production does not rewrite roster data.** With `APP_MODE=production`, boot skips name anonymization, tenant remaps, and demo password resets so Railway Postgres student names and accounts stay as you left them.
+
 ## 5. Log in
 
 | Role | Email | Password |

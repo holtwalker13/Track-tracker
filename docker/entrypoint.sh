@@ -48,6 +48,7 @@ run_db_push() {
 
 if [ "${APP_MODE}" = "production" ]; then
   # Keep Railway Postgres in sync with prisma/schema.prisma (additive columns like participationType).
+  # Live data stays as-is: no anonymize, no tenant remaps, no password resets on boot.
   run_db_push
   if [ "${FORCE_SEED}" = "1" ]; then
     echo "==> FORCE_SEED=1: running seed..."
@@ -57,13 +58,11 @@ else
   run_db_push
   echo "==> Seeding if empty (FORCE_SEED=${FORCE_SEED:-0})..."
   npm run db:seed
+  echo "==> Ensuring Demo / JHS / CHS schools (local/dev only)..."
+  npm run db:migrate-tenants
+  echo "==> Syncing demo passwords to rekcart (or DEMO_PASSWORD)..."
+  npm run db:sync-password
 fi
-
-echo "==> Anonymizing real names and ensuring Demo / JHS / CHS schools..."
-npm run db:migrate-tenants
-
-echo "==> Syncing demo passwords to rekcart (or DEMO_PASSWORD)..."
-npm run db:sync-password
 
 echo "==> Starting app on http://0.0.0.0:${PORT} ..."
 

@@ -1,27 +1,11 @@
 import bcrypt from "bcryptjs";
 import { randomBytes } from "crypto";
 import { prisma } from "@/lib/db";
+import { studentLoginEmailForNumber } from "@/lib/services/student-login-invite";
 
 export function studentEmailDomainForSchoolSlug(schoolSlug: string): string {
   if (schoolSlug === "demo") return "demo.local";
   return `${schoolSlug}.demo`;
-}
-
-async function nextStudentLoginEmail(schoolId: string, schoolSlug: string): Promise<string> {
-  const domain = studentEmailDomainForSchoolSlug(schoolSlug);
-  const linked = await prisma.user.findMany({
-    where: {
-      role: "STUDENT",
-      studentProfile: { schoolId },
-    },
-    select: { email: true },
-  });
-  let max = 0;
-  for (const row of linked) {
-    const match = row.email.match(/^student(\d+)@/i);
-    if (match) max = Math.max(max, parseInt(match[1]!, 10));
-  }
-  return `student${max + 1}@${domain}`;
 }
 
 /** Create (or return existing) login user for a roster row. Password is set only via invite link. */
@@ -31,19 +15,44 @@ export async function ensureStudentLoginUser(
     firstName: string;
     lastName: string;
     userId: string | null;
+    studentNumber: string;
   },
   schoolId: string,
   schoolSlug: string
 ): Promise<string> {
+  const canonicalEmail = studentLoginEmailForNumber(profile.studentNumber, schoolSlug);
+
   if (profile.userId) {
     const existing = await prisma.user.findUnique({
       where: { id: profile.userId },
       select: { email: true },
     });
-    if (existing) return existing.email;
+    if (existing) {
+      if (existing.email !== canonicalEmail) {
+        const taken = await prisma.user.findUnique({
+          where: { email: canonicalEmail },
+          select: { id: true },
+        });
+        if (!taken || taken.id === profile.userId) {
+          await prisma.user.update({
+            where: { id: profile.userId },
+            data: { email: canonicalEmail },
+          });
+        }
+      }
+      return canonicalEmail;
+    }
   }
 
-  const email = await nextStudentLoginEmail(schoolId, schoolSlug);
+  const taken = await prisma.user.findUnique({
+    where: { email: canonicalEmail },
+    select: { studentProfile: { select: { id: true } } },
+  });
+  if (taken && taken.studentProfile?.id !== profile.id) {
+    throw new Error(`Login email ${canonicalEmail} is already in use`);
+  }
+
+  const email = canonicalEmail;
   const passwordHash = await bcrypt.hash(randomBytes(32).toString("hex"), 10);
 
   const user = await prisma.user.create({
@@ -69,7 +78,7 @@ export async function ensureStudentLoginUser(
 export async function backfillStudentLoginsForSchool(schoolId: string, schoolSlug: string) {
   const missing = await prisma.studentProfile.findMany({
     where: { schoolId, userId: null },
-    select: { id: true, firstName: true, lastName: true, userId: true },
+    select: { id: true, firstName: true, lastName: true, userId: true, studentNumber: true },
     orderBy: { createdAt: "asc" },
   });
   for (const profile of missing) {

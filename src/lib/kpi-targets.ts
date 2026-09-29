@@ -189,16 +189,42 @@ export function bandsFromTargets(
   gender: "F" | "M",
   byMedal: Record<Medal, Record<KpiMetricSlug, number>>
 ): KpiBand[] {
+  const explicitSlugs = new Set<KpiMetricSlug>();
+  for (const medal of MEDALS) {
+    for (const slug of Object.keys(byMedal[medal]) as KpiMetricSlug[]) {
+      explicitSlugs.add(slug);
+    }
+  }
+  const useExplicitOnly = explicitSlugs.size > 0;
+  const slugs = useExplicitOnly ? [...explicitSlugs] : KPI_METRIC_META.map((m) => m.slug);
+
   return MEDALS.map((medal) => {
     const fallback = kpiBandsForGender(gender).find((b) => b.medal === medal)!;
+    const targets = {} as Record<KpiMetricSlug, number>;
+    for (const slug of slugs) {
+      const custom = byMedal[medal][slug];
+      targets[slug] = custom ?? (useExplicitOnly ? fallback.targets[slug] : fallback.targets[slug]);
+    }
     return {
       id: `${gender}-${medal}`,
       gender,
       medal,
       label: gender === "M" ? `Boys ${MEDAL_LABELS[medal]}` : `Girls ${MEDAL_LABELS[medal]}`,
-      targets: { ...fallback.targets, ...byMedal[medal] },
+      targets: useExplicitOnly ? targets : { ...fallback.targets, ...byMedal[medal] },
     };
   });
+}
+
+function metricSlugsForEvaluation(customBands?: KpiBand[]): KpiMetricSlug[] {
+  if (!customBands?.length) return KPI_METRIC_META.map((m) => m.slug);
+  const slugs = new Set<KpiMetricSlug>();
+  for (const band of customBands) {
+    for (const slug of Object.keys(band.targets) as KpiMetricSlug[]) {
+      if (KPI_METRIC_META.some((m) => m.slug === slug)) slugs.add(slug);
+    }
+  }
+  if (slugs.size === 0) return KPI_METRIC_META.map((m) => m.slug);
+  return KPI_METRIC_META.filter((m) => slugs.has(m.slug)).map((m) => m.slug);
 }
 
 export function evaluateSprintPotential(
@@ -209,8 +235,10 @@ export function evaluateSprintPotential(
   const g: "F" | "M" = gender === "M" ? "M" : "F";
   const bySlug = new Map(marks.map((m) => [m.slug, m.value]));
   const source = customBands?.length ? customBands : kpiBandsForGender(g);
+  const evalSlugs = metricSlugsForEvaluation(customBands);
+  const metaBySlug = KPI_METRIC_META.filter((m) => evalSlugs.includes(m.slug));
   const bands = source.map((band) => {
-    const rows = KPI_METRIC_META.map((meta) => {
+    const rows = metaBySlug.map((meta) => {
       const athlete = bySlug.get(meta.slug) ?? null;
       const target = band.targets[meta.slug];
       const hit = athlete == null ? null : meetsTarget(athlete, target, meta.direction);

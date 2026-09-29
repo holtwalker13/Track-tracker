@@ -256,6 +256,7 @@ model StudentProfile {
 
   enrollments        StudentEnrollment[]
   classEnrollments   ClassEnrollment[]
+  subgroupMemberships ClassSubgroupMember[]
   sessionStudents    TestingSessionStudent[]
   performanceResults PerformanceResult[]
   achievements       StudentAchievement[]
@@ -309,8 +310,34 @@ model Class {
 
   enrollments        ClassEnrollment[]
   coachAssignments   ClassCoach[]
+  subgroups          ClassSubgroup[]
   sessions           TestingSession[]
   workoutAssignments WorkoutAssignment[]
+}
+
+// Station / event groups within a class (e.g. Fly10 station A, hurdles group).
+model ClassSubgroup {
+  id        String   @id @default(cuid())
+  classId   String
+  class     Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
+  name      String
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  members ClassSubgroupMember[]
+
+  @@index([classId])
+}
+
+model ClassSubgroupMember {
+  id         String         @id @default(cuid())
+  subgroupId String
+  subgroup   ClassSubgroup  @relation(fields: [subgroupId], references: [id], onDelete: Cascade)
+  studentId  String
+  student    StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([subgroupId, studentId])
+  @@index([studentId])
 }
 
 // Many coaches can be assigned to one class (tag-style).

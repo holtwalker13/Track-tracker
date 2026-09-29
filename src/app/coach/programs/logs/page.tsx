@@ -7,16 +7,18 @@ import { prisma } from "@/lib/db";
 import { listWorkoutSessionsForCoach } from "@/lib/queries/workout-logs";
 import { todayDateString } from "@/lib/services/workouts";
 import { isGraduatingClassName } from "@/lib/periods";
+import { listClassSubgroups } from "@/lib/queries/class-subgroups";
 
 export default async function CoachWorkoutLogsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ date?: string; classId?: string }>;
+  searchParams: Promise<{ date?: string; classId?: string; subgroupId?: string }>;
 }) {
   const session = await requireSchoolSession();
   const sp = await searchParams;
   const date = sp.date?.trim() || todayDateString();
   const classId = sp.classId?.trim() ?? "";
+  const subgroupId = sp.subgroupId?.trim() ?? "";
 
   const classes = await prisma.class.findMany({
     where: { schoolId: session.schoolId },
@@ -25,10 +27,13 @@ export default async function CoachWorkoutLogsPage({
   });
   const sectionClasses = classes.filter((c) => !isGraduatingClassName(c.name));
 
+  const subgroups = classId ? await listClassSubgroups(classId) : [];
+
   const rows = await listWorkoutSessionsForCoach({
     schoolId: session.schoolId,
     dateStr: date,
     classId: classId || undefined,
+    subgroupId: subgroupId || undefined,
   });
 
   return (
@@ -42,6 +47,8 @@ export default async function CoachWorkoutLogsPage({
         rows={rows}
         date={date}
         classId={classId}
+        subgroupId={subgroupId}
+        subgroups={subgroups}
         classes={sectionClasses}
       />
     </AppShell>

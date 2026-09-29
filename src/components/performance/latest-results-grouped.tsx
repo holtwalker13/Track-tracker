@@ -9,28 +9,39 @@ import { LatestResultCard } from "@/components/performance/latest-result-card";
 
 export function LatestResultsGrouped({
   grouped,
+  compact = false,
 }: {
   grouped: Record<ActivityDisplayGroup, LatestResultItem[]>;
+  /** Smaller section headings when nested under a combined block. */
+  compact?: boolean;
 }) {
   const hasAny = DISPLAY_GROUP_ORDER.some((g) => grouped[g].length > 0);
 
   if (!hasAny) {
     return (
       <Card>
-        <CardTitle>Latest results</CardTitle>
-        <p className="mt-3 text-sm text-muted">No results yet for this school year.</p>
+        {!compact && <CardTitle>Latest results</CardTitle>}
+        <p className={compact ? "text-sm text-muted" : "mt-3 text-sm text-muted"}>
+          No results yet for this school year.
+        </p>
       </Card>
     );
   }
 
   return (
-    <div className="space-y-8">
+    <div className={compact ? "space-y-5" : "space-y-8"}>
       {DISPLAY_GROUP_ORDER.map((groupKey) => {
         const items = grouped[groupKey];
         if (items.length === 0) return null;
         return (
           <section key={groupKey}>
-            <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted">
+            <h3
+              className={
+                compact
+                  ? "mb-2 text-xs font-semibold uppercase tracking-wider text-muted"
+                  : "mb-3 text-sm font-semibold uppercase tracking-wider text-muted"
+              }
+            >
               {DISPLAY_GROUP_LABELS[groupKey]}
             </h3>
             <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">

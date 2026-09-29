@@ -6,17 +6,23 @@ import { prisma } from "@/lib/db";
 import { classYearLabel } from "@/lib/grades";
 import { listStudents } from "@/lib/queries/coach";
 import { ClassRosterEditor } from "@/components/classes/class-roster-editor";
+import { ClassSubgroupEditor } from "@/components/classes/class-subgroup-editor";
+import { listClassSubgroups } from "@/lib/queries/class-subgroups";
 import { ClassMetaEditor } from "@/components/classes/class-meta-editor";
 import { coachDisplayName } from "@/lib/coach-display";
 import { ensureClassCoachRowsFromLead } from "@/lib/services/class-coaches";
 
 export default async function SchoolClassDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ edit?: string }>;
 }) {
   const session = await requireSchoolSession();
   const { id } = await params;
+  const sp = await searchParams;
+  const openClassEditor = sp.edit === "1" || sp.edit === "true";
   await ensureClassCoachRowsFromLead(session.schoolId);
 
   const [cls, coaches, profile] = await Promise.all([
@@ -54,7 +60,10 @@ export default async function SchoolClassDetailPage({
   ]);
   if (!cls) notFound();
 
-  const athletes = await listStudents(session.schoolId, {});
+  const [athletes, subgroups] = await Promise.all([
+    listStudents(session.schoolId, {}),
+    listClassSubgroups(id),
+  ]);
   const coachOptions = coaches.map((c) => ({
     id: c.id,
     firstName: c.user.firstName,
@@ -105,18 +114,19 @@ export default async function SchoolClassDetailPage({
               {" · "}athletes can also be in other classes
             </p>
           </div>
-          {canEdit ? (
-            <ClassMetaEditor
-              classId={cls.id}
-              name={cls.name}
-              period={cls.period}
-              gradeLevel={cls.gradeLevel}
-              coachIds={assignedIds}
-              coaches={coachOptions}
-              canEditCoach={canEdit}
-            />
-          ) : null}
         </div>
+        {canEdit ? (
+          <ClassMetaEditor
+            classId={cls.id}
+            name={cls.name}
+            period={cls.period}
+            gradeLevel={cls.gradeLevel}
+            coachIds={assignedIds}
+            coaches={coachOptions}
+            canEditCoach={canEdit}
+            defaultEditing={openClassEditor}
+          />
+        ) : null}
       </div>
       <ClassRosterEditor
         classId={cls.id}
@@ -128,6 +138,18 @@ export default async function SchoolClassDetailPage({
           grade: s.grade ?? null,
         }))}
       />
+      {canEdit ? (
+        <ClassSubgroupEditor
+          classId={cls.id}
+          enrolledIds={cls.enrollments.map((e) => e.studentId)}
+          athletes={athletes.map((s) => ({
+            id: s.id,
+            name: s.name,
+            studentNumber: s.studentNumber,
+          }))}
+          initialSubgroups={subgroups}
+        />
+      ) : null}
     </>
   );
 }

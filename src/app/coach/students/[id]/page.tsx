@@ -11,18 +11,15 @@ import { getStudentMarksWindow } from "@/lib/queries/marks-window";
 import { getProgressByTestDate } from "@/lib/queries/student";
 import { getStudentActivityRanks } from "@/lib/queries/coach";
 import { RadarProfile } from "@/components/charts/radar-profile";
-import { LatestResultsGrouped } from "@/components/performance/latest-results-grouped";
-import { AttemptSchedule } from "@/components/performance/attempt-schedule";
+import { AthleteProgressSection } from "@/components/performance/athlete-progress-section";
+import { AthleteResultsHistory } from "@/components/performance/athlete-results-history";
 import { SprintPotentialCard } from "@/components/performance/sprint-potential";
-import { MarksWindowCard } from "@/components/performance/marks-window-card";
-import { ProgressLine } from "@/components/charts/progress-line";
-import { ActivityChartPicker } from "@/components/charts/activity-chart-picker";
+import { getRankedKpiSlugsForSchool } from "@/lib/services/kpi-sets";
 import { classYearLabel, DEFAULT_CLASS_YEAR } from "@/lib/grades";
 import { classSectionLabel, isGraduatingClassName } from "@/lib/periods";
 import { AthleteProfileCard } from "@/components/athletes/athlete-profile-card";
 import { genderFullLabel } from "@/lib/gender";
 import { leaderboardHighlightFromSearch } from "@/lib/leaderboard-link";
-import { KPI_METRIC_META } from "@/lib/kpi-targets";
 import { StudentLoginLinkButton } from "@/components/athletes/student-login-link-button";
 import { studentLoginStatusFromRow } from "@/lib/services/student-login-invite";
 
@@ -67,6 +64,8 @@ export default async function StudentProfilePage({
       ? highlight.slug
       : "vertical-jump";
 
+  const rankedSlugs = await getRankedKpiSlugsForSchool(session.schoolId);
+
   const [radar, latestGrouped, attemptLog, sprint, marksWindow, progress, activityRanks] =
     await Promise.all([
       getCategoryRadar(id, grade),
@@ -75,7 +74,7 @@ export default async function StudentProfilePage({
       getStudentSprintPotential(id),
       getStudentMarksWindow(id, sp.from, sp.to),
       getProgressByTestDate(id, activitySlug),
-      getStudentActivityRanks(student.schoolId, id, KPI_METRIC_META.map((m) => m.slug), {
+      getStudentActivityRanks(student.schoolId, id, rankedSlugs, {
         gender: student.gender ?? undefined,
         scope: "school",
       }),
@@ -121,10 +120,10 @@ export default async function StudentProfilePage({
         }}
       />
 
-      <div className="mb-6 flex flex-wrap items-center gap-3 rounded-xl border border-card-border bg-card/40 px-4 py-3">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-card-border bg-card/40 px-4 py-3">
         <p className="text-sm text-muted">
-          Copy the link icons to send {student.firstName} a setup or password-reset link (green check = login
-          already active).
+          Login ID <span className="font-mono text-foreground">{student.studentNumber}</span> is unique
+          within this school; athletes sign in with that ID after opening their invite link.
         </p>
         <StudentLoginLinkButton
           studentId={student.id}
@@ -145,41 +144,14 @@ export default async function StudentProfilePage({
         </Card>
       </div>
 
-      <div className="mt-8">
-        <MarksWindowCard window={marksWindow} />
-      </div>
+      <AthleteProgressSection
+        marksWindow={marksWindow}
+        catalog={catalog}
+        activitySlug={activitySlug}
+        progress={progress}
+      />
 
-      <div className="mt-8">
-        <h2 className="mb-2 text-lg font-semibold">Progress by test date</h2>
-        <ActivityChartPicker activities={catalog} selected={activitySlug} />
-        {progress && progress.data.length > 0 ? (
-          <Card>
-            <CardTitle>{progress.activity.name}</CardTitle>
-            <div className="mt-4">
-              <ProgressLine data={progress.data} unit={progress.activity.unit} />
-            </div>
-          </Card>
-        ) : (
-          <p className="text-sm text-muted">No dated tests for this event yet.</p>
-        )}
-      </div>
-
-      <div className="mt-8">
-        <h2 className="mb-2 text-lg font-semibold">Latest results</h2>
-        <p className="mb-3 text-sm text-muted">
-          Speed, power, and strength in a card grid. Gap callouts vs prior marks stay in Average vs PR above.
-        </p>
-        <LatestResultsGrouped grouped={latestGrouped} />
-      </div>
-
-      <div className="mt-8">
-        <h2 className="mb-2 text-lg font-semibold">Scholastic attempt log</h2>
-        <p className="mb-4 text-sm text-muted">
-          Every testing day is listed like a schedule. Re-tests and new attempts add rows for that
-          school year.
-        </p>
-        <AttemptSchedule years={attemptLog} />
-      </div>
+      <AthleteResultsHistory grouped={latestGrouped} attemptLog={attemptLog} />
     </AppShell>
   );
 }

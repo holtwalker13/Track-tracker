@@ -31,6 +31,39 @@ export async function PATCH(
   }
 
   const body = await request.json();
+
+  let coachId: string | null | undefined = undefined;
+  if (body.coachId !== undefined) {
+    const raw = body.coachId == null || body.coachId === "" ? null : String(body.coachId);
+    if (raw) {
+      const assigned = await prisma.coachProfile.findFirst({
+        where: { id: raw, schoolId: session.schoolId },
+        select: { id: true },
+      });
+      if (!assigned) {
+        return NextResponse.json({ error: "Coach not found at this school" }, { status: 400 });
+      }
+      coachId = assigned.id;
+    } else {
+      coachId = null;
+    }
+  }
+
+  const coachOnly =
+    body.name === undefined &&
+    body.period === undefined &&
+    body.gradeLevel === undefined &&
+    body.programKind === undefined &&
+    body.coachId !== undefined;
+
+  if (coachOnly) {
+    const updated = await prisma.class.update({
+      where: { id },
+      data: { coachId: coachId ?? null },
+    });
+    return NextResponse.json({ ok: true, class: updated });
+  }
+
   const name = String(body.name ?? "").trim();
   if (!name) {
     return NextResponse.json({ error: "Name is required" }, { status: 400 });
@@ -58,6 +91,7 @@ export async function PATCH(
       period,
       gradeLevel,
       ...(programKind !== undefined ? { programKind } : {}),
+      ...(coachId !== undefined ? { coachId } : {}),
     },
   });
 

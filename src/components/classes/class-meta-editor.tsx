@@ -3,17 +3,27 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { GRADE_LEVELS, classYearShort } from "@/lib/grades";
+import {
+  coachDisplayName,
+  type ClassCoachOption,
+} from "@/components/classes/class-coach-select";
 
 export function ClassMetaEditor({
   classId,
   name,
   period,
   gradeLevel,
+  coachId,
+  coaches,
+  canEditCoach,
 }: {
   classId: string;
   name: string;
   period: string | null;
   gradeLevel: number | null;
+  coachId: string | null;
+  coaches: ClassCoachOption[];
+  canEditCoach: boolean;
 }) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
@@ -32,6 +42,7 @@ export function ClassMetaEditor({
         name: form.get("name"),
         period: form.get("period"),
         gradeLevel: form.get("gradeLevel"),
+        coachId: form.get("coachId") || null,
       }),
     });
     if (!res.ok) {
@@ -58,9 +69,9 @@ export function ClassMetaEditor({
   }
 
   return (
-    <form onSubmit={onSubmit} className="mt-4 rounded-xl border border-card-border bg-card p-4">
-      <div className="grid gap-3 sm:grid-cols-3">
-        <label className="text-sm sm:col-span-1">
+    <form onSubmit={onSubmit} className="mt-4 w-full rounded-xl border border-card-border bg-card p-4 sm:max-w-3xl">
+      <div className="grid gap-3 sm:grid-cols-2">
+        <label className="text-sm sm:col-span-2">
           Name
           <input
             name="name"
@@ -89,6 +100,22 @@ export function ClassMetaEditor({
             {GRADE_LEVELS.map((y) => (
               <option key={y} value={y}>
                 {y} ({classYearShort(y)})
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="text-sm sm:col-span-2">
+          Coach
+          <select
+            name="coachId"
+            defaultValue={coachId ?? ""}
+            disabled={!canEditCoach}
+            className="mt-1 w-full rounded-lg border border-card-border bg-background px-3 py-2 disabled:opacity-50"
+          >
+            <option value="">Unassigned</option>
+            {coaches.map((c) => (
+              <option key={c.id} value={c.id}>
+                {coachDisplayName(c)}
               </option>
             ))}
           </select>

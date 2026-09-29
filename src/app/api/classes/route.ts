@@ -19,14 +19,39 @@ export async function POST(request: Request) {
   const programKind =
     programKindRaw === "SCHOLASTIC" || programKindRaw === "TRAINING" ? programKindRaw : null;
 
-  const coach = await prisma.coachProfile.findFirst({
+  const selfCoach = await prisma.coachProfile.findFirst({
     where: { userId: session.userId, schoolId: session.schoolId },
+    select: { id: true },
   });
+
+  let coachId: string | null = null;
+  if (body.coachId !== undefined) {
+    const raw = body.coachId == null || body.coachId === "" ? null : String(body.coachId);
+    if (raw) {
+      const assigned = await prisma.coachProfile.findFirst({
+        where: { id: raw, schoolId: session.schoolId },
+        select: { id: true },
+      });
+      if (!assigned) {
+        return NextResponse.json({ error: "Coach not found at this school" }, { status: 400 });
+      }
+      coachId = assigned.id;
+    }
+  } else {
+    coachId = selfCoach?.id ?? null;
+  }
+
+  if (!coachId) {
+    return NextResponse.json(
+      { error: "Assign a coach to this class" },
+      { status: 400 }
+    );
+  }
 
   const rec = await prisma.class.create({
     data: {
       schoolId: session.schoolId,
-      coachId: coach?.id,
+      coachId,
       name,
       period,
       gradeLevel,

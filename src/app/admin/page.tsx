@@ -29,6 +29,23 @@ export default async function AdminPage() {
       })
     : [];
 
+  const coaches = session.schoolId
+    ? (
+        await prisma.coachProfile.findMany({
+          where: { schoolId: session.schoolId },
+          orderBy: [{ user: { lastName: "asc" } }, { user: { firstName: "asc" } }],
+          select: {
+            id: true,
+            user: { select: { firstName: true, lastName: true } },
+          },
+        })
+      ).map((c) => ({
+        id: c.id,
+        firstName: c.user.firstName,
+        lastName: c.user.lastName,
+      }))
+    : [];
+
   return (
     <AppShell title="App admin" nav={ADMIN_NAV}>
       <p className="mb-6 max-w-3xl text-sm text-muted">
@@ -70,7 +87,10 @@ export default async function AdminPage() {
 
       {session.schoolId ? (
         <div className="grid gap-4 lg:grid-cols-2">
-          <CreateClassForm />
+          <CreateClassForm
+            coaches={coaches}
+            defaultCoachId={coaches[0]?.id ?? ""}
+          />
           <AddStudentForm classes={classes} />
           <div className="lg:col-span-2">
             <ImportRosterForm />

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { ClassSubgroupFilter } from "@/components/classes/class-subgroup-filter";
 
 export type WorkoutLogRow = {
   sessionId: string | null;
@@ -18,15 +19,20 @@ export function WorkoutLogsPanel({
   rows,
   date,
   classId,
+  subgroupId,
+  subgroups,
   classes,
 }: {
   rows: WorkoutLogRow[];
   date: string;
   classId: string;
+  subgroupId?: string;
+  subgroups?: { id: string; name: string; memberIds: string[] }[];
   classes: { id: string; name: string; period: string | null }[];
 }) {
   const exportParams = new URLSearchParams({ date });
   if (classId) exportParams.set("classId", classId);
+  if (subgroupId) exportParams.set("subgroupId", subgroupId);
   const exportHref = `/api/workouts/logs/export?${exportParams.toString()}`;
 
   return (
@@ -56,6 +62,10 @@ export function WorkoutLogsPanel({
             ))}
           </select>
         </label>
+        <ClassSubgroupFilter
+          subgroups={subgroups ?? []}
+          classId={classId || null}
+        />
         <button
           type="submit"
           className="rounded-lg border border-card-border px-4 py-2 text-sm font-medium"

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Check,
   ChevronLeft,
@@ -67,6 +67,8 @@ export function LiveTestingStudio({
   selectedStudentId?: string;
 }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const subgroupId = searchParams.get("subgroupId");
   const [rows, setRows] = useState(initialRows);
   const [saving, setSaving] = useState(false);
   const [banner, setBanner] = useState<string | null>(null);
@@ -164,8 +166,13 @@ export function LiveTestingStudio({
     );
   }
 
+  function navParams(base: URLSearchParams) {
+    if (subgroupId) base.set("subgroupId", subgroupId);
+    return base;
+  }
+
   function selectStudent(id: string) {
-    const params = new URLSearchParams();
+    const params = navParams(new URLSearchParams());
     params.set("activity", activitySlug);
     params.set("student", id);
     router.push(`${sessionPath}?${params.toString()}`);
@@ -177,7 +184,7 @@ export function LiveTestingStudio({
   }
 
   function goActivity(slug: string) {
-    const params = new URLSearchParams();
+    const params = navParams(new URLSearchParams());
     params.set("activity", slug);
     if (studentId) params.set("student", studentId);
     router.push(`${sessionPath}?${params.toString()}`);
@@ -288,7 +295,7 @@ export function LiveTestingStudio({
               key={a.id}
               role="tab"
               aria-selected={active}
-              href={`${sessionPath}?activity=${a.slug}${studentId ? `&student=${studentId}` : ""}`}
+              href={`${sessionPath}?activity=${a.slug}${studentId ? `&student=${studentId}` : ""}${subgroupId ? `&subgroupId=${subgroupId}` : ""}`}
               className={cn(
                 "inline-flex shrink-0 snap-start items-center gap-2 rounded-xl border px-3 py-2 text-sm font-semibold",
                 active

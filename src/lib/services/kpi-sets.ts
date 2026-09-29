@@ -605,6 +605,28 @@ export async function getKpiSetBands(
   return bandsFromTargets(g, byMedal);
 }
 
+/** Ranked KPI slugs for medal standard / school rank on athlete profiles. */
+export async function getRankedKpiSlugsForSchool(schoolId: string): Promise<string[]> {
+  const setId = await resolveSchoolKpiSetId(schoolId);
+  if (setId) return getRankedMetricSlugs(setId);
+
+  const rows = await prisma.kpiSetMetric.findMany({
+    where: { ranked: true, kpiSet: { schoolId } },
+    select: { metricSlug: true },
+    distinct: ["metricSlug"],
+  });
+  if (rows.length > 0) return rows.map((r) => r.metricSlug);
+
+  const legacy = await prisma.schoolKpiTarget.findMany({
+    where: { schoolId },
+    select: { metricSlug: true },
+    distinct: ["metricSlug"],
+  });
+  if (legacy.length > 0) return legacy.map((r) => r.metricSlug);
+
+  return KPI_METRIC_META.map((m) => m.slug);
+}
+
 /** Ranked metric slugs for a set (leaderboards / session builder ordering). */
 export async function getRankedMetricSlugs(kpiSetId: string): Promise<string[]> {
   const rows = await prisma.kpiSetMetric.findMany({

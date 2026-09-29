@@ -199,7 +199,14 @@ function DateRangeSlider({
   );
 }
 
-export function MarksWindowCard({ window }: { window: MarksWindow }) {
+export function MarksWindowCard({
+  window,
+  embedded = false,
+}: {
+  window: MarksWindow;
+  /** When true, omit outer title (parent section owns the heading). */
+  embedded?: boolean;
+}) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -230,8 +237,10 @@ export function MarksWindowCard({ window }: { window: MarksWindow }) {
   if (dates.length === 0) {
     return (
       <div className="rounded-2xl border border-card-border bg-card p-5">
-        <h2 className="text-lg font-semibold">Average vs PR</h2>
-        <p className="mt-2 text-sm text-muted">No dated tests yet. Live testing records a test date so this fills in.</p>
+        {!embedded && <h2 className="text-lg font-semibold">Average vs PR</h2>}
+        <p className={embedded ? "text-sm text-muted" : "mt-2 text-sm text-muted"}>
+          No dated tests yet. Live testing records a test date so this fills in.
+        </p>
       </div>
     );
   }
@@ -240,10 +249,11 @@ export function MarksWindowCard({ window }: { window: MarksWindow }) {
     <div className="rounded-2xl border border-card-border bg-card p-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h2 className="text-lg font-semibold">Average vs PR</h2>
-          <p className="mt-1 text-sm text-muted">
-            Dial the window to a semester or a pair of test days. Average is every mark in range;
-            PR is the best in that same window.
+          {!embedded && <h2 className="text-lg font-semibold">Average vs PR</h2>}
+          <p className={embedded ? "text-sm text-muted" : "mt-1 text-sm text-muted"}>
+            {embedded
+              ? "Window average vs PR for each event in range."
+              : "Dial the window to a semester or a pair of test days. Average is every mark in range; PR is the best in that same window."}
           </p>
         </div>
         <div className="grid grid-cols-2 rounded-lg bg-background p-1">

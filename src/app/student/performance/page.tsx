@@ -6,14 +6,15 @@ import { getStudentContext } from "@/lib/queries/student";
 import { classYearLabel } from "@/lib/grades";
 import { getLatestResultsGrouped, getScholasticAttemptLog } from "@/lib/queries/attempt-log";
 import { getStudentMarksWindow } from "@/lib/queries/marks-window";
-import { LatestResultsGrouped } from "@/components/performance/latest-results-grouped";
-import { AttemptSchedule } from "@/components/performance/attempt-schedule";
-import { MarksWindowCard } from "@/components/performance/marks-window-card";
+import { getProgressByTestDate } from "@/lib/queries/student";
+import { prisma } from "@/lib/db";
+import { AthleteProgressSection } from "@/components/performance/athlete-progress-section";
+import { AthleteResultsHistory } from "@/components/performance/athlete-results-history";
 
 export default async function StudentPerformancePage({
   searchParams,
 }: {
-  searchParams: Promise<{ from?: string; to?: string; stat?: string }>;
+  searchParams: Promise<{ from?: string; to?: string; stat?: string; activity?: string }>;
 }) {
   const session = await requireSession(["STUDENT"]);
   if (!session?.studentId) redirect("/login");
@@ -22,40 +23,33 @@ export default async function StudentPerformancePage({
   const { student, currentGrade } = await getStudentContext(session.studentId);
   const enrollment = student.enrollments[0];
 
-  const [latestGrouped, attemptLog, marksWindow] = await Promise.all([
+  const catalog = await prisma.activity.findMany({
+    where: { slug: { notIn: ["height", "weight"] } },
+    orderBy: { name: "asc" },
+    select: { slug: true, name: true },
+  });
+  const activitySlug = catalog.some((a) => a.slug === sp.activity)
+    ? sp.activity!
+    : "vertical-jump";
+
+  const [latestGrouped, attemptLog, marksWindow, progress] = await Promise.all([
     getLatestResultsGrouped(session.studentId, enrollment?.schoolYearId),
     getScholasticAttemptLog(session.studentId),
     getStudentMarksWindow(session.studentId, sp.from, sp.to),
+    getProgressByTestDate(session.studentId, activitySlug),
   ]);
 
   return (
     <AppShell title="My Performance" nav={STUDENT_NAV}>
       <p className="mb-6 text-sm text-muted">{classYearLabel(currentGrade)}</p>
-      <section>
-        <MarksWindowCard window={marksWindow} />
-      </section>
+      <AthleteProgressSection
+        marksWindow={marksWindow}
+        catalog={catalog}
+        activitySlug={activitySlug}
+        progress={progress}
+      />
 
-      <section className="mt-10">
-        <h2 className="text-lg font-semibold">Latest results</h2>
-        <p className="mt-1 text-sm text-muted">
-          One entry per event this year — running, jumping, and everything else — with improvement
-          since your last attempt.
-        </p>
-        <div className="mt-4">
-          <LatestResultsGrouped grouped={latestGrouped} />
-        </div>
-      </section>
-
-      <section className="mt-10">
-        <h2 className="text-lg font-semibold">Attempt log by school year</h2>
-        <p className="mt-1 text-sm text-muted">
-          Full history for each scholastic year. Each time you test, it appears here with all tries
-          and your best mark.
-        </p>
-        <div className="mt-4">
-          <AttemptSchedule years={attemptLog} />
-        </div>
-      </section>
+      <AthleteResultsHistory grouped={latestGrouped} attemptLog={attemptLog} />
     </AppShell>
   );
 }

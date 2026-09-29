@@ -197,12 +197,14 @@ export async function listWorkoutSessionsForCoach(input: {
   schoolId: string;
   dateStr: string;
   classId?: string;
+  subgroupId?: string;
 }): Promise<CoachWorkoutLogRow[]> {
   return listWorkoutSessionsForCoachRange({
     schoolId: input.schoolId,
     startDate: input.dateStr,
     endDate: input.dateStr,
     classId: input.classId,
+    subgroupId: input.subgroupId,
   });
 }
 
@@ -211,6 +213,7 @@ export async function listWorkoutSessionsForCoachRange(input: {
   startDate: string;
   endDate: string;
   classId?: string;
+  subgroupId?: string;
 }): Promise<CoachWorkoutLogRow[]> {
   const startBounds = dayBoundsFromDateString(input.startDate);
   const endBounds = dayBoundsFromDateString(input.endDate);
@@ -258,6 +261,15 @@ export async function listWorkoutSessionsForCoachRange(input: {
     orderBy: [{ scheduledDate: "desc" }, { createdAt: "desc" }],
   });
 
+  let subgroupMemberIds: Set<string> | null = null;
+  if (input.subgroupId) {
+    const members = await prisma.classSubgroupMember.findMany({
+      where: { subgroupId: input.subgroupId },
+      select: { studentId: true },
+    });
+    subgroupMemberIds = new Set(members.map((m) => m.studentId));
+  }
+
   const rows: CoachWorkoutLogRow[] = [];
   for (const a of assignmentsWithSessions) {
     const sessionsByStudent = new Map(a.sessions.map((s) => [s.studentId, s]));
@@ -281,6 +293,7 @@ export async function listWorkoutSessionsForCoachRange(input: {
     const scheduledDate = a.scheduledDate.toISOString().slice(0, 10);
 
     for (const student of students) {
+      if (subgroupMemberIds && !subgroupMemberIds.has(student.id)) continue;
       const s = sessionsByStudent.get(student.id);
       rows.push({
         sessionId: s?.id ?? null,

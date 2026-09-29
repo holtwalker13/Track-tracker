@@ -23,7 +23,7 @@ import { MedalScopeControls } from "@/components/performance/medal-scope-control
 import { PeerLeadersCard } from "@/components/performance/peer-leaders-card";
 import { ProfileBanner } from "@/components/layout/profile-banner";
 import { getStudentActivityRanks } from "@/lib/queries/coach";
-import { KPI_METRIC_META } from "@/lib/kpi-targets";
+import { getRankedKpiSlugsForSchool } from "@/lib/services/kpi-sets";
 import { leaderboardHighlightFromSearch } from "@/lib/leaderboard-link";
 import { ageBracketForClassYear, isAgeBracketId } from "@/lib/age-brackets";
 
@@ -100,10 +100,11 @@ export default async function StudentDashboardPage({
     window,
     classId,
   });
+  const rankedSlugs = await getRankedKpiSlugsForSchool(schoolId);
   const kpiRanks = await getStudentActivityRanks(
     schoolId,
     studentId,
-    KPI_METRIC_META.map((m) => m.slug),
+    rankedSlugs,
     {
       gender: student.gender ?? undefined,
       scope: "school",

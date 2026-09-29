@@ -10,13 +10,15 @@ import { isLiveRecordingOpen, isWithinLiveWindow } from "@/lib/constants";
 import { classSectionLabel } from "@/lib/periods";
 import { SessionDateEditor } from "@/components/testing/session-date-editor";
 import { coachCanAdministerTestingSession } from "@/lib/auth/coach-scope";
+import { ClassSubgroupFilter } from "@/components/classes/class-subgroup-filter";
+import { listClassSubgroups, studentIdsInSubgroup } from "@/lib/queries/class-subgroups";
 
 export default async function LiveTestingPage({
   params,
   searchParams,
 }: {
   params: Promise<{ sessionId: string }>;
-  searchParams: Promise<{ activity?: string; student?: string }>;
+  searchParams: Promise<{ activity?: string; student?: string; subgroupId?: string }>;
 }) {
   const session = await requireSchoolSession();
   const { sessionId } = await params;
@@ -71,8 +73,16 @@ export default async function LiveTestingPage({
       testingSession.liveOpenedAt
     );
 
+  const classId = testingSession.classId;
+  const subgroups = classId ? await listClassSubgroups(classId) : [];
+  let rosterStudents = testingSession.students;
+  if (sp.subgroupId && classId) {
+    const allowed = new Set(await studentIdsInSubgroup(sp.subgroupId));
+    rosterStudents = testingSession.students.filter((ss) => allowed.has(ss.studentId));
+  }
+
   const rows = await Promise.all(
-    testingSession.students.map(async (ss) => {
+    rosterStudents.map(async (ss) => {
       const prev = await getPreviousBest(ss.studentId, activity.id, testingSession.testingDate);
       const mine = existingResults.filter((r) => r.studentId === ss.studentId);
       const nonComplete = mine.find((r) => r.status !== "COMPLETED");
@@ -128,6 +138,13 @@ export default async function LiveTestingPage({
           </h1>
           <p className="truncate text-[11px] text-muted sm:text-sm">{subtitle}</p>
         </div>
+      </div>
+
+      <div className="mb-3 flex flex-wrap items-end gap-4">
+        <ClassSubgroupFilter
+          subgroups={subgroups}
+          classId={classId}
+        />
       </div>
 
       <details className="mb-3">

@@ -26,9 +26,15 @@ export type CalendarAssignment = {
   totalCount: number;
 };
 
-export function weekStartMonday(dateStr: string): string {
+/** Sunday start (Sun–Sat school week). */
+export function weekStartSunday(dateStr: string): string {
   const d = parseISO(dateStr);
-  return format(startOfWeek(d, { weekStartsOn: 1 }), "yyyy-MM-dd");
+  return format(startOfWeek(d, { weekStartsOn: 0 }), "yyyy-MM-dd");
+}
+
+/** @deprecated use weekStartSunday */
+export function weekStartMonday(dateStr: string): string {
+  return weekStartSunday(dateStr);
 }
 
 export function dateRangeDays(startStr: string, dayCount: number): string[] {

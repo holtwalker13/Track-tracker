@@ -11,7 +11,8 @@ export type NavIconKey =
   | "trending"
   | "projection"
   | "classes"
-  | "workout";
+  | "workout"
+  | "admin";
 
 export type NavItem = {
   href: string;
@@ -52,7 +53,7 @@ export const COACH_NAV: NavItem[] = [
 ];
 
 export const ADMIN_NAV: NavItem[] = [
-  { href: "/admin", label: "Schools", icon: "classes" },
+  { href: "/admin", label: "Admin", icon: "admin" },
   ...COACH_NAV,
 ];
 

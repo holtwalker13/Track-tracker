@@ -8,6 +8,7 @@ import {
   GitCompare,
   Gauge,
   LayoutDashboard,
+  LayoutGrid,
   LineChart,
   LogOut,
   School,
@@ -34,6 +35,7 @@ const NAV_ICONS: Record<NavIconKey, LucideIcon> = {
   trending: TrendingUp,
   projection: LineChart,
   classes: School,
+  admin: LayoutGrid,
 };
 
 export function TopNav({

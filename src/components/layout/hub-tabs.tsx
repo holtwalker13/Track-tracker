@@ -16,7 +16,11 @@ export function HubTabs({ tabs }: { tabs: HubTab[] }) {
       className="mb-5 flex flex-wrap gap-1 rounded-xl border border-card-border bg-card/40 p-1"
     >
       {tabs.map((tab) => {
-        const active = pathname === tab.href;
+        const active =
+          pathname === tab.href ||
+          (tab.href === "/coach/school/classes" &&
+            (pathname.startsWith("/coach/school/classes/") ||
+              pathname.startsWith("/coach/classes/")));
         return (
           <Link
             key={tab.href}

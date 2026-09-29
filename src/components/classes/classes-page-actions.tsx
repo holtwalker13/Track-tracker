@@ -5,8 +5,15 @@ import { useState } from "react";
 import { CoachModal } from "@/components/ui/coach-modal";
 import { CreateClassForm, CreateWeightsPeriodsButton } from "@/components/classes/class-forms";
 import { ImportRosterForm } from "@/components/roster/import-roster-form";
+import type { ClassCoachOption } from "@/lib/coach-display";
 
-export function ClassesPageActions() {
+export function ClassesPageActions({
+  coaches,
+  defaultCoachId,
+}: {
+  coaches: ClassCoachOption[];
+  defaultCoachId: string;
+}) {
   const [createOpen, setCreateOpen] = useState(false);
   const [uploadOpen, setUploadOpen] = useState(false);
 
@@ -32,14 +39,25 @@ export function ClassesPageActions() {
       </div>
       {createOpen ? (
         <CoachModal title="Create a class" onClose={() => setCreateOpen(false)}>
-          <CreateClassForm surface="none" />
+          <CreateClassForm
+            surface="none"
+            coaches={coaches}
+            defaultCoachId={defaultCoachId}
+          />
           <div className="mt-6 border-t border-card-border pt-4">
-            <CreateWeightsPeriodsButton surface="none" />
+            <CreateWeightsPeriodsButton
+              surface="none"
+              coachId={defaultCoachId || coaches[0]?.id || ""}
+            />
           </div>
         </CoachModal>
       ) : null}
       {uploadOpen ? (
-        <CoachModal title="Upload roster spreadsheet" onClose={() => setUploadOpen(false)} maxWidth="max-w-xl">
+        <CoachModal
+          title="Upload roster spreadsheet"
+          onClose={() => setUploadOpen(false)}
+          maxWidth="max-w-xl"
+        >
           <ImportRosterForm compact />
         </CoachModal>
       ) : null}

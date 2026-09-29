@@ -3,7 +3,7 @@ import { requireSession } from "@/lib/auth/session";
 import { createSchoolCoach, listSchoolCoaches } from "@/lib/services/admin-coach";
 
 export async function GET() {
-  const session = await requireSession(["ADMIN"]);
+  const session = await requireSession(["ADMIN", "COACH"]);
   if (!session?.schoolId) {
     return NextResponse.json({ error: "Enter a school first" }, { status: 400 });
   }

@@ -14,7 +14,7 @@ export function EnterSchoolButton({ schoolId, active }: { schoolId: string; acti
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ schoolId }),
     });
-    router.push("/coach/school");
+    router.push("/coach/school/roster");
     router.refresh();
   }
 

@@ -3,22 +3,31 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { GRADE_LEVELS, classYearShort } from "@/lib/grades";
+import type { ClassCoachOption } from "@/lib/coach-display";
+import { CoachTagPicker } from "@/components/classes/coach-tag-picker";
 
 export function ClassMetaEditor({
   classId,
   name,
   period,
   gradeLevel,
+  coachIds: initialCoachIds,
+  coaches,
+  canEditCoach,
 }: {
   classId: string;
   name: string;
   period: string | null;
   gradeLevel: number | null;
+  coachIds: string[];
+  coaches: ClassCoachOption[];
+  canEditCoach: boolean;
 }) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [error, setError] = useState("");
+  const [coachIds, setCoachIds] = useState<string[]>(initialCoachIds);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -32,6 +41,7 @@ export function ClassMetaEditor({
         name: form.get("name"),
         period: form.get("period"),
         gradeLevel: form.get("gradeLevel"),
+        coachIds,
       }),
     });
     if (!res.ok) {
@@ -49,7 +59,10 @@ export function ClassMetaEditor({
     return (
       <button
         type="button"
-        onClick={() => setEditing(true)}
+        onClick={() => {
+          setCoachIds(initialCoachIds);
+          setEditing(true);
+        }}
         className="rounded-lg border border-card-border px-3 py-1.5 text-sm text-muted hover:text-foreground"
       >
         Edit class
@@ -58,9 +71,12 @@ export function ClassMetaEditor({
   }
 
   return (
-    <form onSubmit={onSubmit} className="mt-4 rounded-xl border border-card-border bg-card p-4">
-      <div className="grid gap-3 sm:grid-cols-3">
-        <label className="text-sm sm:col-span-1">
+    <form
+      onSubmit={onSubmit}
+      className="mt-4 w-full rounded-xl border border-card-border bg-card p-4 sm:max-w-3xl"
+    >
+      <div className="grid gap-3 sm:grid-cols-2">
+        <label className="text-sm sm:col-span-2">
           Name
           <input
             name="name"
@@ -93,6 +109,15 @@ export function ClassMetaEditor({
             ))}
           </select>
         </label>
+        <div className="text-sm sm:col-span-2">
+          <span className="mb-1 block">Coaches</span>
+          <CoachTagPicker
+            coaches={coaches}
+            value={coachIds}
+            onChange={setCoachIds}
+            disabled={!canEditCoach}
+          />
+        </div>
       </div>
       {error && <p className="mt-2 text-sm text-red-400">{error}</p>}
       <div className="mt-3 flex gap-2">

@@ -41,7 +41,7 @@ export async function AppShell({
 
   const items =
     session?.role === "ADMIN" && !nav.some((i) => i.href === "/admin")
-      ? [{ href: "/admin", label: "Schools", icon: "classes" as const }, ...nav]
+      ? [{ href: "/admin", label: "Admin", icon: "admin" as const }, ...nav]
       : nav;
 
   const compact = density === "compact";

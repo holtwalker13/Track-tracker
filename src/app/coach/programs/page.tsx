@@ -1,10 +1,10 @@
-import Link from "next/link";
 import { Suspense } from "react";
 import { AppShell } from "@/components/layout/app-shell";
 import { ProgramsScopeBar } from "@/components/workouts/programs-scope-bar";
 import { ProgramsWeekCalendar } from "@/components/workouts/programs-week-calendar";
 import { ProgramsActivityPanel } from "@/components/workouts/programs-activity-panel";
 import { ProgramsActions } from "@/components/workouts/programs-actions";
+import { ProgramsLiftPreview } from "@/components/workouts/programs-lift-preview";
 import { COACH_NAV } from "@/lib/navigation";
 import { requireSchoolSession } from "@/lib/auth/session";
 import { coachProfileForSession } from "@/lib/auth/coach-scope";
@@ -15,7 +15,7 @@ import {
   listAssignmentsForClassRange,
   listClassesForCoach,
   listSchoolCoaches,
-  weekStartMonday,
+  weekStartSunday,
 } from "@/lib/queries/programs-hub";
 import { listWorkoutSessionsForCoachRange } from "@/lib/queries/workout-logs";
 import { todayDateString } from "@/lib/services/workouts";
@@ -53,7 +53,7 @@ export default async function CoachProgramsPage({
       ? sp.classId
       : classes[0]?.id ?? "";
 
-  const weekStart = weekStartMonday(sp.week?.trim() || today);
+  const weekStart = weekStartSunday(sp.week?.trim() || today);
   const weeks = Math.min(6, Math.max(1, Number(sp.weeks) || 1));
   const selectedDate = sp.date?.trim() || today;
   const logView = sp.logView === "week" ? "week" : "day";
@@ -134,6 +134,8 @@ export default async function CoachProgramsPage({
                   weeks={weeks}
                   assignments={assignments}
                   selectedDate={selectedDate}
+                  classId={classId}
+                  templates={templates.map((t) => ({ id: t.id, name: t.name }))}
                 />
               </Suspense>
             </div>
@@ -160,20 +162,7 @@ export default async function CoachProgramsPage({
           workoutLifts={workoutLifts}
         />
 
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-card-border bg-card/30 px-4 py-3">
-          <div>
-            <h2 className="text-sm font-semibold">Lift library</h2>
-            <p className="text-xs text-muted">
-              {schoolLifts.length} lifts available when building workouts
-            </p>
-          </div>
-          <Link
-            href="/coach/programs/lifts"
-            className="rounded-lg border border-card-border px-3 py-1.5 text-xs font-semibold hover:border-accent/40 hover:text-accent"
-          >
-            See all lifts
-          </Link>
-        </div>
+        <ProgramsLiftPreview lifts={schoolLifts} />
       </div>
     </AppShell>
   );

@@ -3,11 +3,24 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { GRADE_LEVELS, classYearShort } from "@/lib/grades";
+import type { ClassCoachOption } from "@/lib/coach-display";
+import { CoachTagPicker } from "@/components/classes/coach-tag-picker";
 
-export function CreateClassForm({ surface = "card" }: { surface?: "card" | "none" }) {
+export function CreateClassForm({
+  surface = "card",
+  coaches = [],
+  defaultCoachId = "",
+}: {
+  surface?: "card" | "none";
+  coaches?: ClassCoachOption[];
+  defaultCoachId?: string;
+}) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [coachIds, setCoachIds] = useState<string[]>(
+    defaultCoachId ? [defaultCoachId] : coaches[0] ? [coaches[0].id] : []
+  );
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -25,6 +38,11 @@ export function CreateClassForm({ surface = "card" }: { surface?: "card" | "none
     }
     const programKind =
       type === "training" ? "TRAINING" : type === "weights" || type === "pe" ? "SCHOLASTIC" : null;
+    if (coachIds.length === 0) {
+      setPending(false);
+      setError("Assign at least one coach");
+      return;
+    }
     const res = await fetch("/api/classes", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -33,6 +51,7 @@ export function CreateClassForm({ surface = "card" }: { surface?: "card" | "none
         period,
         gradeLevel: fd.get("gradeLevel"),
         programKind,
+        coachIds,
       }),
     });
     const data = await res.json();
@@ -41,7 +60,7 @@ export function CreateClassForm({ surface = "card" }: { surface?: "card" | "none
       setError(data.error ?? "Could not create class");
       return;
     }
-    router.push(`/coach/classes/${data.id}`);
+    router.push(`/coach/school/classes/${data.id}`);
     router.refresh();
   }
 
@@ -81,6 +100,10 @@ export function CreateClassForm({ surface = "card" }: { surface?: "card" | "none
           className="mt-1 w-full rounded-lg border border-card-border bg-background px-3 py-2"
         />
       </label>
+      <div className="block text-sm">
+        <span className="mb-1 block">Coaches</span>
+        <CoachTagPicker coaches={coaches} value={coachIds} onChange={setCoachIds} />
+      </div>
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="block text-sm">
           Period (optional)
@@ -109,8 +132,8 @@ export function CreateClassForm({ surface = "card" }: { surface?: "card" | "none
       {error && <p className="text-sm text-sport-red">{error}</p>}
       <button
         type="submit"
-        disabled={pending}
-        className="rounded-lg bg-accent px-4 py-2 font-medium text-background"
+        disabled={pending || coaches.length === 0}
+        className="rounded-lg bg-accent px-4 py-2 font-medium text-background disabled:opacity-50"
       >
         {pending ? "Creating…" : "Create class"}
       </button>
@@ -143,7 +166,7 @@ export function ImportClassesForm() {
         <code>className,firstName,lastName</code>. The same athlete can appear in multiple classes.
       </p>
       <input required name="file" type="file" accept=".csv,text/csv" className="text-sm" />
-      {msg && <p className="text-sm text-muted">{msg}</p>}
+      {msg && <p className="mt-2 text-sm text-muted">{msg}</p>}
       <button type="submit" className="rounded-lg border border-card-border px-4 py-2 text-sm">
         Import CSV
       </button>
@@ -151,7 +174,13 @@ export function ImportClassesForm() {
   );
 }
 
-export function CreateWeightsPeriodsButton({ surface = "card" }: { surface?: "card" | "none" }) {
+export function CreateWeightsPeriodsButton({
+  surface = "card",
+  coachId = "",
+}: {
+  surface?: "card" | "none";
+  coachId?: string;
+}) {
   const router = useRouter();
   const [msg, setMsg] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -164,7 +193,11 @@ export function CreateWeightsPeriodsButton({ surface = "card" }: { surface?: "ca
       const res = await fetch("/api/classes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: `Period ${n} Weights`, period: `Period ${n}` }),
+        body: JSON.stringify({
+          name: `Period ${n} Weights`,
+          period: `Period ${n}`,
+          ...(coachId ? { coachIds: [coachId] } : {}),
+        }),
       });
       if (res.ok) created += 1;
     }
@@ -185,12 +218,15 @@ export function CreateWeightsPeriodsButton({ surface = "card" }: { surface?: "ca
       {msg && <p className="mt-2 text-sm text-success">{msg}</p>}
       <button
         type="button"
-        disabled={pending}
+        disabled={pending || !coachId}
         onClick={() => void createPeriods()}
-        className="mt-3 rounded-lg border border-card-border px-4 py-2 text-sm font-medium hover:bg-background"
+        className="mt-3 rounded-lg border border-card-border px-4 py-2 text-sm font-medium hover:bg-background disabled:opacity-50"
       >
         {pending ? "Creating…" : "Add Period 1–4 Weights"}
       </button>
+      {!coachId ? (
+        <p className="mt-2 text-xs text-muted">Add a coach first so periods can be assigned.</p>
+      ) : null}
     </div>
   );
 }

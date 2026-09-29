@@ -13,7 +13,14 @@ type CoachRow = {
   classes: { id: string; name: string; programKind: string | null }[];
 };
 
-export function CoachStaffPanel({ schoolSlug }: { schoolSlug: string | null }) {
+export function CoachStaffPanel({
+  schoolSlug,
+  canManage = false,
+}: {
+  schoolSlug: string | null;
+  /** Admin-only: create coaches and send setup / reset links. */
+  canManage?: boolean;
+}) {
   const router = useRouter();
   const [coaches, setCoaches] = useState<CoachRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -46,6 +53,7 @@ export function CoachStaffPanel({ schoolSlug }: { schoolSlug: string | null }) {
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (!canManage) return;
     setPending(true);
     setMsg(null);
     setError(null);
@@ -74,56 +82,65 @@ export function CoachStaffPanel({ schoolSlug }: { schoolSlug: string | null }) {
   }
 
   return (
-    <div className="space-y-6 rounded-2xl border border-card-border bg-card p-4 lg:col-span-2">
-      <div>
-        <h2 className="font-semibold">Coach accounts</h2>
-        <p className="mt-1 text-sm text-muted">
-          Add coaches here, then send a <strong className="font-medium text-foreground">setup link or QR code</strong>{" "}
-          (same as student roster login). They confirm name and email and create a password. Coaches browse the full
-          roster but run live tests only for athletes in their classes or training groups.
-        </p>
-      </div>
+    <div className="space-y-6 rounded-2xl border border-card-border bg-card p-4">
+      {canManage ? (
+        <>
+          <div>
+            <h3 className="font-semibold">Add coach</h3>
+            <p className="mt-1 text-sm text-muted">
+              Create a coach account, then send a{" "}
+              <strong className="font-medium text-foreground">setup link or QR code</strong> so they
+              can confirm name/email and set a password. Coaches browse the full roster but run live
+              tests only for athletes in their classes.
+            </p>
+          </div>
 
-      <form onSubmit={onSubmit} className="grid gap-3 sm:grid-cols-2">
-        <label className="block text-sm sm:col-span-1">
-          First name
-          <input
-            required
-            name="firstName"
-            className="mt-1 w-full rounded-lg border border-card-border bg-background px-3 py-2"
-          />
-        </label>
-        <label className="block text-sm sm:col-span-1">
-          Last name
-          <input
-            required
-            name="lastName"
-            className="mt-1 w-full rounded-lg border border-card-border bg-background px-3 py-2"
-          />
-        </label>
-        <label className="block text-sm sm:col-span-2">
-          Email (login)
-          <input
-            required
-            type="email"
-            name="email"
-            placeholder={schoolSlug ? `ty.crowden@${schoolSlug}.demo` : "coach@school.demo"}
-            className="mt-1 w-full rounded-lg border border-card-border bg-background px-3 py-2"
-          />
-        </label>
-        {error && <p className="text-sm text-red-400 sm:col-span-2">{error}</p>}
-        {msg && <p className="text-sm text-emerald-300 sm:col-span-2">{msg}</p>}
-        <button
-          type="submit"
-          disabled={pending}
-          className="rounded-lg bg-accent px-4 py-2 font-medium text-background sm:col-span-2 sm:w-fit"
-        >
-          {pending ? "Creating…" : "Add coach"}
-        </button>
-      </form>
+          <form onSubmit={onSubmit} className="grid gap-3 sm:grid-cols-2">
+            <label className="block text-sm sm:col-span-1">
+              First name
+              <input
+                required
+                name="firstName"
+                className="mt-1 w-full rounded-lg border border-card-border bg-background px-3 py-2"
+              />
+            </label>
+            <label className="block text-sm sm:col-span-1">
+              Last name
+              <input
+                required
+                name="lastName"
+                className="mt-1 w-full rounded-lg border border-card-border bg-background px-3 py-2"
+              />
+            </label>
+            <label className="block text-sm sm:col-span-2">
+              Email (login)
+              <input
+                required
+                type="email"
+                name="email"
+                placeholder={schoolSlug ? `ty.crowden@${schoolSlug}.demo` : "coach@school.demo"}
+                className="mt-1 w-full rounded-lg border border-card-border bg-background px-3 py-2"
+              />
+            </label>
+            {error && <p className="text-sm text-red-400 sm:col-span-2">{error}</p>}
+            {msg && <p className="text-sm text-emerald-300 sm:col-span-2">{msg}</p>}
+            <button
+              type="submit"
+              disabled={pending}
+              className="rounded-lg bg-accent px-4 py-2 font-medium text-background sm:col-span-2 sm:w-fit"
+            >
+              {pending ? "Creating…" : "Add coach"}
+            </button>
+          </form>
+        </>
+      ) : error ? (
+        <p className="text-sm text-red-400">{error}</p>
+      ) : null}
 
       <div>
-        <h3 className="text-sm font-semibold uppercase tracking-wide text-muted">Staff at this school</h3>
+        <h3 className="text-sm font-semibold uppercase tracking-wide text-muted">
+          Staff at this school
+        </h3>
         {loading ? (
           <p className="mt-2 text-sm text-muted">Loading…</p>
         ) : coaches.length === 0 ? (
@@ -131,7 +148,10 @@ export function CoachStaffPanel({ schoolSlug }: { schoolSlug: string | null }) {
         ) : (
           <ul className="mt-2 divide-y divide-card-border rounded-xl border border-card-border">
             {coaches.map((c) => (
-              <li key={c.coachProfileId} className="flex flex-wrap items-start justify-between gap-3 px-3 py-3 text-sm">
+              <li
+                key={c.coachProfileId}
+                className="flex flex-wrap items-start justify-between gap-3 px-3 py-3 text-sm"
+              >
                 <div className="min-w-0 flex-1">
                   <p className="font-medium">{c.fullName}</p>
                   <p className="font-mono text-xs text-muted">{c.email}</p>
@@ -140,14 +160,18 @@ export function CoachStaffPanel({ schoolSlug }: { schoolSlug: string | null }) {
                       Groups: {c.classes.map((cl) => cl.name).join(", ")}
                     </p>
                   ) : (
-                    <p className="mt-1 text-xs text-muted">No classes yet — coach creates them after login.</p>
+                    <p className="mt-1 text-xs text-muted">
+                      No classes yet — coach creates them after login.
+                    </p>
                   )}
                 </div>
-                <CoachLoginLinkButton
-                  coachProfileId={c.coachProfileId}
-                  fullName={c.fullName}
-                  loginStatus={c.loginStatus}
-                />
+                {canManage ? (
+                  <CoachLoginLinkButton
+                    coachProfileId={c.coachProfileId}
+                    fullName={c.fullName}
+                    loginStatus={c.loginStatus}
+                  />
+                ) : null}
               </li>
             ))}
           </ul>

@@ -134,6 +134,8 @@ export default async function CoachProgramsPage({
                   weeks={weeks}
                   assignments={assignments}
                   selectedDate={selectedDate}
+                  classId={classId}
+                  templates={templates.map((t) => ({ id: t.id, name: t.name }))}
                 />
               </Suspense>
             </div>

@@ -1,37 +1,61 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useRef, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { addDays, format, parseISO } from "date-fns";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Pencil, Plus, Trash2 } from "lucide-react";
 import {
   type CalendarAssignment,
   weekStartSunday,
 } from "@/lib/queries/programs-hub";
 import { cn } from "@/lib/utils";
 import { todayDateString } from "@/lib/services/workouts";
+import { CoachModal } from "@/components/ui/coach-modal";
 
 /** Days visible in the horizontal viewport (Mon–Fri by default). */
 const VISIBLE_DAYS = 5;
 /** Monday index within a Sun–Sat week. */
 const MONDAY_OFFSET = 1;
 
+type TemplateOption = { id: string; name: string };
+
 export function ProgramsWeekCalendar({
   weekStart,
   weeks,
-  assignments,
+  assignments: initialAssignments,
   selectedDate,
+  classId,
+  templates,
 }: {
   weekStart: string;
   weeks: number;
   assignments: CalendarAssignment[];
   selectedDate: string;
+  classId: string;
+  templates: TemplateOption[];
 }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [pending, startTransition] = useTransition();
   const scrollerRef = useRef<HTMLDivElement>(null);
+  const [assignments, setAssignments] = useState(initialAssignments);
+
+  const [addDate, setAddDate] = useState<string | null>(null);
+  const [addTemplateId, setAddTemplateId] = useState(templates[0]?.id ?? "");
+  const [editing, setEditing] = useState<CalendarAssignment | null>(null);
+  const [editTemplateId, setEditTemplateId] = useState("");
+  const [editDate, setEditDate] = useState("");
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [actionPending, setActionPending] = useState(false);
+
+  useEffect(() => {
+    setAssignments(initialAssignments);
+  }, [initialAssignments]);
+
+  useEffect(() => {
+    if (!addTemplateId && templates[0]) setAddTemplateId(templates[0].id);
+  }, [templates, addTemplateId]);
 
   const byDate = new Map<string, CalendarAssignment[]>();
   for (const a of assignments) {
@@ -50,7 +74,6 @@ export function ProgramsWeekCalendar({
 
     function scrollToMonday() {
       if (!el) return;
-      // Track is (days/5) of the viewport; Monday is day index 1 → 1/5 of viewport width.
       const dayWidth = el.clientWidth / VISIBLE_DAYS;
       el.scrollLeft = MONDAY_OFFSET * dayWidth;
     }
@@ -77,6 +100,88 @@ export function ProgramsWeekCalendar({
     setParams({ week: next });
   }
 
+  function openAdd(date: string) {
+    setActionError(null);
+    setAddDate(date);
+    setAddTemplateId(templates[0]?.id ?? "");
+    setParams({ date, logView: "day" });
+  }
+
+  function openEdit(a: CalendarAssignment) {
+    setActionError(null);
+    setEditing(a);
+    setEditTemplateId(a.templateId);
+    setEditDate(a.date);
+    setParams({ date: a.date, logView: "day" });
+  }
+
+  async function addWorkout() {
+    if (!addDate || !addTemplateId || !classId) {
+      setActionError("Pick a workout and class first.");
+      return;
+    }
+    setActionPending(true);
+    setActionError(null);
+    const res = await fetch("/api/workouts/assignments", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        templateId: addTemplateId,
+        classId,
+        scheduledDate: addDate,
+      }),
+    });
+    const data = await res.json();
+    setActionPending(false);
+    if (!res.ok) {
+      setActionError(data.error ?? "Could not add workout");
+      return;
+    }
+    setAddDate(null);
+    startTransition(() => router.refresh());
+  }
+
+  async function saveEdit() {
+    if (!editing) return;
+    setActionPending(true);
+    setActionError(null);
+    const res = await fetch(`/api/workouts/assignments/${editing.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        templateId: editTemplateId,
+        scheduledDate: editDate,
+      }),
+    });
+    const data = await res.json();
+    setActionPending(false);
+    if (!res.ok) {
+      setActionError(data.error ?? "Could not update workout");
+      return;
+    }
+    setEditing(null);
+    startTransition(() => router.refresh());
+  }
+
+  async function removeAssignment() {
+    if (!editing) return;
+    if (!window.confirm(`Remove “${editing.templateName}” from ${editing.date}?`)) return;
+    setActionPending(true);
+    setActionError(null);
+    const res = await fetch(`/api/workouts/assignments/${editing.id}`, {
+      method: "DELETE",
+    });
+    const data = await res.json().catch(() => ({}));
+    setActionPending(false);
+    if (!res.ok) {
+      setActionError(data.error ?? "Could not remove workout");
+      return;
+    }
+    setAssignments((prev) => prev.filter((a) => a.id !== editing.id));
+    setEditing(null);
+    startTransition(() => router.refresh());
+  }
+
   return (
     <section
       className={cn(
@@ -88,7 +193,7 @@ export function ProgramsWeekCalendar({
         <div>
           <h2 className="text-base font-semibold">Week calendar</h2>
           <p className="text-xs text-muted">
-            One class at a time · Mon–Fri default · scroll for Sun/Sat
+            + adds a workout · tap a workout to edit or remove
           </p>
         </div>
         <div className="flex items-center gap-1">
@@ -137,40 +242,63 @@ export function ProgramsWeekCalendar({
             const dayNum = format(parseISO(date), "d");
 
             return (
-              <button
+              <div
                 key={date}
-                type="button"
                 data-day-index={index}
-                onClick={() => setParams({ date, logView: "day" })}
                 className={cn(
-                  "flex min-h-[5.5rem] flex-col rounded-xl border px-1.5 py-1.5 text-left transition sm:min-h-[6.5rem] sm:px-2",
+                  "flex min-h-[5.5rem] flex-col rounded-xl border px-1.5 py-1.5 sm:min-h-[6.5rem] sm:px-2",
                   selected
                     ? "border-accent/50 bg-accent/10 ring-1 ring-accent/40"
-                    : "border-card-border/80 bg-background/30 hover:border-foreground/25",
+                    : "border-card-border/80 bg-background/30",
                   isToday && !selected && "border-sky-400/40"
                 )}
               >
-                <div className="mb-1 flex items-baseline justify-between gap-1">
-                  <span className="text-[10px] font-semibold uppercase tracking-wide text-muted">
-                    {dow}
-                  </span>
-                  <span
-                    className={cn(
-                      "text-xs font-semibold tabular-nums",
-                      isToday ? "text-sky-300" : "text-foreground"
-                    )}
+                <div className="mb-1 flex items-center justify-between gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setParams({ date, logView: "day" })}
+                    className="flex min-w-0 flex-1 items-baseline justify-between gap-1 text-left"
                   >
-                    {dayNum}
-                  </span>
+                    <span className="text-[10px] font-semibold uppercase tracking-wide text-muted">
+                      {dow}
+                    </span>
+                    <span
+                      className={cn(
+                        "text-xs font-semibold tabular-nums",
+                        isToday ? "text-sky-300" : "text-foreground"
+                      )}
+                    >
+                      {dayNum}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => openAdd(date)}
+                    disabled={!classId || templates.length === 0}
+                    className="rounded-md p-0.5 text-muted hover:bg-emerald-500/15 hover:text-emerald-300 disabled:opacity-30"
+                    aria-label={`Add workout on ${date}`}
+                    title="Add workout"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                  </button>
                 </div>
                 <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-hidden">
                   {dayAssignments.length === 0 ? (
-                    <span className="text-[10px] text-muted/70">—</span>
+                    <button
+                      type="button"
+                      onClick={() => openAdd(date)}
+                      disabled={!classId || templates.length === 0}
+                      className="rounded-md border border-dashed border-card-border/70 px-1 py-2 text-center text-[10px] text-muted/80 hover:border-emerald-400/40 hover:text-emerald-300 disabled:opacity-40"
+                    >
+                      Add
+                    </button>
                   ) : (
                     dayAssignments.map((a) => (
-                      <div
+                      <button
                         key={a.id}
-                        className="rounded-md bg-sky-500/10 px-1 py-0.5 ring-1 ring-sky-400/25"
+                        type="button"
+                        onClick={() => openEdit(a)}
+                        className="rounded-md bg-sky-500/10 px-1 py-0.5 text-left ring-1 ring-sky-400/25 hover:bg-sky-500/20"
                       >
                         <div className="truncate text-[10px] font-medium leading-tight text-sky-100 sm:text-[11px]">
                           {a.templateName}
@@ -180,11 +308,11 @@ export function ProgramsWeekCalendar({
                             ? `${a.completedCount}/${a.totalCount} logged`
                             : "No roster"}
                         </div>
-                      </div>
+                      </button>
                     ))
                   )}
                 </div>
-              </button>
+              </div>
             );
           })}
         </div>
@@ -208,6 +336,102 @@ export function ProgramsWeekCalendar({
           </button>
         ) : null}
       </div>
+
+      {addDate ? (
+        <CoachModal
+          eyebrow="Schedule"
+          title={`Add workout · ${addDate}`}
+          onClose={() => setAddDate(null)}
+          maxWidth="max-w-md"
+        >
+          <div className="space-y-3">
+            {actionError && <p className="text-sm text-sport-red">{actionError}</p>}
+            {templates.length === 0 ? (
+              <p className="text-sm text-muted">Create a saved workout first, then add it here.</p>
+            ) : (
+              <label className="block text-sm">
+                Saved workout
+                <select
+                  value={addTemplateId}
+                  onChange={(e) => setAddTemplateId(e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-card-border bg-background px-3 py-2"
+                >
+                  {templates.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+            <button
+              type="button"
+              disabled={actionPending || !addTemplateId || templates.length === 0}
+              onClick={() => void addWorkout()}
+              className="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-background disabled:opacity-50"
+            >
+              <Plus className="h-4 w-4" />
+              {actionPending ? "Adding…" : "Add to day"}
+            </button>
+          </div>
+        </CoachModal>
+      ) : null}
+
+      {editing ? (
+        <CoachModal
+          eyebrow="Edit"
+          title={editing.templateName}
+          onClose={() => setEditing(null)}
+          maxWidth="max-w-md"
+        >
+          <div className="space-y-3">
+            {actionError && <p className="text-sm text-sport-red">{actionError}</p>}
+            <label className="block text-sm">
+              Workout
+              <select
+                value={editTemplateId}
+                onChange={(e) => setEditTemplateId(e.target.value)}
+                className="mt-1 w-full rounded-lg border border-card-border bg-background px-3 py-2"
+              >
+                {templates.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="block text-sm">
+              Date
+              <input
+                type="date"
+                value={editDate}
+                onChange={(e) => setEditDate(e.target.value)}
+                className="mt-1 w-full rounded-lg border border-card-border bg-background px-3 py-2"
+              />
+            </label>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                disabled={actionPending}
+                onClick={() => void saveEdit()}
+                className="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-background disabled:opacity-50"
+              >
+                <Pencil className="h-4 w-4" />
+                {actionPending ? "Saving…" : "Save changes"}
+              </button>
+              <button
+                type="button"
+                disabled={actionPending}
+                onClick={() => void removeAssignment()}
+                className="inline-flex items-center gap-2 rounded-lg border border-sport-red/40 px-4 py-2 text-sm font-medium text-sport-red hover:bg-sport-red/10 disabled:opacity-50"
+              >
+                <Trash2 className="h-4 w-4" />
+                Remove
+              </button>
+            </div>
+          </div>
+        </CoachModal>
+      ) : null}
     </section>
   );
 }

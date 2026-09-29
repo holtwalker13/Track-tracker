@@ -21,7 +21,7 @@ export function SchoolSwitcher({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ schoolId }),
     });
-    if (res.ok) router.push("/coach/students");
+    if (res.ok) router.push("/coach/school");
     router.refresh();
   }
 

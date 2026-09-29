@@ -1,16 +1,66 @@
+import Link from "next/link";
+import { Suspense } from "react";
 import { AppShell } from "@/components/layout/app-shell";
-import { WorkoutProgramsPanel } from "@/components/workouts/workout-programs-panel";
+import { ProgramsScopeBar } from "@/components/workouts/programs-scope-bar";
+import { ProgramsWeekCalendar } from "@/components/workouts/programs-week-calendar";
+import { ProgramsActivityPanel } from "@/components/workouts/programs-activity-panel";
+import { ProgramsActions } from "@/components/workouts/programs-actions";
 import { COACH_NAV } from "@/lib/navigation";
 import { requireSchoolSession } from "@/lib/auth/session";
+import { coachProfileForSession } from "@/lib/auth/coach-scope";
 import { prisma } from "@/lib/db";
-import { SchoolLiftsPanel } from "@/components/lifts/school-lifts-panel";
 import { liftsForWorkoutPrograms, listSchoolLifts } from "@/lib/queries/lifts";
-import { isGraduatingClassName } from "@/lib/periods";
+import {
+  dateRangeDays,
+  listAssignmentsForClassRange,
+  listClassesForCoach,
+  listSchoolCoaches,
+  weekStartMonday,
+} from "@/lib/queries/programs-hub";
+import { listWorkoutSessionsForCoachRange } from "@/lib/queries/workout-logs";
+import { todayDateString } from "@/lib/services/workouts";
+import { format, parseISO } from "date-fns";
 
-export default async function CoachProgramsPage() {
+export default async function CoachProgramsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{
+    coachId?: string;
+    classId?: string;
+    week?: string;
+    weeks?: string;
+    date?: string;
+    logView?: string;
+  }>;
+}) {
   const session = await requireSchoolSession();
+  const sp = await searchParams;
+  const today = todayDateString();
 
-  const [templates, classes, schoolLifts] = await Promise.all([
+  const coaches = await listSchoolCoaches(session.schoolId);
+  const myProfile = await coachProfileForSession(session);
+  const defaultCoachId =
+    myProfile?.id && coaches.some((c) => c.id === myProfile.id)
+      ? myProfile.id
+      : coaches[0]?.id ?? "";
+
+  const coachId =
+    sp.coachId && coaches.some((c) => c.id === sp.coachId) ? sp.coachId : defaultCoachId;
+
+  const classes = coachId ? await listClassesForCoach(session.schoolId, coachId) : [];
+  const classId =
+    sp.classId && classes.some((c) => c.id === sp.classId)
+      ? sp.classId
+      : classes[0]?.id ?? "";
+
+  const weekStart = weekStartMonday(sp.week?.trim() || today);
+  const weeks = Math.min(6, Math.max(1, Number(sp.weeks) || 1));
+  const selectedDate = sp.date?.trim() || today;
+  const logView = sp.logView === "week" ? "week" : "day";
+
+  const rangeEnd = dateRangeDays(weekStart, weeks * 7).at(-1) ?? weekStart;
+
+  const [templates, schoolLifts, assignments, dayLogs, weekLogs] = await Promise.all([
     prisma.workoutTemplate.findMany({
       where: { schoolId: session.schoolId },
       orderBy: { updatedAt: "desc" },
@@ -22,31 +72,109 @@ export default async function CoachProgramsPage() {
         _count: { select: { assignments: true } },
       },
     }),
-    prisma.class.findMany({
-      where: { schoolId: session.schoolId },
-      orderBy: [{ period: "asc" }, { name: "asc" }],
-      select: { id: true, name: true, period: true },
-    }),
     listSchoolLifts(session.schoolId),
+    classId
+      ? listAssignmentsForClassRange({
+          schoolId: session.schoolId,
+          classId,
+          startDate: weekStart,
+          endDate: rangeEnd,
+        })
+      : Promise.resolve([]),
+    classId
+      ? listWorkoutSessionsForCoachRange({
+          schoolId: session.schoolId,
+          startDate: selectedDate,
+          endDate: selectedDate,
+          classId,
+        })
+      : Promise.resolve([]),
+    classId
+      ? listWorkoutSessionsForCoachRange({
+          schoolId: session.schoolId,
+          startDate: weekStart,
+          endDate: dateRangeDays(weekStart, 7).at(-1) ?? weekStart,
+          classId,
+        })
+      : Promise.resolve([]),
   ]);
 
   const workoutLifts = liftsForWorkoutPrograms(schoolLifts);
-
-  const sectionClasses = classes.filter((c) => !isGraduatingClassName(c.name));
+  const selectedClass = classes.find((c) => c.id === classId) ?? null;
+  const activityRows = logView === "week" ? weekLogs : dayLogs;
+  const weekLabel = `${format(parseISO(weekStart), "MMM d")} – ${format(
+    parseISO(dateRangeDays(weekStart, 7).at(-1) ?? weekStart),
+    "MMM d"
+  )}`;
 
   return (
-    <AppShell nav={COACH_NAV} title="Workout programs">
-      <div className="mb-6">
-        <SchoolLiftsPanel lifts={schoolLifts} />
+    <AppShell nav={COACH_NAV} title="Programs">
+      <div className="space-y-5">
+        <Suspense fallback={null}>
+          <ProgramsScopeBar
+            coaches={coaches}
+            classes={classes}
+            coachId={coachId}
+            classId={classId}
+          />
+        </Suspense>
+
+        {!classId ? (
+          <p className="rounded-xl border border-dashed border-card-border px-4 py-8 text-center text-sm text-muted">
+            {coaches.length === 0
+              ? "No coaches at this school yet."
+              : "This coach has no classes yet. Add a class under School → Classes."}
+          </p>
+        ) : (
+          <div className="grid gap-4 xl:grid-cols-5">
+            <div className="xl:col-span-3">
+              <Suspense fallback={null}>
+                <ProgramsWeekCalendar
+                  weekStart={weekStart}
+                  weeks={weeks}
+                  assignments={assignments}
+                  selectedDate={selectedDate}
+                />
+              </Suspense>
+            </div>
+            <div className="xl:col-span-2 xl:min-h-[22rem]">
+              <Suspense fallback={null}>
+                <ProgramsActivityPanel
+                  rows={activityRows}
+                  date={selectedDate}
+                  logView={logView}
+                  weekLabel={weekLabel}
+                />
+              </Suspense>
+            </div>
+          </div>
+        )}
+
+        <ProgramsActions
+          templates={templates.map((t) => ({
+            ...t,
+            updatedAt: t.updatedAt.toISOString(),
+          }))}
+          selectedClass={selectedClass}
+          selectedDate={selectedDate}
+          workoutLifts={workoutLifts}
+        />
+
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-card-border bg-card/30 px-4 py-3">
+          <div>
+            <h2 className="text-sm font-semibold">Lift library</h2>
+            <p className="text-xs text-muted">
+              {schoolLifts.length} lifts available when building workouts
+            </p>
+          </div>
+          <Link
+            href="/coach/programs/lifts"
+            className="rounded-lg border border-card-border px-3 py-1.5 text-xs font-semibold hover:border-accent/40 hover:text-accent"
+          >
+            See all lifts
+          </Link>
+        </div>
       </div>
-      <WorkoutProgramsPanel
-        templates={templates.map((t) => ({
-          ...t,
-          updatedAt: t.updatedAt.toISOString(),
-        }))}
-        classes={sectionClasses}
-        workoutLifts={workoutLifts}
-      />
     </AppShell>
   );
 }

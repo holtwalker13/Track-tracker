@@ -180,18 +180,46 @@ export async function fetchWorkoutLogExportRows(input: {
   return rows;
 }
 
+export type CoachWorkoutLogRow = {
+  sessionId: string | null;
+  studentId: string;
+  studentName: string;
+  studentNumber: string;
+  programName: string;
+  className: string;
+  status: string;
+  setLogCount: number;
+  completedAt: string | null;
+  scheduledDate: string;
+};
+
 export async function listWorkoutSessionsForCoach(input: {
   schoolId: string;
   dateStr: string;
   classId?: string;
-}) {
-  const bounds = dayBoundsFromDateString(input.dateStr);
-  if (!bounds) return [];
+}): Promise<CoachWorkoutLogRow[]> {
+  return listWorkoutSessionsForCoachRange({
+    schoolId: input.schoolId,
+    startDate: input.dateStr,
+    endDate: input.dateStr,
+    classId: input.classId,
+  });
+}
+
+export async function listWorkoutSessionsForCoachRange(input: {
+  schoolId: string;
+  startDate: string;
+  endDate: string;
+  classId?: string;
+}): Promise<CoachWorkoutLogRow[]> {
+  const startBounds = dayBoundsFromDateString(input.startDate);
+  const endBounds = dayBoundsFromDateString(input.endDate);
+  if (!startBounds || !endBounds) return [];
 
   const assignments = await prisma.workoutAssignment.findMany({
     where: {
       schoolId: input.schoolId,
-      scheduledDate: { gte: bounds.start, lte: bounds.end },
+      scheduledDate: { gte: startBounds.start, lte: endBounds.end },
       ...(input.classId ? { classId: input.classId } : {}),
     },
     include: {
@@ -214,7 +242,7 @@ export async function listWorkoutSessionsForCoach(input: {
   const assignmentsWithSessions = await prisma.workoutAssignment.findMany({
     where: {
       schoolId: input.schoolId,
-      scheduledDate: { gte: bounds.start, lte: bounds.end },
+      scheduledDate: { gte: startBounds.start, lte: endBounds.end },
       ...(input.classId ? { classId: input.classId } : {}),
     },
     include: {
@@ -227,21 +255,10 @@ export async function listWorkoutSessionsForCoach(input: {
         },
       },
     },
+    orderBy: [{ scheduledDate: "desc" }, { createdAt: "desc" }],
   });
 
-  type Row = {
-    sessionId: string | null;
-    studentId: string;
-    studentName: string;
-    studentNumber: string;
-    programName: string;
-    className: string;
-    status: string;
-    setLogCount: number;
-    completedAt: string | null;
-  };
-
-  const rows: Row[] = [];
+  const rows: CoachWorkoutLogRow[] = [];
   for (const a of assignmentsWithSessions) {
     const sessionsByStudent = new Map(a.sessions.map((s) => [s.studentId, s]));
     const enrollments =
@@ -261,6 +278,8 @@ export async function listWorkoutSessionsForCoach(input: {
         ? enrollments.map((e) => e.student)
         : a.sessions.map((s) => s.student);
 
+    const scheduledDate = a.scheduledDate.toISOString().slice(0, 10);
+
     for (const student of students) {
       const s = sessionsByStudent.get(student.id);
       rows.push({
@@ -273,10 +292,15 @@ export async function listWorkoutSessionsForCoach(input: {
         status: s?.status ?? "NOT_STARTED",
         setLogCount: s?._count.setLogs ?? 0,
         completedAt: s?.completedAt?.toISOString() ?? null,
+        scheduledDate,
       });
     }
   }
 
-  rows.sort((x, y) => x.studentName.localeCompare(y.studentName));
+  rows.sort((x, y) => {
+    const byDate = y.scheduledDate.localeCompare(x.scheduledDate);
+    if (byDate !== 0) return byDate;
+    return x.studentName.localeCompare(y.studentName);
+  });
   return rows;
 }

@@ -14,6 +14,7 @@ export function ClassMetaEditor({
   coachIds: initialCoachIds,
   coaches,
   canEditCoach,
+  defaultEditing = false,
 }: {
   classId: string;
   name: string;
@@ -22,9 +23,11 @@ export function ClassMetaEditor({
   coachIds: string[];
   coaches: ClassCoachOption[];
   canEditCoach: boolean;
+  /** Open the rename/edit form immediately (e.g. from ?edit=1 on the class page). */
+  defaultEditing?: boolean;
 }) {
   const router = useRouter();
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditing] = useState(defaultEditing);
   const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [error, setError] = useState("");
   const [coachIds, setCoachIds] = useState<string[]>(initialCoachIds);
@@ -63,9 +66,9 @@ export function ClassMetaEditor({
           setCoachIds(initialCoachIds);
           setEditing(true);
         }}
-        className="rounded-lg border border-card-border px-3 py-1.5 text-sm text-muted hover:text-foreground"
+        className="rounded-lg border border-card-border px-3 py-1.5 text-sm font-medium text-muted hover:border-sky-400/40 hover:text-foreground"
       >
-        Edit class
+        Rename class
       </button>
     );
   }
@@ -73,11 +76,15 @@ export function ClassMetaEditor({
   return (
     <form
       onSubmit={onSubmit}
-      className="mt-4 w-full rounded-xl border border-card-border bg-card p-4 sm:max-w-3xl"
+      className="mt-4 w-full rounded-xl border border-card-border bg-card p-4"
     >
-      <div className="grid gap-3 sm:grid-cols-2">
+      <h2 className="text-sm font-semibold">Rename &amp; edit class</h2>
+      <p className="mt-1 text-xs text-muted">
+        Change the display name anytime — testing sessions and programs show this label.
+      </p>
+      <div className="mt-4 grid gap-3 sm:grid-cols-2">
         <label className="text-sm sm:col-span-2">
-          Name
+          Class name
           <input
             name="name"
             defaultValue={name}

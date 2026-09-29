@@ -91,12 +91,22 @@ export default async function SchoolClassesPage() {
                     {c._count.enrollments} athletes
                   </span>
                 </Link>
-                <ClassCoachInlineSelect
-                  classId={c.id}
-                  coachIds={assignedIds}
-                  coaches={coachOptions}
-                  canEdit={canEdit}
-                />
+                <div className="flex flex-wrap items-center gap-2">
+                  {canEdit ? (
+                    <Link
+                      href={`/coach/school/classes/${c.id}?edit=1`}
+                      className="rounded-lg border border-card-border px-3 py-1.5 text-sm text-muted hover:border-sky-400/40 hover:text-foreground"
+                    >
+                      Rename
+                    </Link>
+                  ) : null}
+                  <ClassCoachInlineSelect
+                    classId={c.id}
+                    coachIds={assignedIds}
+                    coaches={coachOptions}
+                    canEdit={canEdit}
+                  />
+                </div>
               </div>
             </li>
           );

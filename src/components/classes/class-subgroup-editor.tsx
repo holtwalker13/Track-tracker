@@ -28,6 +28,9 @@ export function ClassSubgroupEditor({
   const [subgroups, setSubgroups] = useState(initialSubgroups);
   const [name, setName] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editSelected, setEditSelected] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -71,6 +74,45 @@ export function ClassSubgroupEditor({
     );
   }
 
+  function toggleEditStudent(id: string) {
+    setEditSelected((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  }
+
+  function startEdit(sg: (typeof subgroups)[number]) {
+    setEditingId(sg.id);
+    setEditName(sg.name);
+    setEditSelected([...sg.memberIds]);
+    setError("");
+  }
+
+  async function saveEdit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editingId) return;
+    setBusy(true);
+    setError("");
+    const res = await fetch(`/api/classes/${classId}/subgroups/${editingId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: editName, memberIds: editSelected }),
+    });
+    setBusy(false);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setError(data.error ?? "Could not update subgroup");
+      return;
+    }
+    const data = await res.json();
+    if (data.subgroup) {
+      setSubgroups((prev) =>
+        prev.map((s) => (s.id === editingId ? data.subgroup : s))
+      );
+    }
+    setEditingId(null);
+    router.refresh();
+  }
+
   return (
     <div className="mt-10 rounded-xl border border-card-border bg-card/40 p-5">
       <h2 className="text-lg font-semibold">Testing & program subgroups</h2>
@@ -80,26 +122,92 @@ export function ClassSubgroupEditor({
       </p>
 
       {subgroups.length > 0 && (
-        <ul className="mt-4 space-y-2">
-          {subgroups.map((sg) => (
-            <li
-              key={sg.id}
-              className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-card-border px-3 py-2 text-sm"
-            >
-              <span>
-                <span className="font-semibold">{sg.name}</span>
-                <span className="ml-2 text-muted">{sg.memberIds.length} athletes</span>
-              </span>
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => removeSubgroup(sg.id)}
-                className="text-xs text-red-400 hover:underline disabled:opacity-50"
+        <ul className="mt-4 space-y-3">
+          {subgroups.map((sg) =>
+            editingId === sg.id ? (
+              <li
+                key={sg.id}
+                className="rounded-lg border border-sky-400/40 bg-card p-4"
               >
-                Delete
-              </button>
-            </li>
-          ))}
+                <form onSubmit={saveEdit} className="space-y-3">
+                  <label className="block text-sm">
+                    Subgroup name
+                    <input
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      required
+                      className="mt-1 w-full max-w-md rounded-lg border border-card-border bg-background px-3 py-2"
+                    />
+                  </label>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted">
+                    Athletes
+                  </p>
+                  <ul className="max-h-40 space-y-1 overflow-y-auto rounded-lg border border-card-border p-2">
+                    {roster.map((a) => (
+                      <li key={a.id}>
+                        <label className="flex cursor-pointer items-center gap-2 text-sm">
+                          <input
+                            type="checkbox"
+                            checked={editSelected.includes(a.id)}
+                            onChange={() => toggleEditStudent(a.id)}
+                          />
+                          <span>
+                            {a.name}{" "}
+                            <span className="font-mono text-xs text-muted">{a.studentNumber}</span>
+                          </span>
+                        </label>
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="submit"
+                      disabled={busy || !editName.trim()}
+                      className="rounded-lg bg-accent px-3 py-1.5 text-sm font-semibold text-background disabled:opacity-50"
+                    >
+                      {busy ? "Saving…" : "Save changes"}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => setEditingId(null)}
+                      className="rounded-lg border border-card-border px-3 py-1.5 text-sm text-muted"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </form>
+              </li>
+            ) : (
+              <li
+                key={sg.id}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-card-border px-3 py-2 text-sm"
+              >
+                <span>
+                  <span className="font-semibold">{sg.name}</span>
+                  <span className="ml-2 text-muted">{sg.memberIds.length} athletes</span>
+                </span>
+                <span className="flex gap-3">
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => startEdit(sg)}
+                    className="text-xs font-medium text-sky-300 hover:underline disabled:opacity-50"
+                  >
+                    Rename / edit
+                  </button>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => removeSubgroup(sg.id)}
+                    className="text-xs text-red-400 hover:underline disabled:opacity-50"
+                  >
+                    Delete
+                  </button>
+                </span>
+              </li>
+            )
+          )}
         </ul>
       )}
 

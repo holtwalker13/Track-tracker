@@ -14,11 +14,15 @@ import { ensureClassCoachRowsFromLead } from "@/lib/services/class-coaches";
 
 export default async function SchoolClassDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ edit?: string }>;
 }) {
   const session = await requireSchoolSession();
   const { id } = await params;
+  const sp = await searchParams;
+  const openClassEditor = sp.edit === "1" || sp.edit === "true";
   await ensureClassCoachRowsFromLead(session.schoolId);
 
   const [cls, coaches, profile] = await Promise.all([
@@ -110,18 +114,19 @@ export default async function SchoolClassDetailPage({
               {" · "}athletes can also be in other classes
             </p>
           </div>
-          {canEdit ? (
-            <ClassMetaEditor
-              classId={cls.id}
-              name={cls.name}
-              period={cls.period}
-              gradeLevel={cls.gradeLevel}
-              coachIds={assignedIds}
-              coaches={coachOptions}
-              canEditCoach={canEdit}
-            />
-          ) : null}
         </div>
+        {canEdit ? (
+          <ClassMetaEditor
+            classId={cls.id}
+            name={cls.name}
+            period={cls.period}
+            gradeLevel={cls.gradeLevel}
+            coachIds={assignedIds}
+            coaches={coachOptions}
+            canEditCoach={canEdit}
+            defaultEditing={openClassEditor}
+          />
+        ) : null}
       </div>
       <ClassRosterEditor
         classId={cls.id}

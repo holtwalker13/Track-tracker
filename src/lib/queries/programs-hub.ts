@@ -32,11 +32,6 @@ export function weekStartSunday(dateStr: string): string {
   return format(startOfWeek(d, { weekStartsOn: 0 }), "yyyy-MM-dd");
 }
 
-/** @deprecated use weekStartSunday */
-export function weekStartMonday(dateStr: string): string {
-  return weekStartSunday(dateStr);
-}
-
 export function dateRangeDays(startStr: string, dayCount: number): string[] {
   const start = parseISO(startStr);
   return Array.from({ length: dayCount }, (_, i) => format(addDays(start, i), "yyyy-MM-dd"));

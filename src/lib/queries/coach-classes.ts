@@ -17,7 +17,13 @@ export async function classesForCoachTesting(
   if (!profile) return [];
 
   return prisma.class.findMany({
-    where: { schoolId: session.schoolId, coachId: profile.id },
+    where: {
+      schoolId: session.schoolId,
+      OR: [
+        { coachId: profile.id },
+        { coachAssignments: { some: { coachId: profile.id } } },
+      ],
+    },
     orderBy: [{ period: "asc" }, { name: "asc" }],
     select: { id: true, name: true, period: true, programKind: true, coachId: true },
   });
@@ -63,7 +69,12 @@ export async function testingSessionsForCoachView(session: SessionPayload & { sc
   return prisma.testingSession.findMany({
     where: {
       schoolId: session.schoolId,
-      class: { coachId: profile.id },
+      class: {
+        OR: [
+          { coachId: profile.id },
+          { coachAssignments: { some: { coachId: profile.id } } },
+        ],
+      },
     },
     include: baseInclude,
     orderBy: { testingDate: "desc" },

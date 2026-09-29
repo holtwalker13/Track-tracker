@@ -14,6 +14,21 @@ export async function coachProfileForSession(
   return row;
 }
 
+async function classCoachIds(classId: string, schoolId: string) {
+  const cls = await prisma.class.findFirst({
+    where: { id: classId, schoolId },
+    select: {
+      coachId: true,
+      coachAssignments: { select: { coachId: true } },
+    },
+  });
+  if (!cls) return null;
+  const ids = new Set<string>();
+  if (cls.coachId) ids.add(cls.coachId);
+  for (const a of cls.coachAssignments) ids.add(a.coachId);
+  return ids;
+}
+
 export async function coachCanAdministerTestsForClass(
   session: SessionPayload & { schoolId?: string },
   classId: string
@@ -24,15 +39,12 @@ export async function coachCanAdministerTestsForClass(
   const profile = await coachProfileForSession(session);
   if (!profile) return false;
 
-  const cls = await prisma.class.findFirst({
-    where: { id: classId, schoolId: session.schoolId },
-    select: { coachId: true },
-  });
-  if (!cls) return false;
-  return cls.coachId === profile.id;
+  const ids = await classCoachIds(classId, session.schoolId);
+  if (!ids) return false;
+  return ids.has(profile.id);
 }
 
-/** Manage roster / metadata for a class (claim unassigned classes by setting coachId). */
+/** Manage roster / metadata for a class (claim unassigned classes by setting coach). */
 export async function coachCanManageClass(
   session: SessionPayload & { schoolId?: string },
   classId: string
@@ -43,20 +55,30 @@ export async function coachCanManageClass(
   const profile = await coachProfileForSession(session);
   if (!profile) return false;
 
-  const cls = await prisma.class.findFirst({
-    where: { id: classId, schoolId: session.schoolId },
-    select: { coachId: true },
-  });
-  if (!cls) return false;
-  if (cls.coachId == null) return true;
-  return cls.coachId === profile.id;
+  const ids = await classCoachIds(classId, session.schoolId);
+  if (!ids) return false;
+  if (ids.size === 0) return true;
+  return ids.has(profile.id);
 }
 
 export async function claimClassForCoach(classId: string, coachProfileId: string) {
-  return prisma.class.updateMany({
-    where: { id: classId, coachId: null },
-    data: { coachId: coachProfileId },
+  const cls = await prisma.class.findUnique({
+    where: { id: classId },
+    select: { coachId: true, _count: { select: { coachAssignments: true } } },
   });
+  if (!cls) return { count: 0 };
+  if (cls.coachId != null || cls._count.coachAssignments > 0) return { count: 0 };
+
+  await prisma.$transaction([
+    prisma.class.update({
+      where: { id: classId },
+      data: { coachId: coachProfileId },
+    }),
+    prisma.classCoach.create({
+      data: { classId, coachId: coachProfileId },
+    }),
+  ]);
+  return { count: 1 };
 }
 
 export async function coachCanAdministerTestingSession(

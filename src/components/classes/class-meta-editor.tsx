@@ -3,14 +3,15 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { GRADE_LEVELS, classYearShort } from "@/lib/grades";
-import { coachDisplayName, type ClassCoachOption } from "@/lib/coach-display";
+import type { ClassCoachOption } from "@/lib/coach-display";
+import { CoachTagPicker } from "@/components/classes/coach-tag-picker";
 
 export function ClassMetaEditor({
   classId,
   name,
   period,
   gradeLevel,
-  coachId,
+  coachIds: initialCoachIds,
   coaches,
   canEditCoach,
 }: {
@@ -18,7 +19,7 @@ export function ClassMetaEditor({
   name: string;
   period: string | null;
   gradeLevel: number | null;
-  coachId: string | null;
+  coachIds: string[];
   coaches: ClassCoachOption[];
   canEditCoach: boolean;
 }) {
@@ -26,6 +27,7 @@ export function ClassMetaEditor({
   const [editing, setEditing] = useState(false);
   const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [error, setError] = useState("");
+  const [coachIds, setCoachIds] = useState<string[]>(initialCoachIds);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -39,7 +41,7 @@ export function ClassMetaEditor({
         name: form.get("name"),
         period: form.get("period"),
         gradeLevel: form.get("gradeLevel"),
-        coachId: form.get("coachId") || null,
+        coachIds,
       }),
     });
     if (!res.ok) {
@@ -57,7 +59,10 @@ export function ClassMetaEditor({
     return (
       <button
         type="button"
-        onClick={() => setEditing(true)}
+        onClick={() => {
+          setCoachIds(initialCoachIds);
+          setEditing(true);
+        }}
         className="rounded-lg border border-card-border px-3 py-1.5 text-sm text-muted hover:text-foreground"
       >
         Edit class
@@ -66,7 +71,10 @@ export function ClassMetaEditor({
   }
 
   return (
-    <form onSubmit={onSubmit} className="mt-4 w-full rounded-xl border border-card-border bg-card p-4 sm:max-w-3xl">
+    <form
+      onSubmit={onSubmit}
+      className="mt-4 w-full rounded-xl border border-card-border bg-card p-4 sm:max-w-3xl"
+    >
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="text-sm sm:col-span-2">
           Name
@@ -101,22 +109,15 @@ export function ClassMetaEditor({
             ))}
           </select>
         </label>
-        <label className="text-sm sm:col-span-2">
-          Coach
-          <select
-            name="coachId"
-            defaultValue={coachId ?? ""}
+        <div className="text-sm sm:col-span-2">
+          <span className="mb-1 block">Coaches</span>
+          <CoachTagPicker
+            coaches={coaches}
+            value={coachIds}
+            onChange={setCoachIds}
             disabled={!canEditCoach}
-            className="mt-1 w-full rounded-lg border border-card-border bg-background px-3 py-2 disabled:opacity-50"
-          >
-            <option value="">Unassigned</option>
-            {coaches.map((c) => (
-              <option key={c.id} value={c.id}>
-                {coachDisplayName(c)}
-              </option>
-            ))}
-          </select>
-        </label>
+          />
+        </div>
       </div>
       {error && <p className="mt-2 text-sm text-red-400">{error}</p>}
       <div className="mt-3 flex gap-2">

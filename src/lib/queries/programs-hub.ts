@@ -59,7 +59,13 @@ export async function listClassesForCoach(
   coachProfileId: string
 ): Promise<ProgramsClassOption[]> {
   const rows = await prisma.class.findMany({
-    where: { schoolId, coachId: coachProfileId },
+    where: {
+      schoolId,
+      OR: [
+        { coachId: coachProfileId },
+        { coachAssignments: { some: { coachId: coachProfileId } } },
+      ],
+    },
     orderBy: [{ period: "asc" }, { name: "asc" }],
     select: { id: true, name: true, period: true, coachId: true },
   });

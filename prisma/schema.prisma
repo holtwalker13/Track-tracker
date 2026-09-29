@@ -151,9 +151,10 @@ model CoachProfile {
   activeKpiSetId String?
   activeKpiSet   KpiSet? @relation("CoachActiveKpiSet", fields: [activeKpiSetId], references: [id], onDelete: SetNull)
 
-  classes     Class[]
-  loginInvite CoachLoginInvite?
-  kpiSets     KpiSet[] @relation("CoachOwnedKpiSets")
+  classes          Class[] @relation("ClassLeadCoach")
+  classAssignments ClassCoach[]
+  loginInvite      CoachLoginInvite?
+  kpiSets          KpiSet[] @relation("CoachOwnedKpiSets")
 
   @@index([activeKpiSetId])
 }
@@ -297,17 +298,32 @@ model Class {
   id        String @id @default(cuid())
   schoolId  String
   school    School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  // Lead coach (first assigned); kept for legacy filters. Prefer coachAssignments.
   coachId   String?
-  coach     CoachProfile? @relation(fields: [coachId], references: [id])
+  coach     CoachProfile? @relation("ClassLeadCoach", fields: [coachId], references: [id])
   name      String
   period    String?
   gradeLevel Int?
   // SCHOLASTIC = in-school class; TRAINING = club/sport group (e.g. track outside period)
   programKind String?
 
-  enrollments ClassEnrollment[]
-  sessions    TestingSession[]
+  enrollments        ClassEnrollment[]
+  coachAssignments   ClassCoach[]
+  sessions           TestingSession[]
   workoutAssignments WorkoutAssignment[]
+}
+
+// Many coaches can be assigned to one class (tag-style).
+model ClassCoach {
+  id        String       @id @default(cuid())
+  classId   String
+  class     Class        @relation(fields: [classId], references: [id], onDelete: Cascade)
+  coachId   String
+  coach     CoachProfile @relation(fields: [coachId], references: [id], onDelete: Cascade)
+  createdAt DateTime     @default(now())
+
+  @@unique([classId, coachId])
+  @@index([coachId])
 }
 
 model ClassEnrollment {

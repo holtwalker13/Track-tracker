@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { GRADE_LEVELS, classYearShort } from "@/lib/grades";
-import { coachDisplayName, type ClassCoachOption } from "@/lib/coach-display";
+import type { ClassCoachOption } from "@/lib/coach-display";
+import { CoachTagPicker } from "@/components/classes/coach-tag-picker";
 
 export function CreateClassForm({
   surface = "card",
@@ -17,6 +18,9 @@ export function CreateClassForm({
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [coachIds, setCoachIds] = useState<string[]>(
+    defaultCoachId ? [defaultCoachId] : coaches[0] ? [coaches[0].id] : []
+  );
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -34,10 +38,9 @@ export function CreateClassForm({
     }
     const programKind =
       type === "training" ? "TRAINING" : type === "weights" || type === "pe" ? "SCHOLASTIC" : null;
-    const coachId = String(fd.get("coachId") ?? "").trim();
-    if (!coachId) {
+    if (coachIds.length === 0) {
       setPending(false);
-      setError("Assign a coach to this class");
+      setError("Assign at least one coach");
       return;
     }
     const res = await fetch("/api/classes", {
@@ -48,7 +51,7 @@ export function CreateClassForm({
         period,
         gradeLevel: fd.get("gradeLevel"),
         programKind,
-        coachId,
+        coachIds,
       }),
     });
     const data = await res.json();
@@ -97,27 +100,10 @@ export function CreateClassForm({
           className="mt-1 w-full rounded-lg border border-card-border bg-background px-3 py-2"
         />
       </label>
-      <label className="block text-sm">
-        Coach
-        <select
-          required
-          name="coachId"
-          defaultValue={defaultCoachId || coaches[0]?.id || ""}
-          className="mt-1 w-full rounded-lg border border-card-border bg-background px-3 py-2"
-        >
-          {coaches.length === 0 ? (
-            <option value="" disabled>
-              No coaches yet — add one under Coaches
-            </option>
-          ) : (
-            coaches.map((c) => (
-              <option key={c.id} value={c.id}>
-                {coachDisplayName(c)}
-              </option>
-            ))
-          )}
-        </select>
-      </label>
+      <div className="block text-sm">
+        <span className="mb-1 block">Coaches</span>
+        <CoachTagPicker coaches={coaches} value={coachIds} onChange={setCoachIds} />
+      </div>
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="block text-sm">
           Period (optional)
@@ -210,7 +196,7 @@ export function CreateWeightsPeriodsButton({
         body: JSON.stringify({
           name: `Period ${n} Weights`,
           period: `Period ${n}`,
-          ...(coachId ? { coachId } : {}),
+          ...(coachId ? { coachIds: [coachId] } : {}),
         }),
       });
       if (res.ok) created += 1;

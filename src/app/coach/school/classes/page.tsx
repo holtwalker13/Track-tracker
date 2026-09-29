@@ -5,16 +5,19 @@ import { prisma } from "@/lib/db";
 import { classYearLabel } from "@/lib/grades";
 import { ClassesPageActions } from "@/components/classes/classes-page-actions";
 import { ClassCoachInlineSelect } from "@/components/classes/class-coach-select";
+import { ensureClassCoachRowsFromLead } from "@/lib/services/class-coaches";
 
 export default async function SchoolClassesPage() {
   const session = await requireSchoolSession();
   const profile = await coachProfileForSession(session);
+  await ensureClassCoachRowsFromLead(session.schoolId);
 
   const [classes, school, coaches] = await Promise.all([
     prisma.class.findMany({
       where: { schoolId: session.schoolId },
       include: {
         _count: { select: { enrollments: true } },
+        coachAssignments: { select: { coachId: true } },
         coach: {
           select: {
             id: true,
@@ -49,8 +52,8 @@ export default async function SchoolClassesPage() {
   return (
     <>
       <p className="mb-6 max-w-3xl text-sm text-muted">
-        Create or import classes and training groups. Each class needs an assigned coach — live
-        testing and programs follow that coach’s groups.
+        Create or import classes and training groups. Assign one or more coaches to each class —
+        live testing and programs follow those coaches’ groups.
         {showJhsHelp
           ? " This JHS roster starts empty: add weightlifting periods, then upload a spreadsheet."
           : null}
@@ -58,10 +61,16 @@ export default async function SchoolClassesPage() {
       <ClassesPageActions coaches={coachOptions} defaultCoachId={defaultCoachId} />
       <ul className="mt-4 space-y-2">
         {classes.map((c) => {
+          const assignedIds = [
+            ...new Set([
+              ...c.coachAssignments.map((a) => a.coachId),
+              ...(c.coachId ? [c.coachId] : []),
+            ]),
+          ];
           const canEdit =
             session.role === "ADMIN" ||
-            c.coachId == null ||
-            (profile != null && c.coachId === profile.id);
+            assignedIds.length === 0 ||
+            (profile != null && assignedIds.includes(profile.id));
           return (
             <li key={c.id}>
               <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-card-border bg-card px-4 py-3">
@@ -84,7 +93,7 @@ export default async function SchoolClassesPage() {
                 </Link>
                 <ClassCoachInlineSelect
                   classId={c.id}
-                  coachId={c.coachId}
+                  coachIds={assignedIds}
                   coaches={coachOptions}
                   canEdit={canEdit}
                 />

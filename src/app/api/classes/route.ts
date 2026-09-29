@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { isClassYear } from "@/lib/grades";
+import { parseCoachIds, setClassCoaches } from "@/lib/services/class-coaches";
 
 export async function POST(request: Request) {
   const session = await requireSession(["COACH", "ADMIN"]);
@@ -24,40 +25,32 @@ export async function POST(request: Request) {
     select: { id: true },
   });
 
-  let coachId: string | null = null;
-  if (body.coachId !== undefined) {
-    const raw = body.coachId == null || body.coachId === "" ? null : String(body.coachId);
-    if (raw) {
-      const assigned = await prisma.coachProfile.findFirst({
-        where: { id: raw, schoolId: session.schoolId },
-        select: { id: true },
-      });
-      if (!assigned) {
-        return NextResponse.json({ error: "Coach not found at this school" }, { status: 400 });
-      }
-      coachId = assigned.id;
-    }
-  } else {
-    coachId = selfCoach?.id ?? null;
+  let coachIds = parseCoachIds(body);
+  if (coachIds === undefined) {
+    coachIds = selfCoach?.id ? [selfCoach.id] : [];
   }
 
-  if (!coachId) {
-    return NextResponse.json(
-      { error: "Assign a coach to this class" },
-      { status: 400 }
-    );
+  if (coachIds.length === 0) {
+    return NextResponse.json({ error: "Assign at least one coach to this class" }, { status: 400 });
   }
 
   const rec = await prisma.class.create({
     data: {
       schoolId: session.schoolId,
-      coachId,
       name,
       period,
       gradeLevel,
       programKind,
     },
   });
+
+  try {
+    await setClassCoaches(rec.id, session.schoolId, coachIds);
+  } catch (err) {
+    await prisma.class.delete({ where: { id: rec.id } }).catch(() => undefined);
+    const message = err instanceof Error ? err.message : "Could not assign coaches";
+    return NextResponse.json({ error: message }, { status: 400 });
+  }
 
   return NextResponse.json({ id: rec.id });
 }

@@ -8,6 +8,7 @@ import { listStudents } from "@/lib/queries/coach";
 import { ClassRosterEditor } from "@/components/classes/class-roster-editor";
 import { ClassMetaEditor } from "@/components/classes/class-meta-editor";
 import { coachDisplayName } from "@/lib/coach-display";
+import { ensureClassCoachRowsFromLead } from "@/lib/services/class-coaches";
 
 export default async function SchoolClassDetailPage({
   params,
@@ -16,12 +17,23 @@ export default async function SchoolClassDetailPage({
 }) {
   const session = await requireSchoolSession();
   const { id } = await params;
+  await ensureClassCoachRowsFromLead(session.schoolId);
 
   const [cls, coaches, profile] = await Promise.all([
     prisma.class.findFirst({
       where: { id, schoolId: session.schoolId },
       include: {
         enrollments: true,
+        coachAssignments: {
+          include: {
+            coach: {
+              select: {
+                id: true,
+                user: { select: { firstName: true, lastName: true } },
+              },
+            },
+          },
+        },
         coach: {
           select: {
             id: true,
@@ -48,17 +60,31 @@ export default async function SchoolClassDetailPage({
     firstName: c.user.firstName,
     lastName: c.user.lastName,
   }));
+
+  const assignedIds = [
+    ...new Set([
+      ...cls.coachAssignments.map((a) => a.coachId),
+      ...(cls.coachId ? [cls.coachId] : []),
+    ]),
+  ];
+
   const canEdit =
     session.role === "ADMIN" ||
-    cls.coachId == null ||
-    (profile != null && cls.coachId === profile.id);
+    assignedIds.length === 0 ||
+    (profile != null && assignedIds.includes(profile.id));
 
-  const coachLabel = cls.coach
-    ? coachDisplayName({
-        firstName: cls.coach.user.firstName,
-        lastName: cls.coach.user.lastName,
-      })
-    : "Unassigned";
+  const coachLabels = assignedIds
+    .map((cid) => {
+      const fromAssign = cls.coachAssignments.find((a) => a.coachId === cid)?.coach;
+      const c = fromAssign ?? (cls.coach?.id === cid ? cls.coach : null);
+      return c
+        ? coachDisplayName({
+            firstName: c.user.firstName,
+            lastName: c.user.lastName,
+          })
+        : null;
+    })
+    .filter(Boolean);
 
   return (
     <>
@@ -75,7 +101,7 @@ export default async function SchoolClassDetailPage({
               {cls.period ? `${cls.period} · ` : ""}
               {cls.gradeLevel ? classYearLabel(cls.gradeLevel) : "mixed classes"}
               {" · "}
-              Coach: {coachLabel}
+              Coaches: {coachLabels.length ? coachLabels.join(", ") : "Unassigned"}
               {" · "}athletes can also be in other classes
             </p>
           </div>
@@ -85,7 +111,7 @@ export default async function SchoolClassDetailPage({
               name={cls.name}
               period={cls.period}
               gradeLevel={cls.gradeLevel}
-              coachId={cls.coachId}
+              coachIds={assignedIds}
               coaches={coachOptions}
               canEditCoach={canEdit}
             />

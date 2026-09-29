@@ -3,6 +3,7 @@ import { requireSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { isClassYear } from "@/lib/grades";
 import { claimClassForCoach, coachCanManageClass, coachProfileForSession } from "@/lib/auth/coach-scope";
+import { parseCoachIds, setClassCoaches } from "@/lib/services/class-coaches";
 
 export async function PATCH(
   request: Request,
@@ -15,6 +16,7 @@ export async function PATCH(
   const { id } = await params;
   const cls = await prisma.class.findFirst({
     where: { id, schoolId: session.schoolId },
+    include: { _count: { select: { coachAssignments: true } } },
   });
   if (!cls) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
@@ -26,42 +28,28 @@ export async function PATCH(
   }
 
   const profile = await coachProfileForSession(session);
-  if (profile && cls.coachId == null) {
+  if (profile && cls.coachId == null && cls._count.coachAssignments === 0) {
     await claimClassForCoach(id, profile.id);
   }
 
   const body = await request.json();
+  const coachIds = parseCoachIds(body);
 
-  let coachId: string | null | undefined = undefined;
-  if (body.coachId !== undefined) {
-    const raw = body.coachId == null || body.coachId === "" ? null : String(body.coachId);
-    if (raw) {
-      const assigned = await prisma.coachProfile.findFirst({
-        where: { id: raw, schoolId: session.schoolId },
-        select: { id: true },
-      });
-      if (!assigned) {
-        return NextResponse.json({ error: "Coach not found at this school" }, { status: 400 });
-      }
-      coachId = assigned.id;
-    } else {
-      coachId = null;
-    }
-  }
-
-  const coachOnly =
+  const coachesOnly =
     body.name === undefined &&
     body.period === undefined &&
     body.gradeLevel === undefined &&
     body.programKind === undefined &&
-    body.coachId !== undefined;
+    coachIds !== undefined;
 
-  if (coachOnly) {
-    const updated = await prisma.class.update({
-      where: { id },
-      data: { coachId: coachId ?? null },
-    });
-    return NextResponse.json({ ok: true, class: updated });
+  if (coachesOnly) {
+    try {
+      const assigned = await setClassCoaches(id, session.schoolId, coachIds);
+      return NextResponse.json({ ok: true, coachIds: assigned });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Could not update coaches";
+      return NextResponse.json({ error: message }, { status: 400 });
+    }
   }
 
   const name = String(body.name ?? "").trim();
@@ -91,9 +79,17 @@ export async function PATCH(
       period,
       gradeLevel,
       ...(programKind !== undefined ? { programKind } : {}),
-      ...(coachId !== undefined ? { coachId } : {}),
     },
   });
+
+  if (coachIds !== undefined) {
+    try {
+      await setClassCoaches(id, session.schoolId, coachIds);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Could not update coaches";
+      return NextResponse.json({ error: message }, { status: 400 });
+    }
+  }
 
   return NextResponse.json({ ok: true, class: updated });
 }

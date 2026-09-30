@@ -191,7 +191,7 @@ export async function getStudentDynamicAccolades(studentId: string, schoolId: st
       return {
         slug: def.slug,
         name: def.name,
-        emoji: def.emoji,
+        category: def.category,
         description: def.description,
         periodType: h.periodType,
         scopeType: h.scopeType,
@@ -231,7 +231,7 @@ export async function getGamificationSummary(studentId: string) {
     recentAccolades: recentAccolades.map((a) => ({
       slug: a.accolade.slug,
       name: a.accolade.name,
-      emoji: a.accolade.emoji,
+      category: a.accolade.category,
       description: a.accolade.description,
       earnedAt: a.earnedAt,
       metadata: a.metadata,

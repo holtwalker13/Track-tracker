@@ -7,12 +7,19 @@ import { prisma } from "@/lib/db";
 import { SESSION_COOKIE, sessionCookieOptions } from "@/lib/auth/cookie";
 import { studentUsesBlockedSharedDemoPassword } from "@/lib/auth/demo-login-guard";
 import { signSessionToken } from "@/lib/auth/session";
+import { ADMIN_LOGIN, DEMO_CLASS_LOGIN, DEMO_PASSWORD } from "@/lib/tenants";
 
-export async function loginAction(formData: FormData) {
-  const email = String(formData.get("email") ?? "").toLowerCase().trim();
-  const password = String(formData.get("password") ?? "");
-  const nextRaw = String(formData.get("next") ?? "");
+type LoginUser = {
+  id: string;
+  role: string;
+  email: string;
+  passwordHash: string;
+  passwordSetAt: Date | null;
+  coachProfile: { schoolId: string } | null;
+  studentProfile: { id: string; schoolId: string } | null;
+};
 
+async function findUserByEmailOrStudentId(email: string): Promise<LoginUser | null> {
   let user = await prisma.user.findUnique({
     where: { email },
     include: { coachProfile: true, studentProfile: true },
@@ -26,18 +33,10 @@ export async function loginAction(formData: FormData) {
     if (profile?.user) user = profile.user;
   }
 
-  if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
-    redirect("/login?error=1");
-  }
+  return user;
+}
 
-  if (await studentUsesBlockedSharedDemoPassword(user)) {
-    redirect("/login?error=1");
-  }
-
-  if ((user.role === "STUDENT" || user.role === "COACH") && !user.passwordSetAt) {
-    redirect("/login?error=setup");
-  }
-
+async function establishSession(user: LoginUser, nextRaw: string) {
   const schoolId = user.coachProfile?.schoolId ?? user.studentProfile?.schoolId;
 
   const token = await signSessionToken({
@@ -60,4 +59,49 @@ export async function loginAction(formData: FormData) {
           : "/coach/school/roster";
 
   redirect(next);
+}
+
+async function authenticate(email: string, password: string, nextRaw: string) {
+  const user = await findUserByEmailOrStudentId(email);
+
+  if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
+    redirect("/login?error=1");
+  }
+
+  if (await studentUsesBlockedSharedDemoPassword(user)) {
+    redirect("/login?error=1");
+  }
+
+  if ((user.role === "STUDENT" || user.role === "COACH") && !user.passwordSetAt) {
+    redirect("/login?error=setup");
+  }
+
+  await establishSession(user, nextRaw);
+}
+
+export async function loginAction(formData: FormData) {
+  const email = String(formData.get("email") ?? "").toLowerCase().trim();
+  const password = String(formData.get("password") ?? "");
+  const nextRaw = String(formData.get("next") ?? "");
+  await authenticate(email, password, nextRaw);
+}
+
+/** One-click demo access from the login footer (password always DEMO_PASSWORD). */
+export async function demoQuickLoginAction(formData: FormData) {
+  const role = String(formData.get("role") ?? "");
+  const nextRaw = String(formData.get("next") ?? "");
+
+  const email =
+    role === "admin"
+      ? ADMIN_LOGIN.email
+      : role === "demo-student"
+        ? DEMO_CLASS_LOGIN.email
+        : null;
+
+  if (!email) {
+    redirect("/login?error=1");
+  }
+
+  const password = process.env.DEMO_PASSWORD || DEMO_PASSWORD;
+  await authenticate(email, password, nextRaw);
 }

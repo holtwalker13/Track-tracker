@@ -11,17 +11,20 @@ function LoginForm({ error, next }: { error?: string; next?: string }) {
           <p className="text-xs uppercase tracking-widest text-accent">Measure → Compare → Improve</p>
           <h1 className="mt-2 text-2xl font-bold">Athletic Performance Platform</h1>
           <p className="mt-1 text-sm text-muted">
-            Sign in with your school email and password. Students and coaches use the invite link from
-            their coach or admin to set a password first.
+            Students sign in with the username from your coach (usually first initial, last name, and
+            graduating year, like{" "}
+            <span className="font-mono text-foreground/90">jsmith2028</span>). Coaches use their school
+            email. Use your setup link once to choose a password.
           </p>
 
           <form action={loginAction} className="mt-6 space-y-4">
             {next ? <input type="hidden" name="next" value={next} /> : null}
             <label className="block text-sm">
-              Email or student ID
+              Username or email
               <input
                 name="email"
-                className="mt-1 w-full rounded-lg border border-card-border bg-background px-3 py-3"
+                placeholder="jsmith2028"
+                className="mt-1 w-full rounded-lg border border-card-border bg-background px-3 py-3 font-mono"
                 autoComplete="username"
               />
             </label>

@@ -42,7 +42,7 @@ export async function resolveDemoStudentUser() {
       where: { slug: tenant.slug },
       select: { id: true, slug: true },
     });
-    if (!school) continue;
+    if (!school?.slug) continue;
 
     const email = await firstStudentLoginEmailForSchool(school.id, school.slug);
     if (!email) continue;

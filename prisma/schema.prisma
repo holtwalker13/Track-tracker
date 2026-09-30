@@ -240,6 +240,8 @@ model StudentProfile {
   schoolId      String
   school        School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   studentNumber String
+  // Sign-in handle: first initial + last name + grad year (e.g. jsmith2028).
+  username      String?
   firstName     String
   lastName      String
   dateOfBirth   DateTime
@@ -269,6 +271,7 @@ model StudentProfile {
   loginInvite        StudentLoginInvite?
 
   @@unique([schoolId, studentNumber])
+  @@unique([schoolId, username])
   @@index([schoolId])
   @@index([anonymousId])
 }

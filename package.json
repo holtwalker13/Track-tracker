@@ -15,6 +15,7 @@
     "db:ensure-demo-class": "tsx scripts/ensure-demo-class-login.ts",
     "db:sync-password": "tsx scripts/sync-demo-password.ts",
     "db:migrate-tenants": "tsx scripts/migrate-tenants.ts",
+    "db:login-audit": "tsx scripts/db-login-audit.ts",
     "postinstall": "prisma generate"
   },
   "prisma": {

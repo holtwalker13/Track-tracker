@@ -3,40 +3,14 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import bcrypt from "bcryptjs";
-import { prisma } from "@/lib/db";
 import { SESSION_COOKIE, sessionCookieOptions } from "@/lib/auth/cookie";
+import { findUserByCredential, type CredentialUser } from "@/lib/auth/credentials-login";
 import { studentUsesBlockedSharedDemoPassword } from "@/lib/auth/demo-login-guard";
 import { signSessionToken } from "@/lib/auth/session";
-import { ADMIN_LOGIN, DEMO_CLASS_LOGIN, DEMO_PASSWORD } from "@/lib/tenants";
 
-type LoginUser = {
-  id: string;
-  role: string;
-  email: string;
-  passwordHash: string;
-  passwordSetAt: Date | null;
-  coachProfile: { schoolId: string } | null;
-  studentProfile: { id: string; schoolId: string } | null;
-};
+export type LoginUser = CredentialUser;
 
-async function findUserByEmailOrStudentId(email: string): Promise<LoginUser | null> {
-  let user = await prisma.user.findUnique({
-    where: { email },
-    include: { coachProfile: true, studentProfile: true },
-  });
-
-  if (!user && !email.includes("@")) {
-    const profile = await prisma.studentProfile.findFirst({
-      where: { studentNumber: email.toUpperCase() },
-      include: { user: { include: { coachProfile: true, studentProfile: true } } },
-    });
-    if (profile?.user) user = profile.user;
-  }
-
-  return user;
-}
-
-async function establishSession(user: LoginUser, nextRaw: string) {
+export async function establishSessionFromUser(user: LoginUser, nextRaw: string) {
   const schoolId = user.coachProfile?.schoolId ?? user.studentProfile?.schoolId;
 
   const token = await signSessionToken({
@@ -61,8 +35,8 @@ async function establishSession(user: LoginUser, nextRaw: string) {
   redirect(next);
 }
 
-async function authenticate(email: string, password: string, nextRaw: string) {
-  const user = await findUserByEmailOrStudentId(email);
+async function authenticate(credential: string, password: string, nextRaw: string) {
+  const user = await findUserByCredential(credential);
 
   if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
     redirect("/login?error=1");
@@ -76,32 +50,12 @@ async function authenticate(email: string, password: string, nextRaw: string) {
     redirect("/login?error=setup");
   }
 
-  await establishSession(user, nextRaw);
+  await establishSessionFromUser(user, nextRaw);
 }
 
 export async function loginAction(formData: FormData) {
-  const email = String(formData.get("email") ?? "").toLowerCase().trim();
-  const password = String(formData.get("password") ?? "");
+  const credential = String(formData.get("email") ?? "").trim();
+  const password = String(formData.get("password") ?? "").trim();
   const nextRaw = String(formData.get("next") ?? "");
-  await authenticate(email, password, nextRaw);
-}
-
-/** One-click demo access from the login footer (password always DEMO_PASSWORD). */
-export async function demoQuickLoginAction(formData: FormData) {
-  const role = String(formData.get("role") ?? "");
-  const nextRaw = String(formData.get("next") ?? "");
-
-  const email =
-    role === "admin"
-      ? ADMIN_LOGIN.email
-      : role === "demo-student"
-        ? DEMO_CLASS_LOGIN.email
-        : null;
-
-  if (!email) {
-    redirect("/login?error=1");
-  }
-
-  const password = process.env.DEMO_PASSWORD || DEMO_PASSWORD;
-  await authenticate(email, password, nextRaw);
+  await authenticate(credential, password, nextRaw);
 }

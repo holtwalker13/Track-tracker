@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { cookies } from "next/headers";
-import { prisma } from "@/lib/db";
+import { findUserByCredential } from "@/lib/auth/credentials-login";
 import { SESSION_COOKIE, sessionCookieOptions, relativeRedirect } from "@/lib/auth/cookie";
 import { studentUsesBlockedSharedDemoPassword } from "@/lib/auth/demo-login-guard";
 import { signSessionToken } from "@/lib/auth/session";
@@ -15,15 +15,15 @@ async function readCredentials(request: Request): Promise<{
   if (contentType.includes("application/json")) {
     const body = await request.json();
     return {
-      email: String(body.email ?? "").toLowerCase().trim(),
-      password: String(body.password ?? ""),
+      email: String(body.email ?? "").trim(),
+      password: String(body.password ?? "").trim(),
       next: body.next ? String(body.next) : undefined,
     };
   }
   const form = await request.formData();
   return {
-    email: String(form.get("email") ?? "").toLowerCase().trim(),
-    password: String(form.get("password") ?? ""),
+    email: String(form.get("email") ?? "").trim(),
+    password: String(form.get("password") ?? "").trim(),
     next: form.get("next") ? String(form.get("next")) : undefined,
   };
 }
@@ -38,26 +38,10 @@ function safeNext(next: string | undefined, role: string): string {
 }
 
 export async function POST(request: Request) {
-  const { email, password, next } = await readCredentials(request);
+  const { email: credential, password, next } = await readCredentials(request);
   const wantsJson = (request.headers.get("content-type") ?? "").includes("application/json");
 
-  let user = await prisma.user.findUnique({
-    where: { email },
-    include: { coachProfile: true, studentProfile: true },
-  });
-
-  if (!user && !email.includes("@")) {
-    const profile = await prisma.studentProfile.findFirst({
-      where: { studentNumber: email.toUpperCase() },
-      include: {
-        user: { include: { coachProfile: true, studentProfile: true } },
-        school: { select: { slug: true } },
-      },
-    });
-    if (profile?.user) {
-      user = profile.user;
-    }
-  }
+  const user = await findUserByCredential(credential);
 
   if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
     if (wantsJson) {
@@ -96,7 +80,6 @@ export async function POST(request: Request) {
     studentId: user.studentProfile?.id,
   });
 
-  // Set on the cookie store AND the response so the browser always receives Set-Cookie.
   const opts = sessionCookieOptions();
   const jar = await cookies();
   jar.set(SESSION_COOKIE, token, opts);

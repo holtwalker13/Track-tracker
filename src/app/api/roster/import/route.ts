@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { headerIndex, parseCsv } from "@/lib/csv";
 import { DEFAULT_CLASS_YEAR, isClassYear } from "@/lib/grades";
 import { genderFromFirstName } from "@/lib/gender";
+import { buildStudentUsernameBase, pickUniqueUsername } from "@/lib/services/student-username";
 
 function parseGender(raw: string | undefined, firstName: string, index: number): "M" | "F" {
   const v = (raw ?? "").trim().toLowerCase();
@@ -145,10 +146,13 @@ export async function POST(request: Request) {
         nextNum += 1;
         studentNumber = `S${String(nextNum).padStart(4, "0")}`;
       }
+      const usernameBase = buildStudentUsernameBase(first, last, classYear);
+      const username = await pickUniqueUsername(session.schoolId, usernameBase);
       student = await prisma.studentProfile.create({
         data: {
           schoolId: session.schoolId,
           studentNumber,
+          username,
           firstName: first,
           lastName: last,
           dateOfBirth: new Date(2010, 0, 1),

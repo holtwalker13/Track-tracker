@@ -1,20 +1,40 @@
 /**
- * Always run on boot so Railway picks up password changes without a full reseed.
+ * Reset shared demo/sandbox passwords on boot — never overwrite student-chosen passwords.
  */
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import { ADMIN_LOGIN, DEMO_CLASS_LOGIN, DEMO_PASSWORD } from "../src/lib/tenants";
 
 const prisma = new PrismaClient();
-const DEMO_PASSWORD = process.env.DEMO_PASSWORD || "rekcart";
+const PASSWORD = process.env.DEMO_PASSWORD || DEMO_PASSWORD;
 
 async function main() {
-  const hash = await bcrypt.hash(DEMO_PASSWORD, 10);
-  const result = await prisma.user.updateMany({ data: { passwordHash: hash } });
-  console.log(`Demo password set to "${DEMO_PASSWORD}" for ${result.count} user(s).`);
-  console.log("Demo coach: coach1@demo.local / " + DEMO_PASSWORD);
-  console.log("JHS coach: coach1@jhs.demo / " + DEMO_PASSWORD);
-  console.log("CHS coach: coach1@chs.demo / " + DEMO_PASSWORD);
-  console.log("Admin: admin@track-tracker.demo / " + DEMO_PASSWORD);
+  const hash = await bcrypt.hash(PASSWORD, 10);
+  const coachDomains = ["demo.local", "jhs.demo", "chs.demo"];
+
+  const result = await prisma.user.updateMany({
+    where: {
+      // Never overwrite a password someone set via invite / reset link.
+      passwordSetAt: null,
+      OR: [
+        { email: ADMIN_LOGIN.email },
+        { email: DEMO_CLASS_LOGIN.email },
+        {
+          role: "COACH",
+          OR: coachDomains.map((domain) => ({ email: { endsWith: `@${domain}` } })),
+        },
+        {
+          role: "STUDENT",
+          OR: coachDomains.map((domain) => ({ email: { endsWith: `@${domain}` } })),
+        },
+      ],
+    },
+    data: { passwordHash: hash },
+  });
+
+  console.log(
+    `Demo password "${PASSWORD}" applied to ${result.count} sandbox account(s). Skipped students with passwords already set.`
+  );
 }
 
 main()

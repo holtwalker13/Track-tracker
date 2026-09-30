@@ -46,6 +46,7 @@ export default async function SchoolRosterPage({
         (a) =>
           a.fullName.toLowerCase().includes(q) ||
           a.studentNumber.toLowerCase().includes(q) ||
+          (a.username ?? a.usernameHint).toLowerCase().includes(q) ||
           (a.sports ?? "").toLowerCase().includes(q) ||
           (a.className ?? "").toLowerCase().includes(q)
       )

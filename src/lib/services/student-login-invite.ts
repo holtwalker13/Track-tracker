@@ -1,6 +1,7 @@
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/db";
 import { studentEmailDomainForSchoolSlug } from "@/lib/services/student-login";
+import { ensureStudentUsername } from "@/lib/services/student-username";
 import {
   generateInviteToken,
   hashInviteToken,
@@ -101,9 +102,13 @@ export async function previewStudentLoginInvite(token: string): Promise<StudentI
   const expired = invite.expiresAt.getTime() < Date.now();
   const purpose: StudentInvitePurpose = alreadyActive ? "RESET" : "SETUP";
 
+  const username =
+    student.username ??
+    (await ensureStudentUsername(student.id).catch(() => student.studentNumber));
+
   return {
     fullName: `${student.firstName} ${student.lastName}`,
-    username: student.studentNumber,
+    username,
     schoolName: student.school.name,
     purpose,
     alreadyActive,
@@ -117,7 +122,7 @@ export async function completeStudentLoginInvite(input: {
   password: string;
   confirmName: boolean;
 }): Promise<
-  | { ok: true; email: string; userId: string; studentId: string; schoolId: string }
+  | { ok: true; email: string; username: string; userId: string; studentId: string; schoolId: string }
   | { ok: false; error: string }
 > {
   if (!input.confirmName) {
@@ -204,6 +209,26 @@ export async function completeStudentLoginInvite(input: {
       data: { usedAt: now },
     });
 
+    if (!student.username) {
+      const classYearRow = await tx.studentEnrollment.findFirst({
+        where: { studentId: student.id, schoolYear: { isCurrent: true } },
+        select: { gradeLevel: true },
+      });
+      const { buildStudentUsernameBase, pickUniqueUsername } = await import(
+        "@/lib/services/student-username"
+      );
+      const base = buildStudentUsernameBase(
+        student.firstName,
+        student.lastName,
+        classYearRow?.gradeLevel ?? 2028
+      );
+      const username = await pickUniqueUsername(student.schoolId, base, student.id);
+      await tx.studentProfile.update({
+        where: { id: student.id },
+        data: { username },
+      });
+    }
+
     return tx.user.findUniqueOrThrow({ where: { id: linkedUserId! } });
   }).catch((err: unknown) => {
     if (err instanceof Error && err.message === "INVITE_UNAVAILABLE") return null;
@@ -214,9 +239,26 @@ export async function completeStudentLoginInvite(input: {
     return { ok: false, error: "This link is no longer valid. Ask your coach for a new one." };
   }
 
+  const username = await ensureStudentUsername(student.id).catch(async () => {
+    const row = await prisma.studentProfile.findUnique({
+      where: { id: student.id },
+      select: { username: true, studentNumber: true },
+    });
+    return row?.username ?? row?.studentNumber ?? student.studentNumber;
+  });
+
+  const saved = await prisma.user.findUnique({
+    where: { id: user.id },
+    select: { passwordSetAt: true, passwordHash: true },
+  });
+  if (!saved?.passwordSetAt) {
+    return { ok: false, error: "Password could not be saved. Ask your coach for a new link and try again." };
+  }
+
   return {
     ok: true,
     email: user.email,
+    username,
     userId: user.id,
     studentId: student.id,
     schoolId: student.schoolId,

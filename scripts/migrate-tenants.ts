@@ -1,14 +1,12 @@
 /**
- * Railway keeps existing Postgres across deploys. The login tiles point at
- * coach1@jhs.demo, which on older databases is still the real JHS roster.
- *
- * This runs on every boot: anonymize remaining real names, move that populated
- * school to Demo, and ensure empty JHS + CHS + app admin exist.
+ * Railway keeps existing Postgres across deploys. Ensures tenant schools exist
+ * without rewriting live JHS/CHS rosters or student-chosen passwords.
  */
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { ALL_KPI_BANDS, KPI_METRIC_META } from "../src/lib/kpi-targets";
 import { DEFAULT_AGE_BRACKET } from "../src/lib/age-brackets";
+import { backfillAllStudentUsernames } from "../src/lib/services/student-username";
 import { ADMIN_LOGIN, DEMO_PASSWORD, TENANTS } from "../src/lib/tenants";
 import { isSyntheticName, syntheticName } from "../src/lib/synthetic-names";
 
@@ -20,7 +18,7 @@ const SCHOOL_YEAR = {
   endDate: new Date("2026-06-05"),
 };
 
-async function anonymizeSchool(schoolId: string): Promise<number> {
+async function anonymizeDemoSchoolOnly(schoolId: string): Promise<number> {
   const students = await prisma.studentProfile.findMany({
     where: { schoolId },
     orderBy: [{ gender: "asc" }, { createdAt: "asc" }, { studentNumber: "asc" }],
@@ -130,6 +128,7 @@ async function ensureCoaches(schoolId: string, emailDomain: string, hash: string
           role: "COACH",
           firstName: first,
           lastName: "Coach",
+          passwordSetAt: new Date(),
           coachProfile: { create: { schoolId } },
         },
         include: { coachProfile: true },
@@ -208,18 +207,27 @@ async function main() {
     return;
   }
 
-  for (const school of schools) {
-    const n = await anonymizeSchool(school.id);
+  const demoSchool = schools.find((s) => s.slug === "demo");
+  if (demoSchool) {
+    const n = await anonymizeDemoSchoolOnly(demoSchool.id);
     if (n > 0) {
-      console.log(`Anonymized ${n} student name(s) at ${school.name}.`);
+      console.log(`Anonymized ${n} student name(s) on Demo High School only.`);
     }
+    await hideSomeDemoNames(demoSchool.id);
   }
 
   const populated = [...schools].sort(
     (a, b) => b._count.studentProfiles - a._count.studentProfiles
   )[0]!;
 
-  if (populated._count.studentProfiles > 20 && populated.slug !== "demo") {
+  const liveSlugs = new Set(["jhs", "chs"]);
+  const populatedIsLive = populated.slug != null && liveSlugs.has(populated.slug);
+
+  if (
+    populated._count.studentProfiles > 20 &&
+    populated.slug !== "demo" &&
+    !populatedIsLive
+  ) {
     const existingDemo = await prisma.school.findFirst({ where: { slug: "demo" } });
     if (!existingDemo) {
       await prisma.school.update({
@@ -232,7 +240,7 @@ async function main() {
     } else {
       await retargetEmails(populated.id, "jhs.demo", "demo.local");
     }
-  } else if (populated.slug === "demo" || populated._count.studentProfiles > 20) {
+  } else if (populated.slug === "demo") {
     await retargetEmails(populated.id, "jhs.demo", "demo.local");
   }
 
@@ -267,9 +275,11 @@ async function main() {
     console.log(`Created app admin ${ADMIN_LOGIN.email}`);
   }
 
-  await hideSomeDemoNames(populated.id);
+  const usernames = await backfillAllStudentUsernames();
+  if (usernames > 0) {
+    console.log(`Assigned usernames for ${usernames} student profile(s).`);
+  }
 
-  // Cohort class names used to match graduating-class labels ("Class of 2026").
   const cohortClasses = await prisma.class.findMany({
     where: { name: { startsWith: "Class of " } },
     select: { id: true, name: true },
@@ -287,8 +297,8 @@ async function main() {
     where: { slug: "jhs" },
     include: { _count: { select: { studentProfiles: true } } },
   });
-  if (jhs && jhs._count.studentProfiles > 0 && jhs.id !== populated.id) {
-    console.log(`JHS has ${jhs._count.studentProfiles} student(s) (live roster).`);
+  if (jhs && jhs._count.studentProfiles > 0) {
+    console.log(`JHS has ${jhs._count.studentProfiles} student(s) (live roster — names preserved).`);
   } else if (jhs) {
     console.log("JHS is empty and ready for a spreadsheet upload.");
   }

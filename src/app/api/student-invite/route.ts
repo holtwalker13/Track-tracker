@@ -62,6 +62,7 @@ export async function POST(request: Request) {
   const res = NextResponse.json({
     ok: true,
     email: result.email,
+    username: result.username,
     redirect: "/student",
   });
   res.cookies.set(SESSION_COOKIE, sessionToken, opts);

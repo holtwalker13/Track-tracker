@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { requireSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { isClassYear } from "@/lib/grades";
-
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -25,6 +24,7 @@ export async function PATCH(
     firstName?: string;
     lastName?: string;
     nameHidden?: boolean;
+    username?: string | null;
   } = {};
 
   if ("sports" in body) {
@@ -40,6 +40,25 @@ export async function PATCH(
   }
   if (body.firstName) data.firstName = String(body.firstName).trim();
   if (body.lastName) data.lastName = String(body.lastName).trim();
+  if ("username" in body) {
+    const raw = body.username == null ? "" : String(body.username).trim().toLowerCase();
+    if (!raw) {
+      return NextResponse.json({ error: "Username cannot be empty" }, { status: 400 });
+    }
+    if (!/^[a-z0-9]{3,32}$/.test(raw)) {
+      return NextResponse.json(
+        { error: "Username must be 3–32 letters or numbers (no spaces)" },
+        { status: 400 }
+      );
+    }
+    const taken = await prisma.studentProfile.findFirst({
+      where: { schoolId: session.schoolId, username: raw, id: { not: id } },
+    });
+    if (taken) {
+      return NextResponse.json({ error: "Username already in use at this school" }, { status: 409 });
+    }
+    data.username = raw;
+  }
 
   await prisma.studentProfile.update({ where: { id }, data });
 

@@ -559,10 +559,8 @@ async function main() {
 
   const existingUsers = await prisma.user.count();
   if (existingUsers > 0 && process.env.FORCE_SEED !== "1") {
-    const hash = await bcrypt.hash(DEMO_PASSWORD, 10);
-    await prisma.user.updateMany({ data: { passwordHash: hash } });
     console.log(
-      `Skipping full seed (${existingUsers} users). Passwords updated to "${DEMO_PASSWORD}". Set FORCE_SEED=1 to wipe and reload Demo / JHS / CHS.`
+      `Skipping full seed (${existingUsers} users). Set FORCE_SEED=1 to wipe and reload Demo / JHS / CHS.`
     );
     return;
   }

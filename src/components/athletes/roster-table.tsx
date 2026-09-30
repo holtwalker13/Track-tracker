@@ -6,12 +6,14 @@ import { useRouter } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
 import { ROSTER_COLUMNS, type RosterAthlete } from "@/lib/queries/roster";
 import { StudentLoginLinkButton } from "@/components/athletes/student-login-link-button";
+import { RosterUsernameField } from "@/components/athletes/roster-username-field";
 import { classYearShort } from "@/lib/grades";
 import { cn } from "@/lib/utils";
 
 type SortKey =
   | "name"
   | "studentNumber"
+  | "username"
   | "classYear"
   | "classPeriod"
   | "sports"
@@ -48,7 +50,7 @@ export function RosterTable({
       return;
     }
     setSortKey(key);
-    setSortDir(key === "name" || key === "studentNumber" ? "asc" : "desc");
+    setSortDir(key === "name" || key === "studentNumber" || key === "username" ? "asc" : "desc");
   }
 
   const sorted = useMemo(() => {
@@ -78,7 +80,9 @@ export function RosterTable({
           ? a.fullName
           : sortKey === "studentNumber"
             ? a.studentNumber
-            : sortKey === "classYear"
+            : sortKey === "username"
+              ? a.username ?? a.usernameHint
+              : sortKey === "classYear"
               ? String(a.classYear ?? "")
               : sortKey === "classPeriod"
                 ? `${a.classPeriod ?? ""} ${a.className ?? ""}`
@@ -92,7 +96,9 @@ export function RosterTable({
           ? b.fullName
           : sortKey === "studentNumber"
             ? b.studentNumber
-            : sortKey === "classYear"
+            : sortKey === "username"
+              ? b.username ?? b.usernameHint
+              : sortKey === "classYear"
               ? String(b.classYear ?? "")
               : sortKey === "classPeriod"
                 ? `${b.classPeriod ?? ""} ${b.className ?? ""}`
@@ -222,6 +228,7 @@ export function RosterTable({
             </th>
             <Header label="Visible" sortId="nameHidden" />
             <Header label="Login" sortId="loginStatus" />
+            <Header label="Username" sortId="username" />
             <Header label="ID" sortId="studentNumber" />
             {showClass && <Header label="Year" sortId="classYear" />}
             <Header label="Hour / Class" sortId="classPeriod" />
@@ -278,6 +285,13 @@ export function RosterTable({
                     loginStatus={a.loginStatus}
                   />
                 </td>
+                <td className="px-3 py-2">
+                  <RosterUsernameField
+                    studentId={a.studentId}
+                    username={a.username}
+                    usernameHint={a.usernameHint}
+                  />
+                </td>
                 <td className="px-3 py-2 font-mono text-xs tabular-nums text-muted">{a.studentNumber}</td>
                 {showClass && (
                   <td className="px-3 py-2 tabular-nums text-muted">
@@ -321,7 +335,8 @@ export function RosterTable({
       </table>
       <p className="border-t border-card-border px-3 py-2 text-xs text-muted">
         {athletes.length} athlete{athletes.length === 1 ? "" : "s"} · copy/link + QR = student setup or password
-        reset · eye = visible to other students · slashed eye = name hidden on student leaderboards
+        reset · username = sign-in handle (e.g. first initial + last name + grad year) · eye = visible to
+        other students · slashed eye = name hidden on student leaderboards
       </p>
     </div>
   );

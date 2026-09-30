@@ -27,6 +27,10 @@ import { getRankedKpiSlugsForSchool } from "@/lib/services/kpi-sets";
 import { leaderboardHighlightFromSearch } from "@/lib/leaderboard-link";
 import { ageBracketForClassYear, isAgeBracketId } from "@/lib/age-brackets";
 import { GamificationSummaryCard } from "@/components/gamification/gamification-summary-card";
+import { AccoladeIcon } from "@/components/gamification/accolade-icon";
+import type { AccoladeCategory } from "@/lib/gamification/accolade-definitions";
+import { themeForAccoladeCategory } from "@/lib/gamification/accolade-theme";
+import { cn } from "@/lib/utils";
 import { getAccoladeProgressForStudent } from "@/lib/gamification/engine";
 import {
   getGamificationSummary,
@@ -85,7 +89,7 @@ export default async function StudentDashboardPage({
     .map((a) => ({
       slug: a.slug,
       name: a.name,
-      emoji: a.emoji,
+      category: a.category,
       progressCurrent: a.progressCurrent!,
       progressTarget: a.progressTarget!,
       progressLabel: a.progressLabel ?? "",
@@ -168,19 +172,23 @@ export default async function StudentDashboardPage({
       />
 
       {dynamicAccolades.length > 0 && (
-        <Card className="mt-6">
-          <CardTitle>Period leaders</CardTitle>
-          <ul className="mt-4 space-y-2 text-sm">
-            {dynamicAccolades.map((d) =>
-              d ? (
-                <li key={d.slug} className="flex justify-between gap-2">
-                  <span>
-                    {d.emoji} {d.name}
+        <Card className="mt-6 border-sport-gold/30 bg-sport-gold/5">
+          <CardTitle className="text-sport-gold">Period leaders</CardTitle>
+          <ul className="mt-4 space-y-3 text-sm">
+            {dynamicAccolades.map((d) => {
+              if (!d) return null;
+              const cat = d.category as AccoladeCategory;
+              const theme = themeForAccoladeCategory(cat);
+              return (
+                <li key={d.slug} className="flex items-center justify-between gap-3">
+                  <span className="flex items-center gap-2">
+                    <AccoladeIcon slug={d.slug} category={cat} earned size="sm" />
+                    <span className={cn("font-semibold", theme.sectionAccent)}>{d.name}</span>
                   </span>
                   <span className="text-muted">{d.periodType.toLowerCase()}</span>
                 </li>
-              ) : null
-            )}
+              );
+            })}
           </ul>
         </Card>
       )}

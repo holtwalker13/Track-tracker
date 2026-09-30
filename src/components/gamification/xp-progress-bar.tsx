@@ -26,7 +26,7 @@ export function XpProgressBar({
         aria-valuemax={xpForNextLevel}
       >
         <div
-          className="h-full rounded-full bg-accent transition-all"
+          className="h-full rounded-full bg-gradient-to-r from-accent-dim via-accent to-sport-gold transition-all"
           style={{ width: `${pct}%` }}
         />
       </div>

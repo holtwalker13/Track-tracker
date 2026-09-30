@@ -34,7 +34,7 @@ export type XpAwardLine = {
 export type AccoladeUnlockLine = {
   slug: string;
   name: string;
-  emoji: string;
+  category: string;
   description: string;
 };
 
@@ -248,7 +248,7 @@ export async function evaluateStaticAccolades(
       unlocked.push({
         slug: def.slug,
         name: def.name,
-        emoji: def.emoji,
+        category: def.category,
         description: def.description,
       });
     } catch (err: unknown) {

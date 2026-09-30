@@ -14,6 +14,8 @@ async function main() {
 
   const result = await prisma.user.updateMany({
     where: {
+      // Never overwrite a password someone set via invite / reset link.
+      passwordSetAt: null,
       OR: [
         { email: ADMIN_LOGIN.email },
         { email: DEMO_CLASS_LOGIN.email },
@@ -23,7 +25,6 @@ async function main() {
         },
         {
           role: "STUDENT",
-          passwordSetAt: null,
           OR: coachDomains.map((domain) => ({ email: { endsWith: `@${domain}` } })),
         },
       ],

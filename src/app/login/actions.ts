@@ -55,7 +55,7 @@ async function authenticate(credential: string, password: string, nextRaw: strin
 
 export async function loginAction(formData: FormData) {
   const credential = String(formData.get("email") ?? "").trim();
-  const password = String(formData.get("password") ?? "");
+  const password = String(formData.get("password") ?? "").trim();
   const nextRaw = String(formData.get("next") ?? "");
   await authenticate(credential, password, nextRaw);
 }

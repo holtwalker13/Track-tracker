@@ -16,14 +16,14 @@ async function readCredentials(request: Request): Promise<{
     const body = await request.json();
     return {
       email: String(body.email ?? "").trim(),
-      password: String(body.password ?? ""),
+      password: String(body.password ?? "").trim(),
       next: body.next ? String(body.next) : undefined,
     };
   }
   const form = await request.formData();
   return {
     email: String(form.get("email") ?? "").trim(),
-    password: String(form.get("password") ?? ""),
+    password: String(form.get("password") ?? "").trim(),
     next: form.get("next") ? String(form.get("next")) : undefined,
   };
 }

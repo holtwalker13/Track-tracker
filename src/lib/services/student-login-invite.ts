@@ -122,7 +122,7 @@ export async function completeStudentLoginInvite(input: {
   password: string;
   confirmName: boolean;
 }): Promise<
-  | { ok: true; email: string; userId: string; studentId: string; schoolId: string }
+  | { ok: true; email: string; username: string; userId: string; studentId: string; schoolId: string }
   | { ok: false; error: string }
 > {
   if (!input.confirmName) {
@@ -239,9 +239,26 @@ export async function completeStudentLoginInvite(input: {
     return { ok: false, error: "This link is no longer valid. Ask your coach for a new one." };
   }
 
+  const username = await ensureStudentUsername(student.id).catch(async () => {
+    const row = await prisma.studentProfile.findUnique({
+      where: { id: student.id },
+      select: { username: true, studentNumber: true },
+    });
+    return row?.username ?? row?.studentNumber ?? student.studentNumber;
+  });
+
+  const saved = await prisma.user.findUnique({
+    where: { id: user.id },
+    select: { passwordSetAt: true, passwordHash: true },
+  });
+  if (!saved?.passwordSetAt) {
+    return { ok: false, error: "Password could not be saved. Ask your coach for a new link and try again." };
+  }
+
   return {
     ok: true,
     email: user.email,
+    username,
     userId: user.id,
     studentId: student.id,
     schoolId: student.schoolId,

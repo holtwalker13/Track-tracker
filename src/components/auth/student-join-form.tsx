@@ -24,7 +24,9 @@ export function StudentJoinForm({ token }: { token: string }) {
   const [passwordConfirm, setPasswordConfirm] = useState("");
   const [confirmName, setConfirmName] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [createdEmail, setCreatedEmail] = useState<string | null>(null);
+  const [createdLogin, setCreatedLogin] = useState<{ username: string; email: string } | null>(
+    null
+  );
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -64,12 +66,15 @@ export function StudentJoinForm({ token }: { token: string }) {
         setError(data.error ?? "Could not create your account.");
         return;
       }
-      if (data.email) {
-        setCreatedEmail(String(data.email));
+      if (data.username || data.email) {
+        setCreatedLogin({
+          username: String(data.username ?? preview?.username ?? ""),
+          email: String(data.email ?? ""),
+        });
         window.setTimeout(() => {
           router.replace(data.redirect ?? "/student");
           router.refresh();
-        }, 3500);
+        }, 4500);
         return;
       }
       router.replace(data.redirect ?? "/student");
@@ -81,16 +86,24 @@ export function StudentJoinForm({ token }: { token: string }) {
     }
   }
 
-  if (createdEmail && preview) {
+  if (createdLogin && preview) {
+    const signInUsername = createdLogin.username || preview.username;
     return (
       <div className="flex min-h-screen items-center justify-center px-4 py-10">
         <Card className="w-full max-w-md p-6 text-center">
           <h1 className="text-xl font-bold">You&apos;re all set</h1>
           <p className="mt-2 text-sm text-muted">
-            Next time, sign in with your student ID <span className="font-mono font-semibold">{preview.username}</span>{" "}
-            or email <span className="font-mono text-xs">{createdEmail}</span>.
+            On this phone or a computer, open the sign-in page and use username{" "}
+            <span className="font-mono font-semibold text-foreground">{signInUsername}</span> with the
+            password you just chose.
           </p>
           <p className="mt-4 text-sm text-muted">Opening your dashboard…</p>
+          <a
+            href="/login"
+            className="mt-6 inline-block text-sm text-accent underline underline-offset-2"
+          >
+            Go to sign in on another device
+          </a>
         </Card>
       </div>
     );

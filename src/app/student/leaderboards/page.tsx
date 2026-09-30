@@ -15,6 +15,7 @@ import {
   parseLeaderboardPeriod,
   periodLabel,
 } from "@/lib/leaderboard-periods";
+import { XpLeaderboardCard } from "@/components/gamification/xp-leaderboard-card";
 
 export default async function StudentLeaderboardsPage({
   searchParams,
@@ -73,6 +74,7 @@ export default async function StudentLeaderboardsPage({
 
   return (
     <AppShell title="Leaderboards" nav={STUDENT_NAV}>
+      <XpLeaderboardCard schoolId={student.schoolId} studentId={session.studentId} />
       <LeaderboardToolbar classes={classTags} lockedGender={lockedGender} />
       <LeaderboardGrid
         boards={boards}

@@ -9,6 +9,7 @@ import { DEFAULT_AGE_BRACKET } from "../src/lib/age-brackets";
 import { parseCsv } from "../src/lib/csv";
 import { ADMIN_LOGIN, DEMO_PASSWORD, TENANTS } from "../src/lib/tenants";
 import { syntheticName } from "../src/lib/synthetic-names";
+import { ensureAccoladeDefinitions } from "../src/lib/gamification/seed-accolades";
 
 const prisma = new PrismaClient();
 
@@ -236,6 +237,11 @@ async function wipe() {
   await prisma.schoolKpiTarget.deleteMany();
   await prisma.schoolHiddenKpi.deleteMany();
   await prisma.performanceResult.deleteMany();
+  await prisma.dynamicAccoladeHolder.deleteMany();
+  await prisma.studentAccolade.deleteMany();
+  await prisma.xpTransaction.deleteMany();
+  await prisma.studentGamification.deleteMany();
+  await prisma.accoladeDefinition.deleteMany();
   await prisma.studentAchievement.deleteMany();
   await prisma.testingSessionStudent.deleteMany();
   await prisma.testingSessionActivity.deleteMany();
@@ -549,6 +555,8 @@ async function seedRoster(opts: {
 }
 
 async function main() {
+  await ensureAccoladeDefinitions();
+
   const existingUsers = await prisma.user.count();
   if (existingUsers > 0 && process.env.FORCE_SEED !== "1") {
     const hash = await bcrypt.hash(DEMO_PASSWORD, 10);

@@ -26,6 +26,14 @@ import { getStudentActivityRanks } from "@/lib/queries/coach";
 import { getRankedKpiSlugsForSchool } from "@/lib/services/kpi-sets";
 import { leaderboardHighlightFromSearch } from "@/lib/leaderboard-link";
 import { ageBracketForClassYear, isAgeBracketId } from "@/lib/age-brackets";
+import { GamificationSummaryCard } from "@/components/gamification/gamification-summary-card";
+import { getAccoladeProgressForStudent } from "@/lib/gamification/engine";
+import {
+  getGamificationSummary,
+  getStudentDynamicAccolades,
+  recomputeSchoolDynamicAccolades,
+} from "@/lib/gamification/dynamic-accolades";
+import { ensureAccoladeDefinitions } from "@/lib/gamification/seed-accolades";
 
 export default async function StudentDashboardPage({
   searchParams,
@@ -57,6 +65,34 @@ export default async function StudentDashboardPage({
   const bracket =
     sp.bracket && isAgeBracketId(sp.bracket) ? sp.bracket : defaultBracket;
 
+  const schoolId = student.schoolId;
+
+  await ensureAccoladeDefinitions();
+  await recomputeSchoolDynamicAccolades(schoolId, "SEMESTER").catch(() => undefined);
+
+  const gamification = await getGamificationSummary(studentId);
+  const accoladeProgress = await getAccoladeProgressForStudent(studentId);
+  const almostThere = accoladeProgress
+    .filter(
+      (a) =>
+        !a.earned &&
+        a.progressTarget != null &&
+        a.progressCurrent != null &&
+        a.progressTarget > a.progressCurrent &&
+        a.progressCurrent / a.progressTarget >= 0.5
+    )
+    .slice(0, 3)
+    .map((a) => ({
+      slug: a.slug,
+      name: a.name,
+      emoji: a.emoji,
+      progressCurrent: a.progressCurrent!,
+      progressTarget: a.progressTarget!,
+      progressLabel: a.progressLabel ?? "",
+    }));
+
+  const dynamicAccolades = await getStudentDynamicAccolades(studentId, schoolId);
+
   const scorecard = await getStudentScorecard(studentId, currentGrade);
   const radar = await getCategoryRadar(studentId, currentGrade);
   const classTags = await getStudentClassTags(studentId);
@@ -73,7 +109,6 @@ export default async function StudentDashboardPage({
     take: 4,
   });
 
-  const schoolId = student.schoolId;
   const ranks = await Promise.all(
     ["vertical-jump", "standing-broad-jump", "40-yard-dash"].map(async (slug) => {
       const lb = await getStudentLeaderboard(
@@ -119,6 +154,36 @@ export default async function StudentDashboardPage({
         meta={`${classYearLabel(currentGrade)} · ${genderFullLabel(student.gender)}`}
         seed={student.id}
       />
+
+      <GamificationSummaryCard
+        level={gamification.level}
+        xpIntoLevel={gamification.xpIntoLevel}
+        xpForNextLevel={gamification.xpForNextLevel}
+        lifetimeXp={gamification.lifetimeXp}
+        currentStreak={gamification.currentStreak}
+        prCount={gamification.prCount}
+        improvementPct={gamification.improvementPct}
+        recentAccolades={gamification.recentAccolades}
+        almostThere={almostThere}
+      />
+
+      {dynamicAccolades.length > 0 && (
+        <Card className="mt-6">
+          <CardTitle>Period leaders</CardTitle>
+          <ul className="mt-4 space-y-2 text-sm">
+            {dynamicAccolades.map((d) =>
+              d ? (
+                <li key={d.slug} className="flex justify-between gap-2">
+                  <span>
+                    {d.emoji} {d.name}
+                  </span>
+                  <span className="text-muted">{d.periodType.toLowerCase()}</span>
+                </li>
+              ) : null
+            )}
+          </ul>
+        </Card>
+      )}
 
       <div>
         <MedalScopeControls classes={classTags} defaultBracket={defaultBracket} />

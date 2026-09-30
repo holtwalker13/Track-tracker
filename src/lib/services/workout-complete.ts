@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { processWorkoutGamification } from "@/lib/gamification/engine";
 import { syncWorkoutSessionToPerformance } from "@/lib/services/workout-performance-sync";
 
 export async function validateWorkoutSessionComplete(sessionId: string): Promise<string | null> {
@@ -35,10 +36,19 @@ export async function markWorkoutSessionComplete(
   sessionId: string,
   options?: { enteredById?: string }
 ) {
+  const existing = await prisma.workoutSession.findUnique({
+    where: { id: sessionId },
+    select: { status: true },
+  });
+  const alreadyComplete = existing?.status === "COMPLETED";
+
   const updated = await prisma.workoutSession.update({
     where: { id: sessionId },
     data: { status: "COMPLETED", completedAt: new Date() },
   });
   await syncWorkoutSessionToPerformance(sessionId, options);
-  return updated;
+  const gamification = alreadyComplete
+    ? null
+    : await processWorkoutGamification(sessionId);
+  return { session: updated, gamification };
 }

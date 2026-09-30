@@ -11,6 +11,9 @@ import {
 import { ensureAccoladeDefinitions } from "@/lib/gamification/seed-accolades";
 import { prisma } from "@/lib/db";
 import { XP_REASON_LABELS, type XpReason } from "@/lib/gamification/xp";
+import { AccoladeProgressCard } from "@/components/gamification/accolade-progress-card";
+import { AccoladeCategoryHeading } from "@/components/gamification/accolade-category-heading";
+import { Sparkles } from "lucide-react";
 
 const CATEGORY_ORDER: AccoladeCategory[] = [
   "consistency",
@@ -46,14 +49,16 @@ export default async function StudentAccoladesPage() {
       </p>
 
       {xpHistory.length > 0 && (
-        <Card className="mt-6">
-          <CardTitle>XP history</CardTitle>
+        <Card className="mt-6 border-accent/30 bg-accent/5">
+          <CardTitle className="flex items-center gap-2 text-accent">
+            <Sparkles className="h-5 w-5" aria-hidden />
+            XP history
+          </CardTitle>
           <ul className="mt-4 space-y-2 text-sm">
             {xpHistory.map((tx) => (
               <li key={tx.id} className="flex justify-between gap-4">
-                <span>
-                  +{tx.amount} —{" "}
-                  {XP_REASON_LABELS[tx.reason as XpReason] ?? tx.reason}
+                <span className="font-medium text-sport-gold">
+                  +{tx.amount} — {XP_REASON_LABELS[tx.reason as XpReason] ?? tx.reason}
                 </span>
                 <span className="shrink-0 text-muted">
                   {tx.createdAt.toLocaleDateString()}
@@ -64,33 +69,24 @@ export default async function StudentAccoladesPage() {
         </Card>
       )}
 
-      <div className="mt-6 space-y-8">
+      <div className="mt-8 space-y-10">
         {byCategory.map((group) => (
           <section key={group.category}>
-            <h2 className="text-lg font-semibold">{group.label}</h2>
+            <AccoladeCategoryHeading category={group.category} label={group.label} />
             <div className="mt-4 grid gap-4 md:grid-cols-2">
               {group.items.map((item) => (
-                <Card
+                <AccoladeProgressCard
                   key={item.slug}
-                  className={item.earned ? "border-success/40" : "opacity-90"}
-                >
-                  <CardTitle className="flex items-center gap-2">
-                    <span>{item.emoji}</span>
-                    <span>{item.name}</span>
-                    {!item.earned && (
-                      <span className="ml-auto text-xs font-normal text-muted">Locked</span>
-                    )}
-                  </CardTitle>
-                  <p className="mt-2 text-sm text-muted">{item.description}</p>
-                  {item.earned && item.earnedAt && (
-                    <p className="mt-2 text-xs text-success">
-                      Earned {item.earnedAt.toLocaleDateString()}
-                    </p>
-                  )}
-                  {!item.earned && item.progressLabel && (
-                    <p className="mt-3 text-sm font-medium">{item.progressLabel}</p>
-                  )}
-                </Card>
+                  slug={item.slug}
+                  name={item.name}
+                  description={item.description}
+                  category={item.category}
+                  earned={item.earned}
+                  earnedAt={item.earnedAt}
+                  progressLabel={item.progressLabel}
+                  progressCurrent={item.progressCurrent}
+                  progressTarget={item.progressTarget}
+                />
               ))}
             </div>
           </section>

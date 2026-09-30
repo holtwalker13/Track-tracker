@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { isClassYear } from "@/lib/grades";
+import { buildStudentUsernameBase, pickUniqueUsername } from "@/lib/services/student-username";
 export async function POST(request: Request) {
   const session = await requireSession(["COACH", "ADMIN"]);
   if (!session?.schoolId) {
@@ -67,10 +68,16 @@ export async function POST(request: Request) {
     }
   }
 
+  const username = await pickUniqueUsername(
+    session.schoolId,
+    buildStudentUsernameBase(firstName, lastName, classYear)
+  );
+
   const student = await prisma.studentProfile.create({
     data: {
       schoolId: session.schoolId,
       studentNumber,
+      username,
       firstName,
       lastName,
       dateOfBirth: new Date(2010, 0, 1),

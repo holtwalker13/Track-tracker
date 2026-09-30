@@ -1,6 +1,7 @@
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/db";
 import { studentEmailDomainForSchoolSlug } from "@/lib/services/student-login";
+import { ensureStudentUsername } from "@/lib/services/student-username";
 import {
   generateInviteToken,
   hashInviteToken,
@@ -101,9 +102,13 @@ export async function previewStudentLoginInvite(token: string): Promise<StudentI
   const expired = invite.expiresAt.getTime() < Date.now();
   const purpose: StudentInvitePurpose = alreadyActive ? "RESET" : "SETUP";
 
+  const username =
+    student.username ??
+    (await ensureStudentUsername(student.id).catch(() => student.studentNumber));
+
   return {
     fullName: `${student.firstName} ${student.lastName}`,
-    username: student.studentNumber,
+    username,
     schoolName: student.school.name,
     purpose,
     alreadyActive,
@@ -203,6 +208,26 @@ export async function completeStudentLoginInvite(input: {
       where: { id: invite.id },
       data: { usedAt: now },
     });
+
+    if (!student.username) {
+      const classYearRow = await tx.studentEnrollment.findFirst({
+        where: { studentId: student.id, schoolYear: { isCurrent: true } },
+        select: { gradeLevel: true },
+      });
+      const { buildStudentUsernameBase, pickUniqueUsername } = await import(
+        "@/lib/services/student-username"
+      );
+      const base = buildStudentUsernameBase(
+        student.firstName,
+        student.lastName,
+        classYearRow?.gradeLevel ?? 2028
+      );
+      const username = await pickUniqueUsername(student.schoolId, base, student.id);
+      await tx.studentProfile.update({
+        where: { id: student.id },
+        data: { username },
+      });
+    }
 
     return tx.user.findUniqueOrThrow({ where: { id: linkedUserId! } });
   }).catch((err: unknown) => {

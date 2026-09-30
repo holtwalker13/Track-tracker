@@ -6,6 +6,8 @@ import {
   studentLoginStatusFromRow,
   type StudentLoginStatus,
 } from "@/lib/services/student-login-invite";
+import { usernamePlaceholderHint } from "@/lib/services/student-username";
+import { DEFAULT_CLASS_YEAR } from "@/lib/grades";
 
 export const ROSTER_COLUMNS: { slug: string; label: string }[] = [
   { slug: "weight", label: "BW" },
@@ -27,6 +29,8 @@ export type RosterMark = { value: number; display: string };
 export type RosterAthlete = {
   studentId: string;
   studentNumber: string;
+  username: string | null;
+  usernameHint: string;
   firstName: string;
   lastName: string;
   fullName: string;
@@ -133,6 +137,12 @@ export async function getClassRoster(
     return {
       studentId: e.studentId,
       studentNumber: e.student.studentNumber,
+      username: e.student.username,
+      usernameHint: usernamePlaceholderHint(
+        e.student.firstName,
+        e.student.lastName,
+        e.gradeLevel ?? DEFAULT_CLASS_YEAR
+      ),
       firstName: e.student.firstName,
       lastName: e.student.lastName,
       fullName: `${e.student.firstName} ${e.student.lastName}`,

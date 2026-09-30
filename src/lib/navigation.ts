@@ -59,6 +59,7 @@ export const ADMIN_NAV: NavItem[] = [
 
 export const STUDENT_NAV: NavItem[] = [
   { href: "/student", label: "Dashboard", icon: "dashboard" },
+  { href: "/student/accolades", label: "Accolades", icon: "trophy" },
   { href: "/student/workout", label: "Log workout", icon: "workout" },
   { href: "/student/performance", label: "My Performance", icon: "gauge" },
   { href: "/student/progress", label: "Progress", icon: "trending" },

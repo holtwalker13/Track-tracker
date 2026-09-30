@@ -260,6 +260,10 @@ model StudentProfile {
   sessionStudents    TestingSessionStudent[]
   performanceResults PerformanceResult[]
   achievements       StudentAchievement[]
+  gamification       StudentGamification?
+  xpTransactions     XpTransaction[]
+  accoladesEarned    StudentAccolade[]
+  dynamicAccolades   DynamicAccoladeHolder[]
   workoutSessions    WorkoutSession[]
   workoutAssignments WorkoutAssignment[]
   loginInvite        StudentLoginInvite?
@@ -639,4 +643,69 @@ model StudentAchievement {
   metadata      String?
 
   @@unique([studentId, achievementId])
+}
+
+model StudentGamification {
+  studentId     String         @id
+  student       StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  lifetimeXp    Int            @default(0)
+  currentStreak Int            @default(0)
+  longestStreak Int            @default(0)
+  updatedAt     DateTime       @updatedAt
+}
+
+model XpTransaction {
+  id        String         @id @default(cuid())
+  studentId String
+  student   StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  amount    Int
+  reason    String
+  sourceKey String         @unique
+  metadata  Json?
+  createdAt DateTime       @default(now())
+
+  @@index([studentId, createdAt])
+}
+
+model AccoladeDefinition {
+  id          String  @id @default(cuid())
+  slug        String  @unique
+  name        String
+  description String
+  emoji       String  @default("🏆")
+  category    String
+  kind        String  @default("STATIC")
+  sortOrder   Int     @default(0)
+  config      Json?
+
+  earned StudentAccolade[]
+}
+
+model StudentAccolade {
+  id         String             @id @default(cuid())
+  studentId  String
+  student    StudentProfile     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  accoladeId String
+  accolade   AccoladeDefinition @relation(fields: [accoladeId], references: [id], onDelete: Cascade)
+  earnedAt   DateTime           @default(now())
+  metadata   Json?
+
+  @@unique([studentId, accoladeId])
+  @@index([studentId])
+}
+
+model DynamicAccoladeHolder {
+  id           String         @id @default(cuid())
+  accoladeSlug String
+  studentId    String
+  student      StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  scopeType    String
+  scopeId      String
+  periodType   String
+  periodKey    String
+  value        Float?
+  computedAt   DateTime       @default(now())
+
+  @@unique([accoladeSlug, scopeType, scopeId, periodType, periodKey])
+  @@index([studentId])
 }

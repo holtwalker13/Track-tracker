@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
+import { WorkoutXpToast } from "@/components/gamification/workout-xp-toast";
+import type { AccoladeUnlockLine, XpAwardLine } from "@/lib/gamification/engine";
 
 type Exercise = {
   id: string;
@@ -103,6 +105,11 @@ export function WorkoutLogClient({
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savedAt, setSavedAt] = useState<string | null>(null);
+  const [completionRewards, setCompletionRewards] = useState<{
+    xpLines: XpAwardLine[];
+    totalXpToday: number;
+    newAccolades: AccoladeUnlockLine[];
+  } | null>(null);
 
   const readOnly = data.session?.status === "COMPLETED";
 
@@ -201,6 +208,13 @@ export function WorkoutLogClient({
           }
         : d
     );
+    if (body.gamification) {
+      setCompletionRewards({
+        xpLines: body.gamification.xpLines ?? [],
+        totalXpToday: body.gamification.totalXpToday ?? 0,
+        newAccolades: body.gamification.newAccolades ?? [],
+      });
+    }
   }
 
   if (!data.assignment || !data.session) {
@@ -217,6 +231,14 @@ export function WorkoutLogClient({
 
   return (
     <div className="space-y-6">
+      {completionRewards && (
+        <WorkoutXpToast
+          xpLines={completionRewards.xpLines}
+          totalXpToday={completionRewards.totalXpToday}
+          newAccolades={completionRewards.newAccolades}
+          onDismiss={() => setCompletionRewards(null)}
+        />
+      )}
       <div>
         <h1 className="text-xl font-semibold">{data.assignment.template.name}</h1>
         <p className="text-sm text-muted">

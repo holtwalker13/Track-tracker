@@ -26,6 +26,11 @@ export default async function StudentAccoladesPage() {
 
   await ensureAccoladeDefinitions();
   const progress = await getAccoladeProgressForStudent(session.studentId);
+  const xpHistory = await prisma.xpTransaction.findMany({
+    where: { studentId: session.studentId },
+    orderBy: { createdAt: "desc" },
+    take: 30,
+  });
 
   const byCategory = CATEGORY_ORDER.map((cat) => ({
     category: cat,
@@ -39,6 +44,25 @@ export default async function StudentAccoladesPage() {
         Earn badges for consistency, PRs, strength milestones, and more. Locked accolades show your
         progress.
       </p>
+
+      {xpHistory.length > 0 && (
+        <Card className="mt-6">
+          <CardTitle>XP history</CardTitle>
+          <ul className="mt-4 space-y-2 text-sm">
+            {xpHistory.map((tx) => (
+              <li key={tx.id} className="flex justify-between gap-4">
+                <span>
+                  +{tx.amount} —{" "}
+                  {XP_REASON_LABELS[tx.reason as XpReason] ?? tx.reason}
+                </span>
+                <span className="shrink-0 text-muted">
+                  {tx.createdAt.toLocaleDateString()}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
 
       <div className="mt-6 space-y-8">
         {byCategory.map((group) => (

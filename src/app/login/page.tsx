@@ -49,7 +49,7 @@ function LoginForm({ error, next }: { error?: string; next?: string }) {
           </form>
         </Card>
       </div>
-      <LoginPageFooter />
+      <LoginPageFooter next={next} />
     </div>
   );
 }

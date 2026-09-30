@@ -1,5 +1,5 @@
 /**
- * Idempotent: demo school quick login demo / demo1234 (student DEMO).
+ * Idempotent: demo school quick login demo / rekcart (student DEMO).
  * Usage: npx tsx scripts/ensure-demo-class-login.ts
  */
 import { PrismaClient } from "@prisma/client";

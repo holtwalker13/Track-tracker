@@ -4,7 +4,7 @@ export const DEMO_PASSWORD = "rekcart";
 export const DEMO_CLASS_LOGIN = {
   username: "demo",
   email: "demo@demo.local",
-  password: "demo1234",
+  password: DEMO_PASSWORD,
   studentNumber: "DEMO",
   displayName: "Demo class",
 } as const;

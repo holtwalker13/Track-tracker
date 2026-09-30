@@ -7,9 +7,8 @@ import { prisma } from "@/lib/db";
 import { SESSION_COOKIE, sessionCookieOptions } from "@/lib/auth/cookie";
 import { studentUsesBlockedSharedDemoPassword } from "@/lib/auth/demo-login-guard";
 import { signSessionToken } from "@/lib/auth/session";
-import { ADMIN_LOGIN, DEMO_CLASS_LOGIN, DEMO_PASSWORD } from "@/lib/tenants";
 
-type LoginUser = {
+export type LoginUser = {
   id: string;
   role: string;
   email: string;
@@ -36,7 +35,7 @@ async function findUserByEmailOrStudentId(email: string): Promise<LoginUser | nu
   return user;
 }
 
-async function establishSession(user: LoginUser, nextRaw: string) {
+export async function establishSessionFromUser(user: LoginUser, nextRaw: string) {
   const schoolId = user.coachProfile?.schoolId ?? user.studentProfile?.schoolId;
 
   const token = await signSessionToken({
@@ -76,32 +75,12 @@ async function authenticate(email: string, password: string, nextRaw: string) {
     redirect("/login?error=setup");
   }
 
-  await establishSession(user, nextRaw);
+  await establishSessionFromUser(user, nextRaw);
 }
 
 export async function loginAction(formData: FormData) {
   const email = String(formData.get("email") ?? "").toLowerCase().trim();
   const password = String(formData.get("password") ?? "");
   const nextRaw = String(formData.get("next") ?? "");
-  await authenticate(email, password, nextRaw);
-}
-
-/** One-click demo access from the login footer (password always DEMO_PASSWORD). */
-export async function demoQuickLoginAction(formData: FormData) {
-  const role = String(formData.get("role") ?? "");
-  const nextRaw = String(formData.get("next") ?? "");
-
-  const email =
-    role === "admin"
-      ? ADMIN_LOGIN.email
-      : role === "demo-student"
-        ? DEMO_CLASS_LOGIN.email
-        : null;
-
-  if (!email) {
-    redirect("/login?error=1");
-  }
-
-  const password = process.env.DEMO_PASSWORD || DEMO_PASSWORD;
   await authenticate(email, password, nextRaw);
 }

@@ -39,7 +39,13 @@ export default async function LiveTestingPage({
       class: true,
     },
   });
-  if (!testingSession || testingSession.schoolId !== session.schoolId) notFound();
+  if (
+    !testingSession ||
+    testingSession.schoolId !== session.schoolId ||
+    testingSession.archivedAt
+  ) {
+    notFound();
+  }
   if (!(await coachCanAdministerTestingSession(session, sessionId))) notFound();
 
   const activitySlug = sp.activity ?? testingSession.activities[0]?.activity.slug;
@@ -61,7 +67,7 @@ export default async function LiveTestingPage({
       activityId: activity.id,
       status: { not: "SUPERSEDED" },
     },
-    orderBy: [{ createdAt: "desc" }, { attemptNumber: "asc" }],
+    orderBy: [{ recordedAt: "desc" }, { attemptNumber: "asc" }],
   });
 
   const withinWindow = isWithinLiveWindow(testingSession.liveOpenedAt);

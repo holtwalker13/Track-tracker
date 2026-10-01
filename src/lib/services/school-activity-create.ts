@@ -202,11 +202,33 @@ export async function loggedResultCountForActivitySlug(slug: string): Promise<nu
   });
 }
 
+export class ActivityHasResultsError extends Error {
+  readonly resultCount: number;
+  constructor(resultCount: number) {
+    super(
+      `Cannot delete this KPI/lift while ${resultCount} performance mark(s) exist. Hide it instead.`
+    );
+    this.name = "ActivityHasResultsError";
+    this.resultCount = resultCount;
+  }
+}
+
 export async function deleteSchoolCustomActivity(schoolId: string, slug: string) {
   const custom = await prisma.activity.findFirst({
     where: { slug, schoolId },
   });
   if (!custom) return null;
+
+  const resultCount = await prisma.performanceResult.count({
+    where: {
+      activityId: custom.id,
+      schoolId,
+      status: { not: "SUPERSEDED" },
+    },
+  });
+  if (resultCount > 0) {
+    throw new ActivityHasResultsError(resultCount);
+  }
 
   const templateExerciseIds = (
     await prisma.workoutTemplateExercise.findMany({
@@ -225,6 +247,7 @@ export async function deleteSchoolCustomActivity(schoolId: string, slug: string)
     prisma.schoolHiddenLift.deleteMany({ where: { schoolId, activitySlug: slug } }),
     prisma.testingSessionActivity.deleteMany({ where: { activityId: custom.id } }),
     prisma.benchmarkValue.deleteMany({ where: { activityId: custom.id } }),
+    // Only unreachable SUPERSEDED rows may remain; strip those then the activity.
     prisma.performanceResult.deleteMany({ where: { activityId: custom.id } }),
     prisma.activity.delete({ where: { id: custom.id } }),
   ]);

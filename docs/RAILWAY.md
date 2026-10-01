@@ -2,7 +2,10 @@
 
 This environment cannot log into your Railway account. After the GitHub branch is pushed, add **Railway PostgreSQL** in the dashboard and point the app at it.
 
-**Production boots run `prisma db push`** so Railway Postgres picks up additive schema changes (for example `StudentProfile.participationType`). It does not wipe data for nullable column adds.
+**Production boots run `prisma migrate deploy`** (additive migrations only — never
+`db push --accept-data-loss`). Athlete marks live in Railway Postgres and survive
+app redeploys. See [DATA_DURABILITY.md](./DATA_DURABILITY.md) for chronology,
+soft-archive rules, backups, and one-time baseline steps for older databases.
 
 **Do not deploy an empty placeholder branch.** Use **`main`** (or your current deploy branch) after Postgres is linked.
 
@@ -39,13 +42,13 @@ If a previous attempt set `DATABASE_URL=file:/data/dev.db`, delete that variable
 openssl rand -base64 32
 ```
 
-Optional: `FORCE_SEED=1` for **one** deploy to wipe and reload CSV data, then unset it. First boot seeds automatically when the database has no users.
+**Do not set `FORCE_SEED=1` on production.** It is blocked at boot to protect beta athlete data. Seed only on local Docker or a disposable staging database.
 
 ## 4. Public URL
 
 Settings → **Networking** → **Generate domain**.
 
-Redeploy the app after Postgres and variables are attached. Boot runs `prisma db push` to sync tables, then starts the app. Seed only runs if you set `FORCE_SEED=1` (one deploy), or use local Docker for a full reload.
+Redeploy the app after Postgres and variables are attached. Boot runs `prisma migrate deploy`, then starts the app. Enable Railway Postgres backups before inviting real coaches (see [DATA_DURABILITY.md](./DATA_DURABILITY.md)).
 
 ## 5. Log in
 

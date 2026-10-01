@@ -150,12 +150,15 @@ model CoachProfile {
   // Active KPI set the coach is editing / applying when building sessions
   activeKpiSetId String?
   activeKpiSet   KpiSet? @relation("CoachActiveKpiSet", fields: [activeKpiSetId], references: [id], onDelete: SetNull)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   classes          Class[] @relation("ClassLeadCoach")
   classAssignments ClassCoach[]
   loginInvite      CoachLoginInvite?
   kpiSets          KpiSet[] @relation("CoachOwnedKpiSets")
 
+  @@index([schoolId])
   @@index([activeKpiSetId])
 }
 
@@ -314,12 +317,17 @@ model Class {
   gradeLevel Int?
   // SCHOLASTIC = in-school class; TRAINING = club/sport group (e.g. track outside period)
   programKind String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   enrollments        ClassEnrollment[]
   coachAssignments   ClassCoach[]
   subgroups          ClassSubgroup[]
   sessions           TestingSession[]
   workoutAssignments WorkoutAssignment[]
+
+  @@index([schoolId])
+  @@index([coachId])
 }
 
 // Station / event groups within a class (e.g. Fly10 station A, hurdles group).
@@ -366,8 +374,10 @@ model ClassEnrollment {
   class     Class  @relation(fields: [classId], references: [id], onDelete: Cascade)
   studentId String
   student   StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
 
   @@unique([classId, studentId])
+  @@index([classId])
   @@index([studentId])
 }
 
@@ -500,10 +510,13 @@ model WorkoutSetLog {
   reps               Int?
   rpe                Float?
   skipped            Boolean                 @default(false)
+  // First time this set slot was logged (immutable); updatedAt tracks later edits.
+  createdAt          DateTime                @default(now())
   updatedAt          DateTime                @updatedAt
 
   @@unique([sessionId, templateExerciseId, setNumber])
   @@index([sessionId])
+  @@index([sessionId, createdAt])
 }
 
 model TestingSession {
@@ -522,14 +535,18 @@ model TestingSession {
   // When false, student self-entry is locked (coach can still record while LIVE)
   recordingUnlocked Boolean @default(true)
   liveOpenedAt DateTime?
+  // Soft-archive: sessions with marks are never hard-deleted. Null = active.
+  archivedAt   DateTime?
   createdById  String?
   createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
 
   activities TestingSessionActivity[]
   students   TestingSessionStudent[]
   results    PerformanceResult[]
 
   @@index([schoolId, schoolYearId])
+  @@index([schoolId, archivedAt])
   @@index([testingDate])
 }
 
@@ -542,6 +559,7 @@ model TestingSessionActivity {
   sortOrder Int    @default(0)
 
   @@unique([sessionId, activityId])
+  @@index([activityId])
 }
 
 model TestingSessionStudent {
@@ -552,6 +570,7 @@ model TestingSessionStudent {
   student   StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   @@unique([sessionId, studentId])
+  @@index([studentId])
 }
 
 model PerformanceResult {
@@ -573,6 +592,7 @@ model PerformanceResult {
   attemptNumber     Int          @default(1)
   isBestAttempt     Boolean      @default(false)
   isPersonalRecord  Boolean      @default(false)
+  // Coach/calendar event date for the test or workout (progress charts).
   testingDate       DateTime
   ageAtTest         Float?
   weightAtTest      Float?
@@ -584,13 +604,39 @@ model PerformanceResult {
   status            String @default("COMPLETED")
   supersedesId      String?
   relativeStrength  Float?
+  // Server wall-clock when this row was first written. Corrections create a new
+  // row (old → SUPERSEDED); recordedAt on the old row never moves.
+  recordedAt        DateTime     @default(now())
   createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
 
   @@index([studentId, activityId])
   @@index([schoolId, schoolYearId, gradeLevel])
   @@index([activityId, schoolId, testingDate])
   @@index([testingSessionId])
   @@index([studentId, activityId, isBestAttempt])
+  @@index([studentId, testingDate])
+  @@index([studentId, recordedAt])
+  @@index([schoolId, status, testingDate])
+}
+
+// Append-only audit trail for performance writes. Siloed from mutable result rows
+// so app updates / corrections never erase the chronology of what was entered.
+model PerformanceAuditEvent {
+  id         String   @id @default(cuid())
+  eventType  String
+  resultId   String?
+  studentId  String
+  activityId String
+  schoolId   String
+  actorUserId String?
+  payload    Json
+  createdAt  DateTime @default(now())
+
+  @@index([studentId, createdAt])
+  @@index([schoolId, createdAt])
+  @@index([resultId])
+  @@index([activityId, createdAt])
 }
 
 model BenchmarkDataset {

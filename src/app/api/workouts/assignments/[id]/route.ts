@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { requireSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
+import { calendarDateAtNoonUtc } from "@/lib/calendar-date";
 import { dayBoundsFromDateString } from "@/lib/services/workouts";
+import { archiveWorkoutSyncedMarksForAssignment } from "@/lib/services/workout-performance-sync";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -40,7 +42,11 @@ export async function PATCH(request: Request, context: RouteContext) {
     if (!bounds) {
       return NextResponse.json({ error: "Valid date required (YYYY-MM-DD)" }, { status: 400 });
     }
-    data.scheduledDate = new Date(`${dateStr}T12:00:00`);
+    const scheduledDate = calendarDateAtNoonUtc(dateStr);
+    if (!scheduledDate) {
+      return NextResponse.json({ error: "Valid date required (YYYY-MM-DD)" }, { status: 400 });
+    }
+    data.scheduledDate = scheduledDate;
   }
 
   if (body.classId != null) {
@@ -91,6 +97,8 @@ export async function DELETE(_request: Request, context: RouteContext) {
     return NextResponse.json({ error: "Assignment not found" }, { status: 404 });
   }
 
+  // Supersede synced performance marks before cascading session/set deletes.
+  const { archived } = await archiveWorkoutSyncedMarksForAssignment(id);
   await prisma.workoutAssignment.delete({ where: { id } });
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, archivedMarks: archived });
 }

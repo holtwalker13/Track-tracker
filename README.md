@@ -50,6 +50,7 @@ docker compose up --build
 
 ## Data
 
+- **Source of truth:** PostgreSQL (Docker volume locally; Railway Postgres in production). App updates do not wipe athlete marks — see [docs/DATA_DURABILITY.md](docs/DATA_DURABILITY.md).
 - **Girls / boys (Demo)**: marks from `prisma/data/jhs-female-athletes.csv` with **synthetic names** (Jane Doe, Emma Ames, …). Boys are a same-structure analog.
 - **JHS**: empty live school. Coaches upload a roster CSV for weightlifting classes.
 - **CHS**: separate school system with a smaller test roster.

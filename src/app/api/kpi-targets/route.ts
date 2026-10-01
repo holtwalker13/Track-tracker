@@ -9,6 +9,7 @@ import {
   KPI_UNITS,
 } from "@/lib/age-brackets";
 import {
+  ActivityHasResultsError,
   createSchoolActivity,
   deleteSchoolCustomActivity,
   loggedResultCountForActivitySlug,
@@ -136,8 +137,22 @@ export async function DELETE(request: Request) {
   });
 
   if (custom) {
-    await deleteSchoolCustomActivity(session.schoolId, slug);
-    return NextResponse.json({ ok: true });
+    try {
+      await deleteSchoolCustomActivity(session.schoolId, slug);
+      return NextResponse.json({ ok: true });
+    } catch (err) {
+      if (err instanceof ActivityHasResultsError) {
+        return NextResponse.json(
+          {
+            error: err.message,
+            resultCount: err.resultCount,
+            hint: "Hide the KPI for your school instead of deleting athlete history.",
+          },
+          { status: 409 }
+        );
+      }
+      throw err;
+    }
   }
 
   const global = await prisma.activity.findFirst({

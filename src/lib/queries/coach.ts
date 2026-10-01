@@ -43,9 +43,9 @@ export async function getCoachDashboard(schoolId: string) {
         testingDate: { gte: monthStart },
       },
     }),
-    prisma.testingSession.count({ where: { schoolId, schoolYearId: currentYear.id } }),
+    prisma.testingSession.count({ where: { schoolId, schoolYearId: currentYear.id, archivedAt: null } }),
     prisma.testingSession.findMany({
-      where: { schoolId },
+      where: { schoolId, archivedAt: null },
       orderBy: { testingDate: "desc" },
       take: 5,
       include: { schoolYear: true },

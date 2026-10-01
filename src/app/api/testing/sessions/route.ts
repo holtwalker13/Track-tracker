@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { KPI_METRIC_META } from "@/lib/kpi-targets";
 import { classSectionLabel, isGraduatingClassName } from "@/lib/periods";
 import { coachCanAdministerTestsForClass } from "@/lib/auth/coach-scope";
+import { calendarDateAtNoonUtc } from "@/lib/calendar-date";
 
 export async function POST(request: Request) {
   const session = await requireSession(["COACH", "ADMIN"]);
@@ -13,15 +14,12 @@ export async function POST(request: Request) {
 
   const body = await request.json();
   const dateStr = String(body.testingDate ?? "").trim();
-  if (!dateStr) {
+  const testingDate = calendarDateAtNoonUtc(dateStr);
+  if (!testingDate) {
     return NextResponse.json(
-      { error: "Test date is required so progress charts have a point in time" },
+      { error: "Test date is required so progress charts have a point in time (YYYY-MM-DD)" },
       { status: 400 }
     );
-  }
-  const testingDate = new Date(`${dateStr}T12:00:00`);
-  if (Number.isNaN(testingDate.getTime())) {
-    return NextResponse.json({ error: "Invalid test date" }, { status: 400 });
   }
 
   const classId = body.classId ? String(body.classId) : "";

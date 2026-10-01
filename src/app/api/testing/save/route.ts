@@ -36,7 +36,7 @@ export async function POST(request: Request) {
     where: { id: testingSessionId },
     include: { school: true },
   });
-  if (!sessionRec || sessionRec.schoolId !== session.schoolId) {
+  if (!sessionRec || sessionRec.schoolId !== session.schoolId || sessionRec.archivedAt) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 

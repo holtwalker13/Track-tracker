@@ -2,11 +2,13 @@ import { prisma } from "@/lib/db";
 import { DEFAULT_CLASS_YEAR } from "@/lib/grades";
 import { ageAtDate, formatActivityValue } from "@/lib/format";
 import type { ScoringDirection } from "@/lib/constants";
+import { toCalendarDateString } from "@/lib/calendar-date";
 import { epleyE1rm } from "@/lib/services/workout-progression";
 import {
   calculatePersonalRecord,
 } from "@/lib/services/performance";
 import { getPreviousBest } from "@/lib/services/results";
+import { recordPerformanceAudits } from "@/lib/services/performance-audit";
 
 const WORKOUT_SESSION_NOTES_PREFIX = "workoutSession:";
 
@@ -72,7 +74,7 @@ async function getLatestBodyWeightLb(
       resultValue: { not: null },
       testingDate: { lte: onOrBefore },
     },
-    orderBy: { testingDate: "desc" },
+    orderBy: [{ testingDate: "desc" }, { recordedAt: "desc" }],
   });
   return latest?.resultValue ?? null;
 }
@@ -115,13 +117,15 @@ async function upsertWorkoutPerformanceMark(input: {
     input.direction
   );
 
-  await prisma.performanceResult.deleteMany({
+  const existing = await prisma.performanceResult.findFirst({
     where: {
       studentId: input.studentId,
       activityId: input.activityId,
       notes,
       entryMethod: "WORKOUT",
+      status: { not: "SUPERSEDED" },
     },
+    orderBy: { recordedAt: "desc" },
   });
 
   const student = await prisma.studentProfile.findUniqueOrThrow({
@@ -129,7 +133,33 @@ async function upsertWorkoutPerformanceMark(input: {
     select: { dateOfBirth: true },
   });
 
-  await prisma.performanceResult.create({
+  if (existing && existing.resultValue === input.value) {
+    await prisma.performanceResult.update({
+      where: { id: existing.id },
+      data: {
+        isBestAttempt: true,
+        isPersonalRecord: isPr,
+        testingDate: input.testingDate,
+        weightAtTest: input.weightAtTest ?? undefined,
+        relativeStrength: input.relativeStrength ?? undefined,
+        displayValue: formatActivityValue(
+          input.value,
+          input.activityUnit,
+          input.activitySlug
+        ),
+      },
+    });
+    return;
+  }
+
+  if (existing) {
+    await prisma.performanceResult.update({
+      where: { id: existing.id },
+      data: { status: "SUPERSEDED", isBestAttempt: false, isPersonalRecord: false },
+    });
+  }
+
+  const created = await prisma.performanceResult.create({
     data: {
       studentId: input.studentId,
       activityId: input.activityId,
@@ -154,8 +184,88 @@ async function upsertWorkoutPerformanceMark(input: {
       ageAtTest: ageAtDate(student.dateOfBirth, input.testingDate),
       weightAtTest: input.weightAtTest ?? undefined,
       relativeStrength: input.relativeStrength ?? undefined,
+      supersedesId: existing?.id,
     },
   });
+
+  await recordPerformanceAudits([
+    ...(existing
+      ? [
+          {
+            eventType: "SUPERSEDED" as const,
+            resultId: existing.id,
+            studentId: input.studentId,
+            activityId: input.activityId,
+            schoolId: input.schoolId,
+            actorUserId: input.enteredById,
+            payload: {
+              reason: "workout_resync",
+              previousValue: existing.resultValue,
+              supersededBy: created.id,
+            },
+          },
+        ]
+      : []),
+    {
+      eventType: "WORKOUT_SYNCED",
+      resultId: created.id,
+      studentId: input.studentId,
+      activityId: input.activityId,
+      schoolId: input.schoolId,
+      actorUserId: input.enteredById,
+      payload: {
+        sessionId: input.sessionId,
+        resultValue: input.value,
+        testingDate: input.testingDate.toISOString(),
+        supersedesId: existing?.id ?? null,
+      },
+    },
+  ]);
+}
+
+/**
+ * When a workout assignment is deleted, supersede (do not hard-delete) any
+ * performance marks that were synced from its sessions.
+ */
+export async function archiveWorkoutSyncedMarksForAssignment(assignmentId: string) {
+  const sessions = await prisma.workoutSession.findMany({
+    where: { assignmentId },
+    select: { id: true, studentId: true },
+  });
+  if (sessions.length === 0) return { archived: 0 };
+
+  let archived = 0;
+  for (const session of sessions) {
+    const notes = workoutSessionNotes(session.id);
+    const rows = await prisma.performanceResult.findMany({
+      where: {
+        notes,
+        entryMethod: "WORKOUT",
+        status: { not: "SUPERSEDED" },
+      },
+    });
+    if (rows.length === 0) continue;
+    await prisma.performanceResult.updateMany({
+      where: { id: { in: rows.map((r) => r.id) } },
+      data: { status: "SUPERSEDED", isBestAttempt: false, isPersonalRecord: false },
+    });
+    await recordPerformanceAudits(
+      rows.map((r) => ({
+        eventType: "SUPERSEDED" as const,
+        resultId: r.id,
+        studentId: r.studentId,
+        activityId: r.activityId,
+        schoolId: r.schoolId,
+        payload: {
+          reason: "assignment_deleted",
+          assignmentId,
+          workoutSessionId: session.id,
+        },
+      }))
+    );
+    archived += rows.length;
+  }
+  return { archived };
 }
 
 /**
@@ -190,9 +300,8 @@ export async function syncWorkoutSessionToPerformance(
   const { assignment, student, setLogs } = workoutSession;
   const schoolId = assignment.schoolId;
   const organizationId = assignment.school.organizationId;
-  const testingDate = new Date(
-    `${assignment.scheduledDate.toISOString().slice(0, 10)}T12:00:00`
-  );
+  const day = toCalendarDateString(assignment.scheduledDate);
+  const testingDate = new Date(`${day}T12:00:00.000Z`);
 
   const schoolYear = await resolveSchoolYear(schoolId, testingDate);
   if (!schoolYear) return { synced: 0 };

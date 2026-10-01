@@ -18,7 +18,7 @@ export async function GET(request: Request) {
       activities: { include: { activity: true }, orderBy: { sortOrder: "asc" } },
     },
   });
-  if (!testingSession || testingSession.schoolId !== session.schoolId) {
+  if (!testingSession || testingSession.schoolId !== session.schoolId || testingSession.archivedAt) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
   if (!(await coachCanAdministerTestingSession(session, sessionId))) {

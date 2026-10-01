@@ -9,6 +9,7 @@ import {
 } from "@/lib/age-brackets";
 import {
   createSchoolActivity,
+  ActivityHasResultsError,
   deleteSchoolCustomActivity,
 } from "@/lib/services/school-activity-create";
 import { getSchoolLiftEditDetails, listSchoolLifts } from "@/lib/queries/lifts";
@@ -121,9 +122,23 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ error: "slug required" }, { status: 400 });
   }
 
-  const deleted = await deleteSchoolCustomActivity(session.schoolId, slug);
-  if (deleted) {
-    return NextResponse.json({ ok: true });
+  try {
+    const deleted = await deleteSchoolCustomActivity(session.schoolId, slug);
+    if (deleted) {
+      return NextResponse.json({ ok: true });
+    }
+  } catch (err) {
+    if (err instanceof ActivityHasResultsError) {
+      return NextResponse.json(
+        {
+          error: err.message,
+          resultCount: err.resultCount,
+          hint: "Hide the lift from your library instead of deleting it.",
+        },
+        { status: 409 }
+      );
+    }
+    throw err;
   }
 
   const global = await prisma.activity.findFirst({

@@ -57,7 +57,7 @@ export async function testingSessionsForCoachView(session: SessionPayload & { sc
 
   if (session.role === "ADMIN") {
     return prisma.testingSession.findMany({
-      where: { schoolId: session.schoolId },
+      where: { schoolId: session.schoolId, archivedAt: null },
       include: baseInclude,
       orderBy: { testingDate: "desc" },
     });
@@ -69,6 +69,7 @@ export async function testingSessionsForCoachView(session: SessionPayload & { sc
   return prisma.testingSession.findMany({
     where: {
       schoolId: session.schoolId,
+      archivedAt: null,
       class: {
         OR: [
           { coachId: profile.id },

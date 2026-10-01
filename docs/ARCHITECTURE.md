@@ -61,7 +61,7 @@ Catalog-driven (`Activity` + `ActivityCategory`). Fields include `scoringDirecti
 
 Stored per attempt with snapshot fields: `grade_level`, `age_at_test`, `weight_at_test`, `height_at_test`, `testing_date`, `entry_method`, `status` (`COMPLETED`, `ABSENT`, `INJURED`, `DNP`, `DQ`).
 
-**Rule 7**: corrections create a new row and mark prior `SUPERSEDED` (audit via `supersedes_id`).
+**Rule 7**: corrections create a new row and mark prior `SUPERSEDED` (audit via `supersedes_id`). Live re-saves and workout sync use the same supersede path — never hard-delete completed marks. See [DATA_DURABILITY.md](./DATA_DURABILITY.md).
 
 ## Benchmark engine
 

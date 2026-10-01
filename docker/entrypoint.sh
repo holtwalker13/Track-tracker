@@ -31,30 +31,111 @@ case "$DATABASE_URL" in
     ;;
 esac
 
-run_db_push() {
-  echo "==> Prisma db push (sync schema to Postgres) ..."
+# Baseline legacy databases that were created with `prisma db push` (no migration
+# history). If PerformanceResult already exists and _prisma_migrations is empty /
+# missing the init migration, mark init as applied so deploy only runs additive
+# durability migrations — never wipe athlete data.
+baseline_legacy_db_push_if_needed() {
+  if ! command -v node >/dev/null 2>&1; then
+    return 0
+  fi
+  node <<'NODE'
+const { PrismaClient } = require("@prisma/client");
+const { execSync } = require("child_process");
+const prisma = new PrismaClient();
+
+(async () => {
+  try {
+    const tables = await prisma.$queryRawUnsafe(
+      `SELECT COUNT(*)::int AS c FROM information_schema.tables
+       WHERE table_schema = 'public' AND table_name = 'PerformanceResult'`
+    );
+    const hasResultsTable = Array.isArray(tables) && tables[0] && tables[0].c > 0;
+    if (!hasResultsTable) {
+      process.exit(0);
+    }
+
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "_prisma_migrations" (
+        "id" VARCHAR(36) PRIMARY KEY,
+        "checksum" VARCHAR(64) NOT NULL,
+        "finished_at" TIMESTAMPTZ,
+        "migration_name" VARCHAR(255) NOT NULL,
+        "logs" TEXT,
+        "rolled_back_at" TIMESTAMPTZ,
+        "started_at" TIMESTAMPTZ NOT NULL DEFAULT now(),
+        "applied_steps_count" INTEGER NOT NULL DEFAULT 0
+      )
+    `);
+
+    const applied = await prisma.$queryRawUnsafe(
+      `SELECT COUNT(*)::int AS c FROM "_prisma_migrations"
+       WHERE "migration_name" = '20251001000000_init'`
+    );
+    const hasInit = Array.isArray(applied) && applied[0] && applied[0].c > 0;
+    if (!hasInit) {
+      console.log("==> Legacy db-push database detected; baselining 20251001000000_init ...");
+      execSync("npx prisma migrate resolve --applied 20251001000000_init", {
+        stdio: "inherit",
+      });
+    }
+    process.exit(0);
+  } catch (err) {
+    console.error("==> Baseline check skipped:", err && err.message ? err.message : err);
+    process.exit(0);
+  } finally {
+    await prisma.$disconnect().catch(() => {});
+  }
+})();
+NODE
+}
+
+# Never auto-wipe or accept destructive schema changes on boot.
+# Performance marks live in Postgres; deploys must be additive-only.
+run_migrations() {
+  echo "==> Prisma migrate deploy (additive schema sync, no data loss) ..."
   i=0
-  # --accept-data-loss: additive unique-key changes (e.g. ageBracket) otherwise stall boot.
-  until npx prisma db push --skip-generate --accept-data-loss; do
+  until npx prisma migrate deploy; do
     i=$((i + 1))
+    if [ "$i" -eq 1 ]; then
+      echo "==> migrate deploy failed once; attempting legacy baseline then retry..."
+      baseline_legacy_db_push_if_needed
+    fi
     if [ "$i" -ge 30 ]; then
-      echo "ERROR: prisma db push failed after 30 attempts. Check DATABASE_URL and that Postgres is running."
+      echo "ERROR: prisma migrate deploy failed after 30 attempts."
+      echo "See docs/DATA_DURABILITY.md for manual baseline steps."
       exit 1
     fi
-    echo "==> Waiting for Postgres ($i/30)..."
+    echo "==> Waiting for Postgres / retrying migrate ($i/30)..."
     sleep 2
   done
 }
 
+# Wait until Postgres accepts connections before baseline/migrate.
+i=0
+until npx prisma db execute --stdin <<'SQL' >/dev/null 2>&1
+SELECT 1;
+SQL
+do
+  i=$((i + 1))
+  if [ "$i" -ge 30 ]; then
+    echo "ERROR: Postgres not reachable after 30 attempts. Check DATABASE_URL."
+    exit 1
+  fi
+  echo "==> Waiting for Postgres ($i/30)..."
+  sleep 2
+done
+
+baseline_legacy_db_push_if_needed
+run_migrations
+
 if [ "${APP_MODE}" = "production" ]; then
-  # Keep Railway Postgres in sync with prisma/schema.prisma (additive columns like participationType).
-  run_db_push
   if [ "${FORCE_SEED}" = "1" ]; then
-    echo "==> FORCE_SEED=1: running seed..."
-    npm run db:seed
+    echo "ERROR: FORCE_SEED=1 is blocked in production to protect athlete data."
+    echo "Unset FORCE_SEED, restore from backup if you intentionally need a wipe, then re-seed offline."
+    exit 1
   fi
 else
-  run_db_push
   echo "==> Seeding if empty (FORCE_SEED=${FORCE_SEED:-0})..."
   npm run db:seed
 fi

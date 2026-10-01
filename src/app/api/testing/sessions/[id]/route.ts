@@ -3,6 +3,8 @@ import { requireSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { isWithinLiveWindow } from "@/lib/constants";
 import { coachCanAdministerTestingSession } from "@/lib/auth/coach-scope";
+import { calendarDateAtNoonUtc } from "@/lib/calendar-date";
+import { recordPerformanceAudits } from "@/lib/services/performance-audit";
 
 export async function PATCH(
   request: Request,
@@ -14,7 +16,7 @@ export async function PATCH(
   }
   const { id } = await params;
   const rec = await prisma.testingSession.findFirst({
-    where: { id, schoolId: session.schoolId },
+    where: { id, schoolId: session.schoolId, archivedAt: null },
   });
   if (!rec) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
@@ -82,13 +84,16 @@ export async function PATCH(
   }
 
   const dateStr = String(body.testingDate ?? "").trim();
-  if (!dateStr) {
-    return NextResponse.json({ error: "Test date is required" }, { status: 400 });
+  const testingDate = calendarDateAtNoonUtc(dateStr);
+  if (!testingDate) {
+    return NextResponse.json({ error: "Test date is required (YYYY-MM-DD)" }, { status: 400 });
   }
-  const testingDate = new Date(`${dateStr}T12:00:00`);
-  if (Number.isNaN(testingDate.getTime())) {
-    return NextResponse.json({ error: "Invalid test date" }, { status: 400 });
-  }
+
+  const previousDate = rec.testingDate;
+  const results = await prisma.performanceResult.findMany({
+    where: { testingSessionId: id, status: { not: "SUPERSEDED" } },
+    select: { id: true, studentId: true, activityId: true, schoolId: true },
+  });
 
   await prisma.$transaction([
     prisma.testingSession.update({
@@ -100,6 +105,24 @@ export async function PATCH(
       data: { testingDate },
     }),
   ]);
+
+  if (results.length > 0 && previousDate.getTime() !== testingDate.getTime()) {
+    await recordPerformanceAudits(
+      results.map((r) => ({
+        eventType: "TESTING_DATE_SHIFTED" as const,
+        resultId: r.id,
+        studentId: r.studentId,
+        activityId: r.activityId,
+        schoolId: r.schoolId,
+        actorUserId: session.userId,
+        payload: {
+          sessionId: id,
+          previousTestingDate: previousDate.toISOString(),
+          nextTestingDate: testingDate.toISOString(),
+        },
+      }))
+    );
+  }
 
   return NextResponse.json({ ok: true });
 }
@@ -114,7 +137,7 @@ export async function DELETE(
   }
   const { id } = await params;
   const rec = await prisma.testingSession.findFirst({
-    where: { id, schoolId: session.schoolId },
+    where: { id, schoolId: session.schoolId, archivedAt: null },
     include: {
       _count: { select: { students: true, activities: true } },
     },
@@ -126,20 +149,53 @@ export async function DELETE(
   }
 
   const resultCount = await prisma.performanceResult.count({
-    where: { testingSessionId: id },
+    where: { testingSessionId: id, status: { not: "SUPERSEDED" } },
   });
 
-  // Remove session marks from athlete logs — testing data stays tied to the session.
-  await prisma.$transaction([
-    prisma.performanceResult.deleteMany({
-      where: { testingSessionId: id },
-    }),
-    prisma.testingSession.delete({ where: { id } }),
-  ]);
+  // Sessions with marks are soft-archived so athlete history is never wiped by
+  // an accidental delete or an app update. Empty sessions may be hard-deleted.
+  if (resultCount > 0) {
+    const results = await prisma.performanceResult.findMany({
+      where: { testingSessionId: id, status: { not: "SUPERSEDED" } },
+      select: { id: true, studentId: true, activityId: true, schoolId: true },
+    });
+
+    await prisma.testingSession.update({
+      where: { id },
+      data: {
+        archivedAt: new Date(),
+        status: "CLOSED",
+        recordingUnlocked: false,
+      },
+    });
+
+    await recordPerformanceAudits(
+      results.map((r) => ({
+        eventType: "ARCHIVED_SESSION" as const,
+        resultId: r.id,
+        studentId: r.studentId,
+        activityId: r.activityId,
+        schoolId: r.schoolId,
+        actorUserId: session.userId,
+        payload: { sessionId: id, sessionName: rec.name },
+      }))
+    );
+
+    return NextResponse.json({
+      ok: true,
+      archived: true,
+      deletedResults: 0,
+      preservedResults: resultCount,
+      students: rec._count.students,
+    });
+  }
+
+  await prisma.testingSession.delete({ where: { id } });
 
   return NextResponse.json({
     ok: true,
-    deletedResults: resultCount,
+    archived: false,
+    deletedResults: 0,
     students: rec._count.students,
   });
 }

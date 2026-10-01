@@ -58,7 +58,7 @@ export async function getScholasticAttemptLog(studentId: string): Promise<School
       schoolYear: true,
       testingSession: true,
     },
-    orderBy: [{ testingDate: "asc" }, { createdAt: "asc" }],
+    orderBy: [{ testingDate: "asc" }, { recordedAt: "asc" }, { createdAt: "asc" }],
   });
 
   const enrollments = await prisma.studentEnrollment.findMany({

@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db";
 import { KPI_METRIC_META, type KpiMark, type KpiMetricSlug } from "@/lib/kpi-targets";
-import { ageBracketForClassYear, DEFAULT_AGE_BRACKET, isAgeBracketId } from "@/lib/age-brackets";
+import { ageBracketForClassYear, isAgeBracketId } from "@/lib/age-brackets";
 import { getSchoolKpiBands } from "@/lib/queries/kpi";
 import { getStudentContext } from "@/lib/queries/student";
 import {

@@ -36,7 +36,7 @@ export async function resolveCoachClassScopeFromParams(
     ? await listClassesForCoach(session.schoolId, coachId)
     : [];
 
-  let classId =
+  const classId =
     params.classId && classes.some((c) => c.id === params.classId)
       ? params.classId
       : classes[0]?.id ?? "";
@@ -44,7 +44,7 @@ export async function resolveCoachClassScopeFromParams(
   const subgroupsRaw = classId ? await listClassSubgroups(classId) : [];
   const subgroups = subgroupsRaw.map((s) => ({ id: s.id, name: s.name }));
 
-  let subgroupId: string | null =
+  const subgroupId: string | null =
     params.subgroupId && subgroups.some((s) => s.id === params.subgroupId)
       ? params.subgroupId
       : null;

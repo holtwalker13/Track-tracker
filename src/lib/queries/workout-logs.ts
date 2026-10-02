@@ -88,25 +88,14 @@ export async function fetchWorkoutLogExportRows(input: {
   for (const assignment of assignments) {
     const sessionsByStudent = new Map(assignment.sessions.map((s) => [s.studentId, s]));
 
-    const classId = assignment.classId;
-    const rosterStudents =
-      classId != null
-        ? (
-            await prisma.classEnrollment.findMany({
-              where: { classId },
-              include: {
-                student: {
-                  select: { id: true, studentNumber: true, firstName: true, lastName: true },
-                },
-              },
-            })
-          ).map((e) => e.student)
-        : assignment.sessions.map((s) => ({
-            id: s.studentId,
-            studentNumber: s.student.studentNumber,
-            firstName: s.student.firstName,
-            lastName: s.student.lastName,
-          }));
+    // Export rows only for the athletes the assignment targets (subgroup,
+    // individual, or full class) — not the whole class roster.
+    const rosterStudents = await studentsTargetedByWorkoutAssignment({
+      assignmentId: assignment.id,
+      classId: assignment.classId,
+      subgroupId: assignment.subgroupId,
+      studentId: assignment.studentId,
+    });
 
     for (const student of rosterStudents) {
       const session = sessionsByStudent.get(student.id);

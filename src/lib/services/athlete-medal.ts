@@ -9,6 +9,7 @@ import {
   type Medal,
   type SprintPotential,
 } from "@/lib/kpi-targets";
+import type { ScoringDirection } from "@/lib/constants";
 
 export type AthleteMedalResult = {
   earnedMedal: Medal | null;
@@ -31,15 +32,27 @@ function rankedSlugsFromBands(bands: KpiBand[]): KpiMetricSlug[] {
   );
 }
 
+function metricMetaForSlug(slug: string): {
+  name: string;
+  direction: ScoringDirection;
+} {
+  const meta = KPI_METRIC_META.find((m) => m.slug === slug);
+  if (meta) return { name: meta.name, direction: meta.direction };
+  return {
+    name: slug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
+    direction: "HIGHER_BETTER",
+  };
+}
+
 function evaluateBandAllRequired(
   band: KpiBand,
-  marksBySlug: Map<KpiMetricSlug, number>,
-  rankedSlugs: KpiMetricSlug[]
+  marksBySlug: Map<string, number>,
+  rankedSlugs: string[]
 ): BandEvaluation {
   const rows = rankedSlugs.map((slug) => {
-    const meta = KPI_METRIC_META.find((m) => m.slug === slug)!;
+    const meta = metricMetaForSlug(slug);
     const athlete = marksBySlug.get(slug) ?? null;
-    const target = band.targets[slug];
+    const target = band.targets[slug as KpiMetricSlug];
     const hit =
       athlete == null || target == null
         ? null
@@ -81,9 +94,7 @@ export function calculateAthleteMedal(
   const source = customBands?.length ? customBands : kpiBandsForGender(g);
   const slugs =
     rankedSlugs && rankedSlugs.length > 0
-      ? (rankedSlugs.filter((s) =>
-          KPI_METRIC_META.some((m) => m.slug === s)
-        ) as KpiMetricSlug[])
+      ? [...rankedSlugs]
       : rankedSlugsFromBands(source);
 
   const marksBySlug = new Map(marks.map((m) => [m.slug, m.value]));
@@ -126,7 +137,7 @@ export function calculateAthleteMedal(
   return {
     earnedMedal,
     nextMedal,
-    rankedKPIs: slugs,
+    rankedKPIs: slugs as KpiMetricSlug[],
     progressCount,
     totalRequirements,
     potential: {

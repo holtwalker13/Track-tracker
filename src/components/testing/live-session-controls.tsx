@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { ArrowLeft, Lock, LockOpen, Pause, Play, Square } from "lucide-react";
+import { ArrowLeft, Square } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function LiveSessionControls({
@@ -23,12 +23,11 @@ export function LiveSessionControls({
   const [busy, setBusy] = useState<string | null>(null);
 
   const isClosed = status === "CLOSED" || status === "COMPLETED";
-  const isPaused = status === "PAUSED";
   const isLive =
     !isClosed &&
-    !isPaused &&
     (status === "LIVE" || status === "ACTIVE" || status === "DRAFT") &&
-    withinWindow;
+    withinWindow &&
+    recordingUnlocked;
 
   async function run(action: string) {
     setBusy(action);
@@ -74,11 +73,11 @@ export function LiveSessionControls({
           <span
             className={cn(
               "relative flex h-2.5 w-2.5 shrink-0",
-              isLive && recordingUnlocked && "text-sport-red"
+              isLive && "text-sport-red"
             )}
             aria-hidden
           >
-            {isLive && recordingUnlocked ? (
+            {isLive ? (
               <>
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-sport-red opacity-60" />
                 <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-sport-red shadow-[0_0_12px_rgba(239,68,68,0.8)]" />
@@ -87,28 +86,22 @@ export function LiveSessionControls({
               <span
                 className={cn(
                   "inline-flex h-2.5 w-2.5 rounded-full",
-                  isClosed ? "bg-muted" : isPaused ? "bg-sport-gold" : "bg-muted"
+                  isClosed ? "bg-muted" : "bg-muted"
                 )}
               />
             )}
           </span>
           <div className="min-w-0">
             <p className={cn("font-semibold leading-tight", compact ? "text-xs sm:text-sm" : "text-sm")}>
-              {isClosed
-                ? "Closed"
-                : !withinWindow
-                  ? "Window ended"
-                  : isPaused
-                    ? "Paused"
-                    : recordingUnlocked
-                      ? "Live"
-                      : "Locked"}
+              {isClosed ? "Closed — edits allowed" : !withinWindow ? "Window ended" : isLive ? "Live" : "Ready"}
             </p>
             {!compact && (
               <p className="text-xs text-muted">
-                {withinWindow
-                  ? "24-hour live window · lock when students shouldn’t self-enter"
-                  : "Start a new session to record again"}
+                {isClosed
+                  ? "You can reopen this session anytime to fix marks."
+                  : withinWindow
+                    ? "Close when finished; you can still edit marks later."
+                    : "Start a new session to record again"}
               </p>
             )}
           </div>
@@ -116,71 +109,18 @@ export function LiveSessionControls({
       </div>
 
       <div className="flex flex-wrap gap-1.5">
-        {!isClosed && withinWindow && (
-          <>
-            {isPaused || !recordingUnlocked ? (
-              <button
-                type="button"
-                disabled={busy != null}
-                onClick={() => run(isPaused ? "resume" : "unlock")}
-                className={cn(
-                  "inline-flex items-center gap-1 rounded-lg border border-sky-400/40 font-medium text-sky-300 hover:bg-sky-400/10 disabled:opacity-50",
-                  compact ? "px-2 py-1.5 text-xs" : "gap-1.5 px-3 py-2 text-sm"
-                )}
-              >
-                {isPaused ? <Play className="h-3.5 w-3.5" /> : <LockOpen className="h-3.5 w-3.5" />}
-                {busy === "resume" || busy === "unlock" ? "…" : isPaused ? "Resume" : "Unlock"}
-              </button>
-            ) : (
-              <>
-                <button
-                  type="button"
-                  disabled={busy != null}
-                  onClick={() => run("pause")}
-                  className={cn(
-                    "inline-flex items-center gap-1 rounded-lg border border-card-border text-muted hover:text-foreground disabled:opacity-50",
-                    compact ? "px-2 py-1.5 text-xs" : "gap-1.5 px-3 py-2 text-sm"
-                  )}
-                >
-                  <Pause className="h-3.5 w-3.5" />
-                  {busy === "pause" ? "…" : "Pause"}
-                </button>
-                <button
-                  type="button"
-                  disabled={busy != null}
-                  onClick={() => run("lock")}
-                  className={cn(
-                    "inline-flex items-center gap-1 rounded-lg border border-card-border text-muted hover:text-foreground disabled:opacity-50",
-                    compact ? "px-2 py-1.5 text-xs" : "gap-1.5 px-3 py-2 text-sm"
-                  )}
-                >
-                  <Lock className="h-3.5 w-3.5" />
-                  {busy === "lock" ? "…" : "Lock"}
-                </button>
-              </>
-            )}
-          </>
-        )}
-        {isClosed ? (
-          <button
-            type="button"
-            disabled={busy != null}
-            onClick={() => run("reopen")}
-            className={cn(
-              "inline-flex items-center gap-1 rounded-lg border border-sky-400/40 font-medium text-sky-300 hover:bg-sky-400/10 disabled:opacity-50",
-              compact ? "px-2 py-1.5 text-xs" : "gap-1.5 px-3 py-2 text-sm"
-            )}
-          >
-            <LockOpen className="h-3.5 w-3.5" />
-            {busy === "reopen" ? "…" : "Reopen for editing"}
-          </button>
-        ) : null}
         {!isClosed && (
           <button
             type="button"
             disabled={busy != null}
             onClick={() => {
-              if (!window.confirm("Close this testing session? Recording will stop.")) return;
+              if (
+                !window.confirm(
+                  "Close this testing session? You can return later to edit marks."
+                )
+              ) {
+                return;
+              }
               run("close");
             }}
             className={cn(

@@ -122,8 +122,20 @@ export async function getStudentSprintPotential(
     opts.ageBracket && isAgeBracketId(opts.ageBracket) ? opts.ageBracket : defaultBracket;
   const window: MedalTimeWindow = opts.window === "week" ? "week" : "all";
 
+  const { resolveKpiSetForClassContext, getRankedMetricSlugs } = await import(
+    "@/lib/services/kpi-sets"
+  );
+  const kpiSetId = await resolveKpiSetForClassContext(
+    student.schoolId,
+    opts.classId,
+    opts.subgroupId
+  );
+  const rankedSlugList = kpiSetId ? await getRankedMetricSlugs(kpiSetId) : [];
+  const markSlugs =
+    rankedSlugList.length > 0 ? rankedSlugList : (KPI_SLUGS as string[]);
+
   const activities = await prisma.activity.findMany({
-    where: { slug: { in: KPI_SLUGS } },
+    where: { slug: { in: markSlugs } },
     select: { id: true, slug: true },
   });
   const idToSlug = new Map(activities.map((a) => [a.id, a.slug as KpiMetricSlug]));
@@ -149,21 +161,13 @@ export async function getStudentSprintPotential(
     marks.push({ slug, value: r.resultValue });
   }
 
-  const { resolveKpiSetForClassContext, getRankedMetricSlugs } = await import(
-    "@/lib/services/kpi-sets"
-  );
-  const kpiSetId = await resolveKpiSetForClassContext(
-    student.schoolId,
-    opts.classId,
-    opts.subgroupId
-  );
   const custom = await getSchoolKpiBands(
     student.schoolId,
     student.gender,
     bracket,
     kpiSetId
   );
-  const rankedSlugs = kpiSetId ? await getRankedMetricSlugs(kpiSetId) : undefined;
+  const rankedSlugs = rankedSlugList.length > 0 ? rankedSlugList : undefined;
   return {
     ...evaluateSprintPotential(marks, student.gender, custom, rankedSlugs),
     ageBracket: bracket,

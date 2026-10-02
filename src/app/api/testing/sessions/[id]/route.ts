@@ -32,16 +32,9 @@ export async function PATCH(
     if (action === "close") {
       await prisma.testingSession.update({
         where: { id },
-        data: { status: "CLOSED", recordingUnlocked: false },
+        data: { status: "CLOSED", recordingUnlocked: true },
       });
       return NextResponse.json({ ok: true, status: "CLOSED" });
-    }
-    if (action === "pause") {
-      await prisma.testingSession.update({
-        where: { id },
-        data: { status: "PAUSED", recordingUnlocked: false },
-      });
-      return NextResponse.json({ ok: true, status: "PAUSED" });
     }
     if (action === "resume") {
       if (!isWithinLiveWindow(rec.liveOpenedAt)) {

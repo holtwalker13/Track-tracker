@@ -71,13 +71,11 @@ export default async function LiveTestingPage({
   });
 
   const withinWindow = isWithinLiveWindow(testingSession.liveOpenedAt);
-  const coachCanEdit =
-    withinWindow &&
-    isLiveRecordingOpen(
-      testingSession.status,
-      testingSession.recordingUnlocked,
-      testingSession.liveOpenedAt
-    );
+  const coachCanEdit = isLiveRecordingOpen(
+    testingSession.status,
+    testingSession.recordingUnlocked,
+    testingSession.liveOpenedAt
+  );
 
   const classId = testingSession.classId;
   const subgroups = classId ? await listClassSubgroups(classId) : [];

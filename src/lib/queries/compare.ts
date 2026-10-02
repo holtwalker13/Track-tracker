@@ -96,15 +96,18 @@ export async function getAthleteCompare(
       ? `${MEDAL_LABELS[medalState.earnedMedal]} earned`
       : "Medal target";
 
-  const activities = await prisma.activity.findMany({
-    where: {
-      slug: { notIn: ["height", "weight"] },
-      OR: [{ schoolId: null }, { schoolId }],
-      ...(rankedSlugs.size > 0 ? { slug: { in: [...rankedSlugs] } } : {}),
-    },
-    include: { category: true },
-    orderBy: { name: "asc" },
-  });
+  const rankedSlugList = [...rankedSlugs];
+  const activities =
+    rankedSlugList.length === 0
+      ? []
+      : await prisma.activity.findMany({
+          where: {
+            slug: { in: rankedSlugList, notIn: ["height", "weight"] },
+            OR: [{ schoolId: null }, { schoolId }],
+          },
+          include: { category: true },
+          orderBy: { name: "asc" },
+        });
 
   const events: CompareEventRow[] = [];
 

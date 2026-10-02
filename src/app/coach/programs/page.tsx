@@ -84,6 +84,7 @@ export default async function CoachProgramsPage({
           startDate: selectedDate,
           endDate: selectedDate,
           classId,
+          subgroupId: subgroupId ?? undefined,
         })
       : Promise.resolve([]),
     classId
@@ -92,6 +93,7 @@ export default async function CoachProgramsPage({
           startDate: weekStart,
           endDate: dateRangeDays(weekStart, 7).at(-1) ?? weekStart,
           classId,
+          subgroupId: subgroupId ?? undefined,
         })
       : Promise.resolve([]),
   ]);

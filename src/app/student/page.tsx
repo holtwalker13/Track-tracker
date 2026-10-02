@@ -133,13 +133,14 @@ export default async function StudentDashboardPage({
   const sprint = await getStudentSprintPotential(studentId, {
     ageBracket: bracket,
     window,
+    classId,
   });
   const peerLeaders = await getStudentPeerLeaders(studentId, {
     ageBracket: bracket,
     window,
     classId,
   });
-  const rankedSlugs = await getRankedKpiSlugsForSchool(schoolId);
+  const rankedSlugs = await getRankedKpiSlugsForSchool(schoolId, classId);
   const kpiRanks = await getStudentActivityRanks(
     schoolId,
     studentId,

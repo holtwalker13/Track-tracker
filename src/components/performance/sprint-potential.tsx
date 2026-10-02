@@ -131,10 +131,13 @@ export function SprintPotentialCard({
       {target && (
         <div className="mt-4 grid grid-cols-2 gap-2 sm:mt-5 sm:gap-3">
           {target.rows.map((row) => {
-            const meta = KPI_METRIC_META.find((m) => m.slug === row.slug)!;
+            const meta = KPI_METRIC_META.find((m) => m.slug === row.slug);
+            const unit = meta?.unit ?? "";
             const mark =
-              row.athlete == null ? "—" : formatActivityValue(row.athlete, meta.unit, row.slug);
-            const target = formatActivityValue(row.target, meta.unit, row.slug);
+              row.athlete == null
+                ? "—"
+                : formatActivityValue(row.athlete, unit, row.slug);
+            const targetVal = formatActivityValue(row.target, unit, row.slug);
             const rank = ranks?.[row.slug];
             const highlighted = highlightSlug === row.slug;
             return (
@@ -176,10 +179,12 @@ export function SprintPotentialCard({
                   )}
                 </div>
                 <p className="mt-1 flex items-center gap-1 text-xs leading-none tabular-nums text-muted sm:mt-1.5 sm:gap-1.5 sm:text-sm">
-                  {target}
+                  {targetVal}
                   <Target className="h-3 w-3 shrink-0 sm:h-3.5 sm:w-3.5" aria-hidden />
                 </p>
-                <p className="mt-1 text-xs font-bold leading-tight text-muted sm:text-sm">{row.name}</p>
+                <p className="mt-1 text-xs font-bold leading-tight text-muted sm:text-sm">
+                  {row.name ?? meta?.name ?? row.slug}
+                </p>
               </div>
             );
           })}

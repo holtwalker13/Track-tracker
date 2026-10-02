@@ -18,7 +18,7 @@ import { AthleteResultsHistory } from "@/components/performance/athlete-results-
 import { SprintPotentialCard } from "@/components/performance/sprint-potential";
 import { GamificationSummaryCard } from "@/components/gamification/gamification-summary-card";
 import { getGamificationSummary } from "@/lib/gamification/dynamic-accolades";
-import { getRankedKpiSlugsForSchool } from "@/lib/services/kpi-sets";
+import { getRankedKpiSlugsForStudent } from "@/lib/services/kpi-sets";
 import { classYearLabel, DEFAULT_CLASS_YEAR } from "@/lib/grades";
 import { classSectionLabel, isGraduatingClassName } from "@/lib/periods";
 import { AthleteProfileCard } from "@/components/athletes/athlete-profile-card";
@@ -79,16 +79,27 @@ export default async function StudentProfilePage({
     .filter((e) => !isGraduatingClassName(e.class.name))
     .map((e) => e.class);
 
+  // Default the profile's class context to an enrolled class that actually has
+  // a KPI set, so the medal standard matches the KPIs tab for that class.
+  const enrolledClassIds = enrolledClasses.map((c) => c.id);
+  const classSetRows = enrolledClassIds.length
+    ? await prisma.kpiSet.findMany({
+        where: { schoolId: session.schoolId, classId: { in: enrolledClassIds } },
+        select: { classId: true },
+      })
+    : [];
+  const classesWithKpiSets = new Set(classSetRows.map((r) => r.classId));
+
   const profileClassId =
     sp.classId && enrolledClasses.some((c) => c.id === sp.classId)
       ? sp.classId
-      : enrolledClasses[0]?.id ?? null;
+      : (enrolledClasses.find((c) => classesWithKpiSets.has(c.id))?.id ??
+        enrolledClasses[0]?.id ??
+        null);
 
-  const rankedSlugs = await getRankedKpiSlugsForSchool(
-    session.schoolId,
-    profileClassId,
-    null
-  );
+  const rankedSlugs = await getRankedKpiSlugsForStudent(session.schoolId, id, {
+    classId: profileClassId,
+  });
 
   const gamification = await getGamificationSummary(id);
 

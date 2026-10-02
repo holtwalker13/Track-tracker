@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronDown, Trash2 } from "lucide-react";
+import { ChevronDown, Pencil, Trash2 } from "lucide-react";
 import { ClassCoachInlineSelect } from "@/components/classes/class-coach-select";
 import { classYearLabel } from "@/lib/grades";
 import { cn } from "@/lib/utils";

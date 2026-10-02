@@ -72,7 +72,7 @@ export async function getAthleteCompare(
   studentId: string,
   schoolId: string,
   opponentStudentId?: string,
-  opts?: { classId?: string | null }
+  opts?: { classId?: string | null; subgroupId?: string | null }
 ): Promise<AthleteCompareView & { medalTargetLabel?: string }> {
   const { student, currentGrade } = await getStudentContext(studentId);
   if (student.schoolId !== schoolId) {
@@ -84,12 +84,21 @@ export async function getAthleteCompare(
     where: { schoolId, isCurrent: true },
   });
 
-  const medalState = await getAthleteMedalState(studentId, { classId: opts?.classId });
+  const medalState = await getAthleteMedalState(studentId, {
+    classId: opts?.classId,
+    subgroupId: opts?.subgroupId,
+  });
   const rankedSlugs = new Set(medalState.rankedSlugs);
-  const targetEval = medalState.potential.next ?? medalState.potential.matched;
-  const targetBySlug = new Map<string, number>(
-    (targetEval?.rows ?? []).map((r) => [r.slug, r.target])
-  );
+  // Medal targets come from the resolved KPI set's band for the active medal, so
+  // custom ranked KPIs (not just catalog metrics) carry their KPI-tab targets.
+  const activeMedal = medalState.nextMedal ?? medalState.earnedMedal ?? "bronze";
+  const activeBand = medalState.bands.find((b) => b.medal === activeMedal);
+  const targetBySlug = new Map<string, number>();
+  for (const [slug, target] of Object.entries(activeBand?.targets ?? {})) {
+    if (typeof target === "number" && Number.isFinite(target)) {
+      targetBySlug.set(slug, target);
+    }
+  }
   const medalTargetLabel = medalState.nextMedal
     ? `${MEDAL_LABELS[medalState.nextMedal]} target`
     : medalState.earnedMedal
@@ -272,7 +281,7 @@ const MAX_LINEUP = 5;
 export async function getAthleteLineup(
   studentIds: string[],
   schoolId: string,
-  opts?: { anonymize?: boolean; viewerStudentId?: string }
+  opts?: { anonymize?: boolean; viewerStudentId?: string; kpiStudentId?: string }
 ): Promise<AthleteLineupView> {
   const unique = [...new Set(studentIds)].slice(0, MAX_LINEUP);
   const currentYear = await prisma.schoolYear.findFirst({
@@ -299,10 +308,21 @@ export async function getAthleteLineup(
     });
   }
 
+  // Restrict the lineup to the ranked KPIs from the class KPI set of the
+  // athlete being viewed (same source as the KPIs tab). No set → legacy list.
+  let rankedFilter: string[] | null = null;
+  const kpiStudentId = opts?.kpiStudentId ?? athletes[0]?.id;
+  if (kpiStudentId && athletes.some((a) => a.id === kpiStudentId)) {
+    const medalState = await getAthleteMedalState(kpiStudentId);
+    if (medalState.kpiSetId) rankedFilter = medalState.rankedSlugs;
+  }
+
   const activities = await prisma.activity.findMany({
     where: {
-      slug: { notIn: ["height", "weight"] },
       OR: [{ schoolId: null }, { schoolId }],
+      ...(rankedFilter
+        ? { slug: { in: rankedFilter } }
+        : { slug: { notIn: ["height", "weight"] } }),
     },
     include: { category: true },
     orderBy: { name: "asc" },

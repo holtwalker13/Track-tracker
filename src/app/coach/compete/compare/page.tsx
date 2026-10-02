@@ -93,6 +93,7 @@ export default async function CompeteComparePage({
     mode !== "athlete" && selectedId
       ? await getAthleteCompare(selectedId, session.schoolId, undefined, {
           classId: scopeCtx.classId,
+          subgroupId: scopeCtx.subgroupId,
         })
       : null;
   const lineup =

@@ -1,5 +1,10 @@
 import { prisma } from "@/lib/db";
-import { KPI_METRIC_META, type KpiMark, type KpiMetricSlug } from "@/lib/kpi-targets";
+import {
+  KPI_METRIC_META,
+  type KpiBand,
+  type KpiMark,
+  type KpiMetricSlug,
+} from "@/lib/kpi-targets";
 import { ageBracketForClassYear, isAgeBracketId } from "@/lib/age-brackets";
 import { getSchoolKpiBands } from "@/lib/queries/kpi";
 import { getStudentContext } from "@/lib/queries/student";
@@ -9,7 +14,7 @@ import {
 } from "@/lib/services/athlete-medal";
 import {
   getRankedMetricSlugs,
-  resolveKpiSetForClassContext,
+  resolveKpiSetForStudentContext,
 } from "@/lib/services/kpi-sets";
 
 const KPI_SLUGS = KPI_METRIC_META.map((m) => m.slug);
@@ -23,6 +28,8 @@ export async function getAthleteMedalState(
     ageBracket: string;
     rankedSlugs: string[];
     kpiSetId: string | null;
+    /** Medal bands from the resolved KPI set (includes custom ranked KPI targets). */
+    bands: KpiBand[];
   }
 > {
   const { student, currentGrade } = await getStudentContext(studentId);
@@ -35,11 +42,10 @@ export async function getAthleteMedalState(
   const bracket =
     opts.ageBracket && isAgeBracketId(opts.ageBracket) ? opts.ageBracket : defaultBracket;
 
-  const kpiSetId = await resolveKpiSetForClassContext(
-    student.schoolId,
-    opts.classId,
-    opts.subgroupId
-  );
+  const kpiSetId = await resolveKpiSetForStudentContext(student.schoolId, studentId, {
+    classId: opts.classId,
+    subgroupId: opts.subgroupId,
+  });
   const rankedSlugs = kpiSetId ? await getRankedMetricSlugs(kpiSetId) : [];
 
   const activities = await prisma.activity.findMany({
@@ -91,5 +97,6 @@ export async function getAthleteMedalState(
     ageBracket: bracket,
     rankedSlugs,
     kpiSetId,
+    bands: custom,
   };
 }

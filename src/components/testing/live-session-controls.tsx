@@ -161,6 +161,20 @@ export function LiveSessionControls({
             )}
           </>
         )}
+        {isClosed ? (
+          <button
+            type="button"
+            disabled={busy != null}
+            onClick={() => run("reopen")}
+            className={cn(
+              "inline-flex items-center gap-1 rounded-lg border border-sky-400/40 font-medium text-sky-300 hover:bg-sky-400/10 disabled:opacity-50",
+              compact ? "px-2 py-1.5 text-xs" : "gap-1.5 px-3 py-2 text-sm"
+            )}
+          >
+            <LockOpen className="h-3.5 w-3.5" />
+            {busy === "reopen" ? "…" : "Reopen for editing"}
+          </button>
+        ) : null}
         {!isClosed && (
           <button
             type="button"

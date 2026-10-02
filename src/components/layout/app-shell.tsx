@@ -1,10 +1,8 @@
 import { Podium } from "lucide-react";
 import { TopNav } from "@/components/layout/top-nav";
 import { SchoolSwitcher } from "@/components/admin/school-switcher";
-import { CoachClassContextBar } from "@/components/classes/coach-class-context-bar";
 import type { NavItem } from "@/lib/navigation";
 import { getSession } from "@/lib/auth/session";
-import { resolveCoachClassContext } from "@/lib/coach-class-context";
 import { prisma } from "@/lib/db";
 import { cn } from "@/lib/utils";
 
@@ -26,8 +24,6 @@ export async function AppShell({
   const session = await getSession();
   let schoolName: string | null = null;
   let schools: { id: string; name: string }[] = [];
-  let coachContext: Awaited<ReturnType<typeof resolveCoachClassContext>> | null = null;
-
   if (session?.schoolId) {
     const school = await prisma.school.findUnique({
       where: { id: session.schoolId },
@@ -42,16 +38,6 @@ export async function AppShell({
     });
   }
 
-  if (
-    session?.schoolId &&
-    (session.role === "COACH" || session.role === "ADMIN")
-  ) {
-    coachContext = await resolveCoachClassContext({
-      ...session,
-      schoolId: session.schoolId,
-    });
-  }
-
   const items =
     session?.role === "ADMIN" && !nav.some((i) => i.href === "/admin")
       ? [{ href: "/admin", label: "Admin", icon: "admin" as const }, ...nav]
@@ -60,10 +46,6 @@ export async function AppShell({
   const compact = density === "compact";
 
   const showSchoolSwitcher = session?.role === "ADMIN" && schools.length > 0;
-  const showClassContext = Boolean(
-    coachContext && coachContext.classes.length > 0
-  );
-  const showContextRow = showSchoolSwitcher || showClassContext;
 
   return (
     <div className="min-h-screen bg-background">
@@ -113,33 +95,21 @@ export async function AppShell({
                   </p>
                 ) : null}
               </div>
+              {showSchoolSwitcher ? (
+                <div className="hidden shrink-0 sm:block">
+                  <SchoolSwitcher schools={schools} currentSchoolId={session.schoolId} />
+                </div>
+              ) : null}
             </div>
             <TopNav items={items} compact={navCompact || compact} />
           </div>
-          {showContextRow ? (
-            <div
-              className={cn(
-                "mt-2 flex flex-col gap-2 border-t border-card-border/60 pt-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4",
-                compact && "mt-1.5 pt-1.5"
-              )}
-            >
-              {showSchoolSwitcher ? (
-                <SchoolSwitcher
-                  schools={schools}
-                  currentSchoolId={session.schoolId}
-                  layout="toolbar"
-                />
-              ) : null}
-              {showClassContext && coachContext ? (
-                <CoachClassContextBar
-                  classes={coachContext.classes}
-                  subgroups={coachContext.subgroups}
-                  classId={coachContext.classId}
-                  subgroupId={coachContext.subgroupId}
-                  compact={navCompact || compact}
-                  layout="toolbar"
-                />
-              ) : null}
+          {showSchoolSwitcher ? (
+            <div className="mt-2 border-t border-card-border/60 pt-2 sm:hidden">
+              <SchoolSwitcher
+                schools={schools}
+                currentSchoolId={session.schoolId}
+                layout="toolbar"
+              />
             </div>
           ) : null}
         </div>

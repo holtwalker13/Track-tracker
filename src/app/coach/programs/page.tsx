@@ -7,8 +7,7 @@ import { ProgramsActions } from "@/components/workouts/programs-actions";
 import { ProgramsLiftPreview } from "@/components/workouts/programs-lift-preview";
 import { COACH_NAV } from "@/lib/navigation";
 import { requireSchoolSession } from "@/lib/auth/session";
-import { resolveCoachClassContext } from "@/lib/coach-class-context";
-import { coachProfileForSession } from "@/lib/auth/coach-scope";
+import { resolveCoachClassScopeFromParams } from "@/lib/queries/coach-scope-params";
 import { prisma } from "@/lib/db";
 import { liftsForWorkoutPrograms, listSchoolLifts } from "@/lib/queries/lifts";
 import {
@@ -28,6 +27,7 @@ export default async function CoachProgramsPage({
   searchParams: Promise<{
     coachId?: string;
     classId?: string;
+    subgroupId?: string;
     week?: string;
     weeks?: string;
     date?: string;
@@ -38,26 +38,14 @@ export default async function CoachProgramsPage({
   const sp = await searchParams;
   const today = todayDateString();
 
-  const coaches = await listSchoolCoaches(session.schoolId);
-  const myProfile = await coachProfileForSession(session);
-  const defaultCoachId =
-    myProfile?.id && coaches.some((c) => c.id === myProfile.id)
-      ? myProfile.id
-      : coaches[0]?.id ?? "";
-
-  const coachId =
-    sp.coachId && coaches.some((c) => c.id === sp.coachId) ? sp.coachId : defaultCoachId;
-
-  const classes = coachId ? await listClassesForCoach(session.schoolId, coachId) : [];
-  const coachCtx = await resolveCoachClassContext(session, {
+  const scope = await resolveCoachClassScopeFromParams(session, {
+    coachId: sp.coachId,
     classId: sp.classId,
+    subgroupId: sp.subgroupId,
   });
-  const classId =
-    sp.classId && classes.some((c) => c.id === sp.classId)
-      ? sp.classId
-      : coachCtx.classId && classes.some((c) => c.id === coachCtx.classId)
-        ? coachCtx.classId
-        : classes[0]?.id ?? "";
+  const { coachId, classId, subgroups, subgroupId } = scope;
+  const coaches = await listSchoolCoaches(session.schoolId);
+  const classes = coachId ? await listClassesForCoach(session.schoolId, coachId) : [];
 
   const weekStart = weekStartSunday(sp.week?.trim() || today);
   const weeks = Math.min(6, Math.max(1, Number(sp.weeks) || 1));
@@ -68,7 +56,10 @@ export default async function CoachProgramsPage({
 
   const [templates, schoolLifts, assignments, dayLogs, weekLogs] = await Promise.all([
     prisma.workoutTemplate.findMany({
-      where: { schoolId: session.schoolId },
+      where: {
+        schoolId: session.schoolId,
+        OR: [{ createdById: session.userId }, { createdById: null }],
+      },
       orderBy: { updatedAt: "desc" },
       include: {
         exercises: {
@@ -120,8 +111,10 @@ export default async function CoachProgramsPage({
           <ProgramsScopeBar
             coaches={coaches}
             classes={classes}
+            subgroups={subgroups}
             coachId={coachId}
             classId={classId}
+            subgroupId={subgroupId ?? ""}
           />
         </Suspense>
 
@@ -164,6 +157,7 @@ export default async function CoachProgramsPage({
             updatedAt: t.updatedAt.toISOString(),
           }))}
           selectedClass={selectedClass}
+          selectedSubgroupId={subgroupId}
           selectedDate={selectedDate}
           workoutLifts={workoutLifts}
         />

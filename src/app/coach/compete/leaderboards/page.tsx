@@ -1,6 +1,7 @@
 import { requireSchoolSession } from "@/lib/auth/session";
-import { resolveCoachClassContext } from "@/lib/coach-class-context";
+import { CoachClassScopeBar } from "@/components/coach/coach-class-scope-bar";
 import { getLeaderboardGrid } from "@/lib/queries/leaderboard-grid";
+import { resolveCoachClassScopeFromParams } from "@/lib/queries/coach-scope-params";
 import { LeaderboardToolbar } from "@/components/ui/leaderboard-toolbar";
 import { LeaderboardGrid } from "@/components/leaderboards/leaderboard-grid";
 import { gradesFromSearch, gradesLabel } from "@/lib/grades";
@@ -20,23 +21,25 @@ export default async function CompeteLeaderboardsPage({
     gender?: string;
     scope?: string;
     classId?: string;
+    subgroupId?: string;
+    coachId?: string;
     period?: string;
   }>;
 }) {
   const session = await requireSchoolSession();
   const sp = await searchParams;
-  const coachCtx = await resolveCoachClassContext(session, {
-    classId: sp.classId?.trim() || undefined,
+  const scopeCtx = await resolveCoachClassScopeFromParams(session, {
+    coachId: sp.coachId,
+    classId: sp.classId,
+    subgroupId: sp.subgroupId,
   });
   const grades = gradesFromSearch(sp);
   const gender = parseGenderParam(sp.gender);
   const scope = sp.scope === "global" ? "global" : "school";
-  const classId = sp.classId?.trim() || coachCtx.classId || undefined;
+  const classId = scopeCtx.classId || undefined;
   const period = parseLeaderboardPeriod(sp.period);
 
-  const classes = coachCtx.classes
-    .map((c) => ({ id: c.id, name: c.name, period: c.period }))
-    .filter((c) => !isGraduatingClassName(c.name));
+  const classes = scopeCtx.classes.filter((c) => !isGraduatingClassName(c.name));
 
   let classLabel: string | null = null;
   if (classId) {
@@ -57,11 +60,23 @@ export default async function CompeteLeaderboardsPage({
     classId,
     period,
     undefined,
-    coachCtx.subgroupId
+    scopeCtx.subgroupId
   );
 
   return (
     <>
+      <div className="mb-4">
+        <CoachClassScopeBar
+          coaches={scopeCtx.coaches}
+          classes={scopeCtx.classes}
+          subgroups={scopeCtx.subgroups}
+          coachId={scopeCtx.coachId}
+          classId={scopeCtx.classId}
+          subgroupId={scopeCtx.subgroupId ?? ""}
+          showCoach={session.role === "ADMIN"}
+          showSubgroup
+        />
+      </div>
       <LeaderboardToolbar classes={classes} />
       <LeaderboardGrid
         boards={boards}

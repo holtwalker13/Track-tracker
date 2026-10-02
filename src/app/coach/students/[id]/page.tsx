@@ -2,7 +2,6 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { AppShell } from "@/components/layout/app-shell";
 import { AthleteProfileClassPicker } from "@/components/athletes/athlete-profile-class-picker";
-import { resolveCoachClassContext } from "@/lib/coach-class-context";
 import { Card, CardTitle } from "@/components/ui/card";
 import { COACH_NAV } from "@/lib/navigation";
 import { requireSchoolSession } from "@/lib/auth/session";
@@ -17,6 +16,8 @@ import { RadarProfile } from "@/components/charts/radar-profile";
 import { AthleteProgressSection } from "@/components/performance/athlete-progress-section";
 import { AthleteResultsHistory } from "@/components/performance/athlete-results-history";
 import { SprintPotentialCard } from "@/components/performance/sprint-potential";
+import { GamificationSummaryCard } from "@/components/gamification/gamification-summary-card";
+import { getGamificationSummary } from "@/lib/gamification/dynamic-accolades";
 import { getRankedKpiSlugsForSchool } from "@/lib/services/kpi-sets";
 import { classYearLabel, DEFAULT_CLASS_YEAR } from "@/lib/grades";
 import { classSectionLabel, isGraduatingClassName } from "@/lib/periods";
@@ -44,8 +45,6 @@ export default async function StudentProfilePage({
   const session = await requireSchoolSession();
   const { id } = await params;
   const sp = await searchParams;
-  const coachCtx = await resolveCoachClassContext(session, { classId: sp.classId });
-
   const student = await prisma.studentProfile.findUnique({
     where: { id },
     include: {
@@ -83,22 +82,22 @@ export default async function StudentProfilePage({
   const profileClassId =
     sp.classId && enrolledClasses.some((c) => c.id === sp.classId)
       ? sp.classId
-      : coachCtx.classId && enrolledClasses.some((c) => c.id === coachCtx.classId)
-        ? coachCtx.classId
-        : enrolledClasses[0]?.id ?? coachCtx.classId;
+      : enrolledClasses[0]?.id ?? null;
 
   const rankedSlugs = await getRankedKpiSlugsForSchool(
     session.schoolId,
     profileClassId,
-    coachCtx.subgroupId
+    null
   );
+
+  const gamification = await getGamificationSummary(id);
 
   const [radar, latestGrouped, attemptLog, sprint, marksWindow, progress, activityRanks] =
     await Promise.all([
       getCategoryRadar(id, grade),
       getLatestResultsGrouped(id, schoolYearId),
       getScholasticAttemptLog(id),
-      getStudentSprintPotential(id, { classId: profileClassId, subgroupId: coachCtx.subgroupId }),
+      getStudentSprintPotential(id, { classId: profileClassId, subgroupId: null }),
       getStudentMarksWindow(id, sp.from, sp.to),
       getProgressByTestDate(id, activitySlug),
       getStudentActivityRanks(student.schoolId, id, rankedSlugs, {
@@ -166,6 +165,18 @@ export default async function StudentProfilePage({
           selectedClassId={profileClassId ?? null}
         />
       </Suspense>
+
+      <GamificationSummaryCard
+        level={gamification.level}
+        xpIntoLevel={gamification.xpIntoLevel}
+        xpForNextLevel={gamification.xpForNextLevel}
+        lifetimeXp={gamification.lifetimeXp}
+        currentStreak={gamification.currentStreak}
+        prCount={gamification.prCount}
+        improvementPct={gamification.improvementPct}
+        recentAccolades={gamification.recentAccolades}
+        almostThere={[]}
+      />
 
       <div className="grid gap-6 lg:grid-cols-2">
         <SprintPotentialCard

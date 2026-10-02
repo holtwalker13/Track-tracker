@@ -1,7 +1,7 @@
 import { AppShell } from "@/components/layout/app-shell";
+import { CoachClassScopeBar } from "@/components/coach/coach-class-scope-bar";
 import { COACH_NAV } from "@/lib/navigation";
 import { requireSchoolSession } from "@/lib/auth/session";
-import { resolveCoachClassContext } from "@/lib/coach-class-context";
 import { prisma } from "@/lib/db";
 import { KpiTargetsEditor, type TargetCell, type KpiSetSummary } from "@/components/kpi/kpi-targets-editor";
 import { ImportMarksForm } from "@/components/kpi/import-marks-form";
@@ -9,19 +9,20 @@ import { KPI_METRIC_META, MEDALS, type Medal } from "@/lib/kpi-targets";
 import { DEFAULT_AGE_BRACKET } from "@/lib/age-brackets";
 import {
   ensureCoachActiveKpiSet,
+  ensureKpiSetForClassScope,
   listKpiSetsForCoach,
-  resolveKpiSetForClassContext,
 } from "@/lib/services/kpi-sets";
 import { classSectionLabel } from "@/lib/periods";
+import { resolveCoachClassScopeFromParams } from "@/lib/queries/coach-scope-params";
 
 export default async function BenchmarksPage({
   searchParams,
 }: {
-  searchParams: Promise<{ classId?: string }>;
+  searchParams: Promise<{ coachId?: string; classId?: string; subgroupId?: string }>;
 }) {
   const session = await requireSchoolSession();
   const sp = await searchParams;
-  const coachCtx = await resolveCoachClassContext(session, { classId: sp.classId });
+  const scope = await resolveCoachClassScopeFromParams(session, sp);
 
   await prisma.activityCategory.upsert({
     where: { slug: "flexibility" },
@@ -49,13 +50,26 @@ export default async function BenchmarksPage({
     }
   }
 
-  const classScopedSetId = await resolveKpiSetForClassContext(
-    session.schoolId,
-    coachCtx.classId,
-    coachCtx.subgroupId
-  );
-  if (classScopedSetId) {
-    activeSetId = classScopedSetId;
+  const classRow = scope.classes.find((c) => c.id === scope.classId);
+  const subgroupName =
+    scope.subgroupId != null
+      ? scope.subgroups.find((s) => s.id === scope.subgroupId)?.name ?? null
+      : null;
+
+  if (coachProfileId && scope.classId && classRow) {
+    const scoped = await ensureKpiSetForClassScope(
+      session.schoolId,
+      coachProfileId,
+      scope.classId,
+      scope.subgroupId,
+      {
+        className: classRow.name,
+        subgroupName,
+      }
+    );
+    if (scoped) {
+      activeSetId = scoped.id;
+    }
   }
 
   if (coachProfileId) {
@@ -121,32 +135,41 @@ export default async function BenchmarksPage({
       })),
   ];
 
-  const classLabel = coachCtx.classId
-    ? classSectionLabel(
-        coachCtx.classes.find((c) => c.id === coachCtx.classId) ?? {
-          name: "Class",
-          period: null,
-        }
-      )
+  const scopeLabel = classRow
+    ? `${classSectionLabel(classRow)}${subgroupName ? ` · ${subgroupName}` : ""}`
     : null;
 
   return (
     <AppShell title="KPI targets" nav={COACH_NAV}>
-      {classLabel ? (
+      <div className="mb-4">
+        <CoachClassScopeBar
+          coaches={scope.coaches}
+          classes={scope.classes}
+          subgroups={scope.subgroups}
+          coachId={scope.coachId}
+          classId={scope.classId}
+          subgroupId={scope.subgroupId ?? ""}
+          showCoach={session.role === "ADMIN"}
+          showSubgroup
+        />
+      </div>
+      {scopeLabel ? (
         <p className="mb-4 text-sm text-muted">
-          Editing KPI targets for <span className="font-medium text-foreground">{classLabel}</span>
-          {coachCtx.subgroupId
-            ? ` · ${coachCtx.subgroups.find((s) => s.id === coachCtx.subgroupId)?.name ?? "subgroup"}`
-            : ""}
-          . Change class in the header to switch packs when class-specific sets exist.
+          Medal targets and ranked KPIs for{" "}
+          <span className="font-medium text-foreground">{scopeLabel}</span>. Change class or
+          subgroup above to edit a different group.
         </p>
-      ) : null}
+      ) : (
+        <p className="mb-4 text-sm text-muted">Select a class to configure KPI targets.</p>
+      )}
       <KpiTargetsEditor
         initial={initial}
         metrics={metrics}
         initialSets={ownSets}
         initialActiveSetId={activeSetId}
         publicSets={publicSets}
+        classScopeMode={Boolean(scope.classId)}
+        classScopeLabel={scopeLabel}
       />
       <div className="mt-8 max-w-2xl">
         <ImportMarksForm />

@@ -547,6 +547,8 @@ model TestingSession {
   // When false, student self-entry is locked (coach can still record while LIVE)
   recordingUnlocked Boolean @default(true)
   liveOpenedAt DateTime?
+  // Attempt columns shown for all athletes in this session (starts at 1).
+  attemptSlots Int @default(1)
   // Soft-archive: sessions with marks are never hard-deleted. Null = active.
   archivedAt   DateTime?
   createdById  String?

@@ -12,6 +12,11 @@ import {
 import { ActivityIcon } from "@/lib/activity-icons";
 import { fireConfetti } from "@/lib/confetti";
 import { formatActivityValue } from "@/lib/format";
+import {
+  BroadJumpFeetInput,
+  broadJumpToFeetInches,
+  parseBroadJumpFeetInches,
+} from "@/components/testing/broad-jump-feet-input";
 import { pickBestAttempt } from "@/lib/services/performance";
 import { formatStudentName, cn } from "@/lib/utils";
 import type { ScoringDirection } from "@/lib/constants";
@@ -53,6 +58,7 @@ export function LiveTestingStudio({
   rows: initialRows,
   readOnly = false,
   selectedStudentId: initialStudentId,
+  attemptCount = 1,
 }: {
   sessionId: string;
   sessionPath: string;
@@ -65,6 +71,8 @@ export function LiveTestingStudio({
   rows: StudioRow[];
   readOnly?: boolean;
   selectedStudentId?: string;
+  /** Attempt columns for this session (starts at 1; coach adds more globally). */
+  attemptCount?: number;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -201,7 +209,7 @@ export function LiveTestingStudio({
     );
     await saveRow(nextRow);
     if (!advance) return;
-    if (idx < 2) {
+    if (idx < attemptCount - 1) {
       const el = inputRefs.current.get(idx + 1);
       el?.focus();
       el?.select();
@@ -211,7 +219,27 @@ export function LiveTestingStudio({
     }
   }
 
-  const attemptLabels = useMemo(() => ["Attempt 1", "Attempt 2", "Attempt 3"], []);
+  const attemptLabels = useMemo(
+    () => Array.from({ length: attemptCount }, (_, i) => `Attempt ${i + 1}`),
+    [attemptCount]
+  );
+
+  async function addAttemptColumn() {
+    if (readOnly) return;
+    const res = await fetch(`/api/testing/sessions/${sessionId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ attemptSlots: attemptCount + 1 }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      window.alert(data.error ?? "Could not add attempt");
+      return;
+    }
+    router.refresh();
+  }
+
+  const isBroadJump = activitySlug === "standing-broad-jump";
 
   if (!row) {
     return (
@@ -347,7 +375,7 @@ export function LiveTestingStudio({
                 {row.firstName} {row.lastName}
               </p>
               <p className="text-[11px] text-slate-400">
-                {activityName} · 3 attempts
+                {activityName} · {attemptCount} attempt{attemptCount === 1 ? "" : "s"}
               </p>
             </div>
             <button
@@ -377,7 +405,13 @@ export function LiveTestingStudio({
         </div>
 
         <div className="space-y-3 px-3 py-4 sm:px-4">
-          <div className="grid grid-cols-3 gap-2">
+          <div
+            className="flex flex-wrap items-start gap-2"
+            style={{
+              display: "grid",
+              gridTemplateColumns: `repeat(${Math.min(attemptCount, 4)}, minmax(0, 1fr))`,
+            }}
+          >
             {(() => {
               const nums = row.attempts
                 .map((a) => (a === "" || a == null ? null : Number(a)))
@@ -394,75 +428,116 @@ export function LiveTestingStudio({
                     })
                   : -1;
 
-              return [0, 1, 2].map((i) => {
+              return Array.from({ length: attemptCount }, (_, i) => i).map((i) => {
                 const val = row.attempts[i] ?? "";
                 const num = val === "" ? null : Number(val);
-                // Only the single best attempt of this session earns the trophy —
-                // worse attempts must not show "New Record!".
                 const isRecord = recordAttemptIdx === i;
                 const filled = val !== "" && !Number.isNaN(Number(val));
+                const bj =
+                  isBroadJump && num != null && !Number.isNaN(num)
+                    ? broadJumpToFeetInches(num)
+                    : { feet: "", inches: "" };
+
                 return (
-                <div key={i} className="min-w-0">
-                  <label className="mb-1 block text-center text-[10px] font-semibold uppercase tracking-wide text-slate-400">
-                    {attemptLabels[i]}
-                  </label>
-                  <input
-                    ref={(el) => {
-                      if (el) inputRefs.current.set(i, el);
-                      else inputRefs.current.delete(i);
-                    }}
-                    type="text"
-                    inputMode="decimal"
-                    pattern="[0-9]*[.]?[0-9]*"
-                    enterKeyHint={i < 2 ? "next" : "done"}
-                    autoComplete="off"
-                    disabled={readOnly}
-                    value={val}
-                    onChange={(e) => updateAttempt(i, e.target.value)}
-                    onFocus={(e) => {
-                      requestAnimationFrame(() =>
-                        e.target.scrollIntoView({ block: "center", behavior: "smooth" })
-                      );
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        skipBlurRef.current = true;
-                        void commitAttempt(i, (e.target as HTMLInputElement).value, true).finally(
-                          () => {
-                            skipBlurRef.current = false;
+                  <div key={i} className="min-w-0">
+                    <label className="mb-1 block text-center text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                      {attemptLabels[i]}
+                    </label>
+                    {isBroadJump ? (
+                      <BroadJumpFeetInput
+                        large
+                        disabled={readOnly}
+                        feet={bj.feet}
+                        inches={bj.inches}
+                        inputRef={(el) => {
+                          if (el) inputRefs.current.set(i, el);
+                          else inputRefs.current.delete(i);
+                        }}
+                        onChange={(feet, inches) => {
+                          const total = parseBroadJumpFeetInches(feet, inches);
+                          updateAttempt(i, total == null ? "" : String(total));
+                        }}
+                        onCommit={() => {
+                          const v = row.attempts[i];
+                          void commitAttempt(
+                            i,
+                            v === "" || v == null ? "" : String(v),
+                            false
+                          );
+                        }}
+                      />
+                    ) : (
+                      <input
+                        ref={(el) => {
+                          if (el) inputRefs.current.set(i, el);
+                          else inputRefs.current.delete(i);
+                        }}
+                        type="text"
+                        inputMode="decimal"
+                        pattern="[0-9]*[.]?[0-9]*"
+                        enterKeyHint={i < attemptCount - 1 ? "next" : "done"}
+                        autoComplete="off"
+                        disabled={readOnly}
+                        value={val}
+                        onChange={(e) => updateAttempt(i, e.target.value)}
+                        onFocus={(e) => {
+                          requestAnimationFrame(() =>
+                            e.target.scrollIntoView({ block: "center", behavior: "smooth" })
+                          );
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            skipBlurRef.current = true;
+                            void commitAttempt(
+                              i,
+                              (e.target as HTMLInputElement).value,
+                              true
+                            ).finally(() => {
+                              skipBlurRef.current = false;
+                            });
                           }
-                        );
-                      }
-                    }}
-                    onBlur={(e) => {
-                      if (skipBlurRef.current) return;
-                      void commitAttempt(i, e.target.value, false);
-                    }}
-                    className={cn(
-                      "w-full rounded-xl border bg-white px-2 py-3 text-center text-xl font-bold tabular-nums text-slate-900 outline-none",
-                      "focus:ring-2 focus:ring-sky-400 disabled:opacity-60",
-                      isRecord
-                        ? "border-emerald-400 ring-2 ring-emerald-300/60 bg-emerald-50"
-                        : filled
-                          ? "border-emerald-300"
-                          : "border-slate-200"
+                        }}
+                        onBlur={(e) => {
+                          if (skipBlurRef.current) return;
+                          void commitAttempt(i, e.target.value, false);
+                        }}
+                        className={cn(
+                          "w-full rounded-xl border bg-white px-2 py-3 text-center text-xl font-bold tabular-nums text-slate-900 outline-none",
+                          "focus:ring-2 focus:ring-sky-400 disabled:opacity-60",
+                          isRecord
+                            ? "border-emerald-400 ring-2 ring-emerald-300/60 bg-emerald-50"
+                            : filled
+                              ? "border-emerald-300"
+                              : "border-slate-200"
+                        )}
+                      />
                     )}
-                  />
-                  <div className="mt-1.5 flex min-h-[1.25rem] items-center justify-center">
-                    {isRecord ? (
-                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-300">
-                        <Trophy className="h-3 w-3 text-sport-gold" />
-                        New Record!
-                      </span>
-                    ) : filled ? (
-                      <Check className="h-4 w-4 text-emerald-400" strokeWidth={2.5} />
-                    ) : null}
+                    <div className="mt-1.5 flex min-h-[1.25rem] items-center justify-center">
+                      {isRecord ? (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-300">
+                          <Trophy className="h-3 w-3 text-sport-gold" />
+                          New Record!
+                        </span>
+                      ) : filled ? (
+                        <Check className="h-4 w-4 text-emerald-400" strokeWidth={2.5} />
+                      ) : null}
+                    </div>
                   </div>
-                </div>
                 );
               });
             })()}
+            {!readOnly ? (
+              <div className="flex min-w-[5rem] flex-col items-center justify-center pt-6">
+                <button
+                  type="button"
+                  onClick={() => void addAttemptColumn()}
+                  className="rounded-lg border border-dashed border-slate-500 px-3 py-2 text-xs font-semibold text-slate-300 hover:border-sky-400 hover:text-sky-200"
+                >
+                  + Add Attempt
+                </button>
+              </div>
+            ) : null}
           </div>
 
           {row.boardHits && row.boardHits.some((h) => h.rank <= 3 && h.total >= 2) ? (

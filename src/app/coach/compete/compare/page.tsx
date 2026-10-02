@@ -11,6 +11,8 @@ import { GenderToggle } from "@/components/ui/gender-toggle";
 import { classYearLabel, gradesFromSearch } from "@/lib/grades";
 import { parseGenderParam, genderFullLabel } from "@/lib/gender";
 import { listStudents } from "@/lib/queries/coach";
+import { CoachClassScopeBar } from "@/components/coach/coach-class-scope-bar";
+import { resolveCoachClassScopeFromParams } from "@/lib/queries/coach-scope-params";
 
 export default async function CompeteComparePage({
   searchParams,
@@ -24,10 +26,18 @@ export default async function CompeteComparePage({
     grade?: string;
     grades?: string;
     gender?: string;
+    classId?: string;
+    subgroupId?: string;
+    coachId?: string;
   }>;
 }) {
   const session = await requireSchoolSession();
   const sp = await searchParams;
+  const scopeCtx = await resolveCoachClassScopeFromParams(session, {
+    coachId: sp.coachId,
+    classId: sp.classId,
+    subgroupId: sp.subgroupId,
+  });
   const grades = gradesFromSearch(sp);
   const gender = parseGenderParam(sp.gender);
   const mode: CompareMode =
@@ -81,7 +91,9 @@ export default async function CompeteComparePage({
 
   const compare =
     mode !== "athlete" && selectedId
-      ? await getAthleteCompare(selectedId, session.schoolId)
+      ? await getAthleteCompare(selectedId, session.schoolId, undefined, {
+          classId: scopeCtx.classId,
+        })
       : null;
   const lineup =
     mode === "athlete" && filledLineup.length >= 2
@@ -97,16 +109,24 @@ export default async function CompeteComparePage({
         }
       : {
           name: "Medal target",
-          meta: "School Silver standard",
+          meta: compare?.medalTargetLabel ?? "Active medal standard",
           isBenchmark: true,
         };
 
   return (
     <>
-      <p className="mb-4 text-sm text-muted">
-        Line up 2–5 athletes side by side, or stack one athlete against class average or your
-        school’s Silver medal target.
-      </p>
+      <div className="mb-4">
+        <CoachClassScopeBar
+          coaches={scopeCtx.coaches}
+          classes={scopeCtx.classes}
+          subgroups={scopeCtx.subgroups}
+          coachId={scopeCtx.coachId}
+          classId={scopeCtx.classId}
+          subgroupId={scopeCtx.subgroupId ?? ""}
+          showCoach={session.role === "ADMIN"}
+          showSubgroup
+        />
+      </div>
 
       <div className="mb-6 space-y-4">
         <GradePills />

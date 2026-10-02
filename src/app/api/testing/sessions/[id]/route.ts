@@ -67,6 +67,17 @@ export async function PATCH(
       });
       return NextResponse.json({ ok: true, recordingUnlocked: false });
     }
+    if (action === "reopen") {
+      await prisma.testingSession.update({
+        where: { id },
+        data: {
+          status: "LIVE",
+          recordingUnlocked: true,
+          liveOpenedAt: new Date(),
+        },
+      });
+      return NextResponse.json({ ok: true, status: "LIVE" });
+    }
     if (action === "unlock") {
       if (rec.status === "CLOSED" || rec.status === "COMPLETED") {
         return NextResponse.json({ error: "Session is closed" }, { status: 400 });
@@ -81,6 +92,18 @@ export async function PATCH(
       return NextResponse.json({ ok: true, recordingUnlocked: true });
     }
     return NextResponse.json({ error: "Unknown action" }, { status: 400 });
+  }
+
+  if (body.attemptSlots != null) {
+    const n = Math.max(1, Math.min(12, Number(body.attemptSlots)));
+    if (!Number.isFinite(n)) {
+      return NextResponse.json({ error: "Invalid attemptSlots" }, { status: 400 });
+    }
+    await prisma.testingSession.update({
+      where: { id },
+      data: { attemptSlots: n },
+    });
+    return NextResponse.json({ ok: true, attemptSlots: n });
   }
 
   const dateStr = String(body.testingDate ?? "").trim();

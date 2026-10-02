@@ -88,12 +88,17 @@ export function KpiTargetsEditor({
   initialSets,
   initialActiveSetId,
   publicSets: initialPublicSets,
+  classScopeMode = false,
+  classScopeLabel = null,
 }: {
   initial: TargetCell[];
   metrics: MetricInfo[];
   initialSets: KpiSetSummary[];
   initialActiveSetId: string;
   publicSets: KpiSetSummary[];
+  /** When true, KPI set is tied to School class/subgroup — no custom named sets. */
+  classScopeMode?: boolean;
+  classScopeLabel?: string | null;
 }) {
   const router = useRouter();
   const [ownSets, setOwnSets] = useState(initialSets);
@@ -310,10 +315,21 @@ export function KpiTargetsEditor({
     <div>
       <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <p className="max-w-2xl text-sm text-muted">
-          Build <strong className="font-medium text-foreground">KPI sets</strong> per sport with
-          Gold / Silver / Bronze targets. Leave medals blank to mark a KPI{" "}
-          <strong className="font-medium text-foreground">unranked</strong> (hidden from
-          leaderboards). Ranked KPIs always sort to the top when building sessions.
+          {classScopeMode ? (
+            <>
+              Configure ranked KPIs and medal targets for{" "}
+              <strong className="font-medium text-foreground">
+                {classScopeLabel ?? "this class"}
+              </strong>
+              . Unranked KPIs stay off leaderboards and medal standards.
+            </>
+          ) : (
+            <>
+              Build Gold / Silver / Bronze targets per class. Leave medals blank to mark a KPI{" "}
+              <strong className="font-medium text-foreground">unranked</strong>. Select a class
+              above to link targets to School classes and subgroups.
+            </>
+          )}
         </p>
         <div className="flex shrink-0 flex-wrap gap-2">
           <button
@@ -340,32 +356,45 @@ export function KpiTargetsEditor({
 
       <div className="mb-6 space-y-3 rounded-2xl border border-card-border bg-card p-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <label className="block min-w-[16rem] flex-1 text-sm">
-            <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted">
-              Active KPI set
-            </span>
-            <select
-              value={activeSet?.id ?? ""}
-              onChange={(e) => activateSet(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-card-border bg-background px-3 py-2.5"
-            >
-              {ownSets.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name} · {sportLabel(s.sport)}
-                  {s.isDefault ? " (default)" : ""}
-                </option>
-              ))}
-            </select>
-          </label>
+          {classScopeMode ? (
+            <div className="block min-w-[16rem] flex-1 text-sm">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted">
+                KPI scope
+              </span>
+              <p className="mt-1 rounded-lg border border-card-border bg-background px-3 py-2.5 font-medium">
+                {classScopeLabel ?? activeSet?.name ?? "Class KPIs"}
+              </p>
+            </div>
+          ) : (
+            <label className="block min-w-[16rem] flex-1 text-sm">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted">
+                Active KPI set
+              </span>
+              <select
+                value={activeSet?.id ?? ""}
+                onChange={(e) => activateSet(e.target.value)}
+                className="mt-1 w-full rounded-lg border border-card-border bg-background px-3 py-2.5"
+              >
+                {ownSets.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name} · {sportLabel(s.sport)}
+                    {s.isDefault ? " (default)" : ""}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => setCreateOpen(true)}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-card-border px-3 py-2 text-sm font-medium hover:bg-sky-400/10"
-            >
-              <Plus className="h-4 w-4" />
-              New set
-            </button>
+            {!classScopeMode ? (
+              <button
+                type="button"
+                onClick={() => setCreateOpen(true)}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-card-border px-3 py-2 text-sm font-medium hover:bg-sky-400/10"
+              >
+                <Plus className="h-4 w-4" />
+                New set
+              </button>
+            ) : null}
             <button
               type="button"
               onClick={() => setBrowsePublic((v) => !v)}

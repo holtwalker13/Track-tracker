@@ -631,6 +631,17 @@ export async function getRankedKpiSlugsForSchool(
   return KPI_METRIC_META.map((m) => m.slug);
 }
 
+/** Ranked KPI slugs governing a specific athlete (their class/subgroup set context). */
+export async function getRankedKpiSlugsForStudent(
+  schoolId: string,
+  studentId: string,
+  opts: { classId?: string | null; subgroupId?: string | null } = {}
+): Promise<string[]> {
+  const setId = await resolveKpiSetForStudentContext(schoolId, studentId, opts);
+  if (setId) return getRankedMetricSlugs(setId);
+  return getRankedKpiSlugsForSchool(schoolId, null, null);
+}
+
 /** Ranked metric slugs for a set (leaderboards / session builder ordering). */
 export async function getRankedMetricSlugs(kpiSetId: string): Promise<string[]> {
   const rows = await prisma.kpiSetMetric.findMany({

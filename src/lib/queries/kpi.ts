@@ -122,14 +122,16 @@ export async function getStudentSprintPotential(
     opts.ageBracket && isAgeBracketId(opts.ageBracket) ? opts.ageBracket : defaultBracket;
   const window: MedalTimeWindow = opts.window === "week" ? "week" : "all";
 
-  const { resolveKpiSetForClassContext, getRankedMetricSlugs } = await import(
+  const { resolveKpiSetForStudentContext, getRankedMetricSlugs } = await import(
     "@/lib/services/kpi-sets"
   );
-  const kpiSetId = await resolveKpiSetForClassContext(
-    student.schoolId,
-    opts.classId,
-    opts.subgroupId
-  );
+  // Athlete-aware: the athlete's own class/subgroup KPI set governs the medal
+  // standard; an explicit class scope is honored only when the athlete is
+  // enrolled in it. Keeps coach profile and student views on the same source.
+  const kpiSetId = await resolveKpiSetForStudentContext(student.schoolId, studentId, {
+    classId: opts.classId,
+    subgroupId: opts.subgroupId,
+  });
   const rankedSlugList = kpiSetId ? await getRankedMetricSlugs(kpiSetId) : [];
   const markSlugs =
     rankedSlugList.length > 0 ? rankedSlugList : (KPI_SLUGS as string[]);

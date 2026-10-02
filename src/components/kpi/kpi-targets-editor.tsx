@@ -250,7 +250,7 @@ export function KpiTargetsEditor({
       loadSet(data.set);
     }
     setStatus("saved");
-    window.setTimeout(() => setStatus((s) => (s === "saved" ? "idle" : s)), 6000);
+    window.setTimeout(() => setStatus((s) => (s === "saved" ? "idle" : s)), 10000);
   }
 
   async function togglePublic() {
@@ -646,20 +646,32 @@ export function KpiTargetsEditor({
       </div>
 
       {status === "saved" && (
-        <div
-          role="status"
-          className="mb-4 flex items-center gap-3 rounded-xl border border-emerald-500/40 bg-emerald-500/15 px-4 py-3 text-sm font-medium text-emerald-100 shadow-lg"
-        >
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-500/30 text-lg">
-            ✓
-          </span>
-          <div>
-            <p className="font-semibold text-foreground">KPI medal standards saved</p>
-            <p className="mt-0.5 text-xs font-normal text-muted">
-              {classScopeLabel
-                ? `Changes apply only to ${classScopeLabel}. Class and subgroup KPIs stay separate.`
-                : "Your medal targets and ranked KPIs were updated."}
-            </p>
+        <div className="pointer-events-none fixed inset-x-0 top-4 z-50 flex justify-center px-4">
+          <div
+            role="status"
+            className="pointer-events-auto flex items-center gap-3 rounded-2xl border border-emerald-300/60 bg-emerald-500 px-5 py-3.5 text-sm text-white shadow-2xl shadow-emerald-950/60 ring-4 ring-emerald-500/25"
+          >
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/25 text-lg font-bold">
+              ✓
+            </span>
+            <div className="min-w-0">
+              <p className="font-bold">
+                KPI medal standards saved{classScopeLabel ? ` for ${classScopeLabel}` : ""}
+              </p>
+              <p className="mt-0.5 text-xs font-normal text-emerald-50">
+                {classScopeLabel
+                  ? `Only ${classScopeLabel} was updated — overall class and subgroup KPIs stay separate.`
+                  : "Your medal targets and ranked KPIs were updated."}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setStatus("idle")}
+              aria-label="Dismiss notification"
+              className="ml-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white/90 transition hover:bg-white/20"
+            >
+              <X className="h-4 w-4" />
+            </button>
           </div>
         </div>
       )}

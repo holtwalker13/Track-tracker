@@ -58,51 +58,56 @@ export function SchoolClassExpandableRow({
 
   return (
     <li className="rounded-xl border border-card-border bg-card">
-      <div className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-        <button
-          type="button"
-          onClick={() => setOpen((v) => !v)}
-          className="flex min-w-0 w-full flex-col gap-1 text-left hover:text-accent sm:flex-1 sm:gap-0.5"
-        >
-          <span className="flex items-start gap-2">
-            <ChevronDown
-              className={cn("mt-0.5 h-4 w-4 shrink-0 transition", open && "rotate-180")}
-              aria-hidden
-            />
-            <span className="font-semibold leading-snug">{name}</span>
-          </span>
-          <span className="pl-6 text-sm leading-snug text-muted sm:pl-6">
-            {programKind === "TRAINING"
-              ? "Training · "
-              : programKind === "SCHOLASTIC"
-                ? "Class · "
-                : ""}
-            {period ? `${period} · ` : ""}
-            {gradeLevel ? classYearLabel(gradeLevel) : "mixed"}
-            {" · "}
-            {athleteCount} athletes
-          </span>
-        </button>
-        <div className="flex w-full flex-col gap-2 border-t border-card-border/60 pt-3 sm:w-auto sm:min-w-[12rem] sm:border-0 sm:pt-0">
+      <div className="px-4 py-3">
+        <div className="flex items-start gap-2">
+          <button
+            type="button"
+            onClick={() => setOpen((v) => !v)}
+            className="flex min-w-0 flex-1 flex-col gap-1 text-left hover:text-accent"
+          >
+            <span className="flex items-start gap-2 pr-1">
+              <ChevronDown
+                className={cn("mt-0.5 h-4 w-4 shrink-0 transition", open && "rotate-180")}
+                aria-hidden
+              />
+              <span className="font-semibold leading-snug">{name}</span>
+            </span>
+            <span className="pl-6 text-sm leading-snug text-muted">
+              {programKind === "TRAINING"
+                ? "Training · "
+                : programKind === "SCHOLASTIC"
+                  ? "Class · "
+                  : ""}
+              {period ? `${period} · ` : ""}
+              {gradeLevel ? classYearLabel(gradeLevel) : "mixed"}
+              {" · "}
+              {athleteCount} athletes
+            </span>
+          </button>
           {canEdit ? (
-            <div className="flex items-center gap-2">
+            <div className="flex shrink-0 items-center gap-1">
               <a
                 href={`/coach/school/classes/${classId}?edit=1`}
-                className="rounded-lg border border-card-border px-3 py-2 text-sm text-muted hover:border-sky-400/40 hover:text-foreground"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-card-border text-muted hover:border-sky-400/40 hover:text-foreground"
+                aria-label={`Rename ${name}`}
+                title="Rename"
               >
-                Rename
+                <Pencil className="h-4 w-4" aria-hidden />
               </a>
               <button
                 type="button"
                 disabled={pending}
                 onClick={() => void deleteClass()}
-                className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-red-500/30 text-red-300 hover:bg-red-500/10"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-red-500/30 text-red-300 hover:bg-red-500/10"
                 aria-label={`Delete ${name}`}
+                title="Delete class"
               >
                 <Trash2 className="h-4 w-4" />
               </button>
             </div>
           ) : null}
+        </div>
+        <div className="mt-2 pl-6 sm:max-w-xs">
           <ClassCoachInlineSelect
             classId={classId}
             coachIds={coachIds}

@@ -27,13 +27,27 @@ export function SchoolSwitcher({
     router.refresh();
   }
 
+  const toolbar = layout === "toolbar";
+
   return (
-    <label className="flex items-center gap-2 text-xs text-muted">
-      <span className="hidden sm:inline">School</span>
+    <label
+      className={
+        toolbar
+          ? "flex w-full min-w-0 items-center gap-2 text-xs text-muted sm:w-auto sm:min-w-[14rem] sm:flex-1 sm:max-w-md"
+          : "flex items-center gap-2 text-xs text-muted"
+      }
+    >
+      <span className="w-12 shrink-0 font-semibold uppercase tracking-wide sm:w-auto">
+        School
+      </span>
       <select
         value={currentSchoolId ?? ""}
         onChange={(e) => void onChange(e.target.value)}
-        className="max-w-[12rem] rounded-lg border border-card-border bg-card px-2 py-1.5 text-sm text-foreground"
+        className={
+          toolbar
+            ? "min-w-0 flex-1 rounded-lg border border-card-border bg-card px-2.5 py-2 text-sm text-foreground"
+            : "max-w-[12rem] rounded-lg border border-card-border bg-card px-2 py-1.5 text-sm text-foreground"
+        }
       >
         <option value="">All schools</option>
         {schools.map((s) => (

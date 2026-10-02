@@ -59,6 +59,12 @@ export async function AppShell({
 
   const compact = density === "compact";
 
+  const showSchoolSwitcher = session?.role === "ADMIN" && schools.length > 0;
+  const showClassContext = Boolean(
+    coachContext && coachContext.classes.length > 0
+  );
+  const showContextRow = showSchoolSwitcher || showClassContext;
+
   return (
     <div className="min-h-screen bg-background">
       <header
@@ -107,26 +113,33 @@ export async function AppShell({
                   </p>
                 ) : null}
               </div>
-              {session?.role === "ADMIN" && schools.length > 0 ? (
-                <div className="hidden shrink-0 sm:block">
-                  <SchoolSwitcher schools={schools} currentSchoolId={session.schoolId} />
-                </div>
+            </div>
+            <TopNav items={items} compact={navCompact || compact} />
+          </div>
+          {showContextRow ? (
+            <div
+              className={cn(
+                "mt-2 flex flex-col gap-2 border-t border-card-border/60 pt-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4",
+                compact && "mt-1.5 pt-1.5"
+              )}
+            >
+              {showSchoolSwitcher ? (
+                <SchoolSwitcher
+                  schools={schools}
+                  currentSchoolId={session.schoolId}
+                  layout="toolbar"
+                />
               ) : null}
-              {coachContext && coachContext.classes.length > 0 ? (
+              {showClassContext && coachContext ? (
                 <CoachClassContextBar
                   classes={coachContext.classes}
                   subgroups={coachContext.subgroups}
                   classId={coachContext.classId}
                   subgroupId={coachContext.subgroupId}
                   compact={navCompact || compact}
+                  layout="toolbar"
                 />
               ) : null}
-            </div>
-            <TopNav items={items} compact={navCompact || compact} />
-          </div>
-          {session?.role === "ADMIN" && schools.length > 0 ? (
-            <div className="mt-2 sm:hidden">
-              <SchoolSwitcher schools={schools} currentSchoolId={session.schoolId} />
             </div>
           ) : null}
         </div>

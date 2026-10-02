@@ -5,9 +5,11 @@ import { useRouter } from "next/navigation";
 export function SchoolSwitcher({
   schools,
   currentSchoolId,
+  layout = "inline",
 }: {
   schools: { id: string; name: string }[];
   currentSchoolId?: string;
+  layout?: "inline" | "toolbar";
 }) {
   const router = useRouter();
 

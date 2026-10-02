@@ -104,7 +104,25 @@ export function KpiTargetsEditor({
   const [ownSets, setOwnSets] = useState(initialSets);
   const [publicSets, setPublicSets] = useState(initialPublicSets);
   const [activeSetId, setActiveSetId] = useState(initialActiveSetId);
-  const activeSet = ownSets.find((s) => s.id === activeSetId) ?? ownSets[0] ?? null;
+  const activeSet =
+    ownSets.find((s) => s.id === activeSetId) ??
+    (classScopeMode && initialActiveSetId
+      ? initialSets.find((s) => s.id === initialActiveSetId)
+      : undefined) ??
+    ownSets[0] ??
+    null;
+
+  useEffect(() => {
+    setOwnSets(initialSets);
+    setActiveSetId(initialActiveSetId);
+    const set =
+      initialSets.find((s) => s.id === initialActiveSetId) ?? initialSets[0] ?? null;
+    if (set) {
+      setCells(cellsFromSet(set));
+      setRankedBySlug(rankedMapFromSet(set));
+      setStatus("idle");
+    }
+  }, [initialActiveSetId, initialSets]);
 
   const [cells, setCells] = useState(() =>
     activeSet ? cellsFromSet(activeSet) : initial
@@ -206,14 +224,14 @@ export function KpiTargetsEditor({
   }
 
   async function save() {
-    if (!activeSet) return;
+    if (!activeSetId || !activeSet || activeSet.id !== activeSetId) return;
     setStatus("saving");
     const metricsPayload = metricList.map((m, index) => ({
       metricSlug: m.slug,
       ranked: Boolean(rankedBySlug[m.slug]),
       sortOrder: index,
     }));
-    const res = await fetch(`/api/kpi-sets/${activeSet.id}`, {
+    const res = await fetch(`/api/kpi-sets/${activeSetId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -232,6 +250,7 @@ export function KpiTargetsEditor({
       loadSet(data.set);
     }
     setStatus("saved");
+    window.setTimeout(() => setStatus((s) => (s === "saved" ? "idle" : s)), 6000);
   }
 
   async function togglePublic() {
@@ -626,16 +645,34 @@ export function KpiTargetsEditor({
         </table>
       </div>
 
-      <div className="mt-4 flex items-center gap-3">
+      {status === "saved" && (
+        <div
+          role="status"
+          className="mb-4 flex items-center gap-3 rounded-xl border border-emerald-500/40 bg-emerald-500/15 px-4 py-3 text-sm font-medium text-emerald-100 shadow-lg"
+        >
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-500/30 text-lg">
+            ✓
+          </span>
+          <div>
+            <p className="font-semibold text-foreground">KPI medal standards saved</p>
+            <p className="mt-0.5 text-xs font-normal text-muted">
+              {classScopeLabel
+                ? `Changes apply only to ${classScopeLabel}. Class and subgroup KPIs stay separate.`
+                : "Your medal targets and ranked KPIs were updated."}
+            </p>
+          </div>
+        </div>
+      )}
+
+      <div className="mt-4 flex flex-wrap items-center gap-3">
         <button
           type="button"
           onClick={save}
-          disabled={status === "saving" || !activeSet}
+          disabled={status === "saving" || !activeSet || activeSet.id !== activeSetId}
           className="rounded-lg bg-accent px-4 py-2 font-medium text-background disabled:opacity-60"
         >
           {status === "saving" ? "Saving…" : "Save KPI set"}
         </button>
-        {status === "saved" && <p className="text-sm text-success">Saved for this set.</p>}
         {status === "error" && <p className="text-sm text-sport-red">Could not save. Try again.</p>}
         <p className="text-xs text-muted">
           Programs on{" "}

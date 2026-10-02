@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { studentsTargetedByWorkoutAssignment } from "@/lib/queries/workout-assignment-roster";
 import { dayBoundsFromDateString, getOrCreateWorkoutSession } from "@/lib/services/workouts";
 import type { WorkoutLogExportRow } from "@/lib/services/workout-export";
 import type { LiftLogSample } from "@/lib/services/workout-progression";
@@ -219,29 +220,6 @@ export async function listWorkoutSessionsForCoachRange(input: {
   const endBounds = dayBoundsFromDateString(input.endDate);
   if (!startBounds || !endBounds) return [];
 
-  const assignments = await prisma.workoutAssignment.findMany({
-    where: {
-      schoolId: input.schoolId,
-      scheduledDate: { gte: startBounds.start, lte: endBounds.end },
-      ...(input.classId ? { classId: input.classId } : {}),
-    },
-    include: {
-      class: { select: { name: true, id: true } },
-      template: { select: { name: true } },
-    },
-  });
-
-  for (const a of assignments) {
-    if (!a.class?.id) continue;
-    const enrollments = await prisma.classEnrollment.findMany({
-      where: { classId: a.class.id },
-      select: { studentId: true },
-    });
-    for (const e of enrollments) {
-      await getOrCreateWorkoutSession(a.id, e.studentId);
-    }
-  }
-
   const assignmentsWithSessions = await prisma.workoutAssignment.findMany({
     where: {
       schoolId: input.schoolId,
@@ -261,39 +239,34 @@ export async function listWorkoutSessionsForCoachRange(input: {
     orderBy: [{ scheduledDate: "desc" }, { createdAt: "desc" }],
   });
 
-  let subgroupMemberIds: Set<string> | null = null;
+  let scopeSubgroupMemberIds: Set<string> | null = null;
   if (input.subgroupId) {
     const members = await prisma.classSubgroupMember.findMany({
       where: { subgroupId: input.subgroupId },
       select: { studentId: true },
     });
-    subgroupMemberIds = new Set(members.map((m) => m.studentId));
+    scopeSubgroupMemberIds = new Set(members.map((m) => m.studentId));
   }
 
   const rows: CoachWorkoutLogRow[] = [];
   for (const a of assignmentsWithSessions) {
     const sessionsByStudent = new Map(a.sessions.map((s) => [s.studentId, s]));
-    const enrollments =
-      a.class?.id != null
-        ? await prisma.classEnrollment.findMany({
-            where: { classId: a.class.id },
-            include: {
-              student: {
-                select: { id: true, firstName: true, lastName: true, studentNumber: true },
-              },
-            },
-          })
-        : [];
 
-    const students =
-      enrollments.length > 0
-        ? enrollments.map((e) => e.student)
-        : a.sessions.map((s) => s.student);
+    const students = await studentsTargetedByWorkoutAssignment({
+      assignmentId: a.id,
+      classId: a.classId,
+      subgroupId: a.subgroupId,
+      studentId: a.studentId,
+    });
+
+    for (const student of students) {
+      await getOrCreateWorkoutSession(a.id, student.id);
+    }
 
     const scheduledDate = a.scheduledDate.toISOString().slice(0, 10);
 
     for (const student of students) {
-      if (subgroupMemberIds && !subgroupMemberIds.has(student.id)) continue;
+      if (scopeSubgroupMemberIds && !scopeSubgroupMemberIds.has(student.id)) continue;
       const s = sessionsByStudent.get(student.id);
       rows.push({
         sessionId: s?.id ?? null,

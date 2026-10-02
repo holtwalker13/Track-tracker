@@ -105,20 +105,18 @@ export async function getAthleteCompare(
       ? `${MEDAL_LABELS[medalState.earnedMedal]} earned`
       : "Medal target";
 
-  // The comparison chart shows exactly the ranked KPIs from the athlete's class
-  // KPI set (configured on the KPIs tab) — nothing else. Only when the school
-  // has no KPI set at all do we fall back to the full activity list.
-  const hasKpiSet = medalState.kpiSetId != null;
-  const activities = await prisma.activity.findMany({
-    where: {
-      OR: [{ schoolId: null }, { schoolId }],
-      ...(hasKpiSet
-        ? { slug: { in: [...rankedSlugs] } }
-        : { slug: { notIn: ["height", "weight"] } }),
-    },
-    include: { category: true },
-    orderBy: { name: "asc" },
-  });
+  const rankedSlugList = [...rankedSlugs];
+  const activities =
+    rankedSlugList.length === 0
+      ? []
+      : await prisma.activity.findMany({
+          where: {
+            slug: { in: rankedSlugList, notIn: ["height", "weight"] },
+            OR: [{ schoolId: null }, { schoolId }],
+          },
+          include: { category: true },
+          orderBy: { name: "asc" },
+        });
 
   const events: CompareEventRow[] = [];
 

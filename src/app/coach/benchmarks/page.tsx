@@ -10,7 +10,9 @@ import { DEFAULT_AGE_BRACKET } from "@/lib/age-brackets";
 import {
   ensureCoachActiveKpiSet,
   ensureKpiSetForClassScope,
+  getKpiSetById,
   listKpiSetsForCoach,
+  type KpiSetWithDetails,
 } from "@/lib/services/kpi-sets";
 import { classSectionLabel } from "@/lib/periods";
 import { resolveCoachClassScopeFromParams } from "@/lib/queries/coach-scope-params";
@@ -56,8 +58,9 @@ export default async function BenchmarksPage({
       ? scope.subgroups.find((s) => s.id === scope.subgroupId)?.name ?? null
       : null;
 
+  let scopedSet: KpiSetWithDetails | null = null;
   if (coachProfileId && scope.classId && classRow) {
-    const scoped = await ensureKpiSetForClassScope(
+    scopedSet = await ensureKpiSetForClassScope(
       session.schoolId,
       coachProfileId,
       scope.classId,
@@ -67,8 +70,8 @@ export default async function BenchmarksPage({
         subgroupName,
       }
     );
-    if (scoped) {
-      activeSetId = scoped.id;
+    if (scopedSet) {
+      activeSetId = scopedSet.id;
     }
   }
 
@@ -80,10 +83,27 @@ export default async function BenchmarksPage({
     });
     ownSets = listed.own as unknown as KpiSetSummary[];
     publicSets = listed.publicFromOthers as unknown as KpiSetSummary[];
+    if (scopedSet && !ownSets.some((s) => s.id === scopedSet!.id)) {
+      ownSets = [scopedSet as unknown as KpiSetSummary, ...ownSets];
+    }
     if (!activeSetId && ownSets[0]) activeSetId = ownSets[0].id;
   }
 
-  const activeSet = ownSets.find((s) => s.id === activeSetId) ?? ownSets[0];
+  if (
+    activeSetId &&
+    !ownSets.some((s) => s.id === activeSetId) &&
+    !(scopedSet && scopedSet.id === activeSetId)
+  ) {
+    const fetched = await getKpiSetById(activeSetId);
+    if (fetched) {
+      ownSets = [fetched as unknown as KpiSetSummary, ...ownSets];
+    }
+  }
+
+  const resolvedActiveSet =
+    ownSets.find((s) => s.id === activeSetId) ??
+    (scopedSet as unknown as KpiSetSummary | undefined) ??
+    ownSets[0];
 
   const [customActivities, catalogActivities, hidden] = await Promise.all([
     prisma.activity.findMany({
@@ -104,7 +124,7 @@ export default async function BenchmarksPage({
   const hiddenSet = new Set(hidden.map((h) => h.metricSlug));
   const catalogName = new Map(catalogActivities.map((a) => [a.slug, a]));
 
-  const initial: TargetCell[] = (activeSet?.targets ?? [])
+  const initial: TargetCell[] = (resolvedActiveSet?.targets ?? [])
     .filter((r) => MEDALS.includes(r.medal as Medal) && !hiddenSet.has(r.metricSlug))
     .map((r) => ({
       gender: r.gender === "M" ? ("M" as const) : ("F" as const),
@@ -163,6 +183,7 @@ export default async function BenchmarksPage({
         <p className="mb-4 text-sm text-muted">Select a class to configure KPI targets.</p>
       )}
       <KpiTargetsEditor
+        key={`${scope.classId ?? "none"}-${scope.subgroupId ?? "class"}`}
         initial={initial}
         metrics={metrics}
         initialSets={ownSets}

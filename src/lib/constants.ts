@@ -15,16 +15,15 @@ export type EntryMethod =
   | "WORKOUT";
 export type TestingSessionStatus = "DRAFT" | "LIVE" | "PAUSED" | "CLOSED" | "ACTIVE" | "COMPLETED";
 
-/** Sessions that still accept coach recording. */
+/** Sessions that still accept coach recording (including after close for corrections). */
 export function isLiveRecordingOpen(status: string, recordingUnlocked: boolean, liveOpenedAt: Date | null | undefined) {
+  if (status === "CLOSED" || status === "COMPLETED") return true;
   if (!recordingUnlocked) return false;
-  if (status === "CLOSED" || status === "COMPLETED") return false;
-  if (status === "PAUSED") return false;
   if (liveOpenedAt) {
     const ms = Date.now() - liveOpenedAt.getTime();
     if (ms > 24 * 60 * 60 * 1000) return false;
   }
-  return status === "LIVE" || status === "ACTIVE" || status === "DRAFT";
+  return status === "LIVE" || status === "ACTIVE" || status === "DRAFT" || status === "PAUSED";
 }
 
 export function isWithinLiveWindow(liveOpenedAt: Date | null | undefined) {

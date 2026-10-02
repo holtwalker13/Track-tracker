@@ -171,7 +171,8 @@ export type BandEvaluation = {
   tested: number;
   hitRate: number;
   rows: {
-    slug: KpiMetricSlug;
+    /** Ranked metric slug — may be a custom school KPI, not just catalog slugs. */
+    slug: string;
     name: string;
     athlete: number | null;
     target: number;

@@ -1,8 +1,10 @@
 import { Podium } from "lucide-react";
 import { TopNav } from "@/components/layout/top-nav";
 import { SchoolSwitcher } from "@/components/admin/school-switcher";
+import { CoachClassContextBar } from "@/components/classes/coach-class-context-bar";
 import type { NavItem } from "@/lib/navigation";
 import { getSession } from "@/lib/auth/session";
+import { resolveCoachClassContext } from "@/lib/coach-class-context";
 import { prisma } from "@/lib/db";
 import { cn } from "@/lib/utils";
 
@@ -24,6 +26,7 @@ export async function AppShell({
   const session = await getSession();
   let schoolName: string | null = null;
   let schools: { id: string; name: string }[] = [];
+  let coachContext: Awaited<ReturnType<typeof resolveCoachClassContext>> | null = null;
 
   if (session?.schoolId) {
     const school = await prisma.school.findUnique({
@@ -36,6 +39,16 @@ export async function AppShell({
     schools = await prisma.school.findMany({
       orderBy: { createdAt: "asc" },
       select: { id: true, name: true },
+    });
+  }
+
+  if (
+    session?.schoolId &&
+    (session.role === "COACH" || session.role === "ADMIN")
+  ) {
+    coachContext = await resolveCoachClassContext({
+      ...session,
+      schoolId: session.schoolId,
     });
   }
 
@@ -98,6 +111,15 @@ export async function AppShell({
                 <div className="hidden shrink-0 sm:block">
                   <SchoolSwitcher schools={schools} currentSchoolId={session.schoolId} />
                 </div>
+              ) : null}
+              {coachContext && coachContext.classes.length > 0 ? (
+                <CoachClassContextBar
+                  classes={coachContext.classes}
+                  subgroups={coachContext.subgroups}
+                  classId={coachContext.classId}
+                  subgroupId={coachContext.subgroupId}
+                  compact={navCompact || compact}
+                />
               ) : null}
             </div>
             <TopNav items={items} compact={navCompact || compact} />

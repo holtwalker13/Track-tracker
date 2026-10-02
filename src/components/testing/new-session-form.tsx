@@ -19,12 +19,14 @@ import {
 
 export function NewTestingSessionForm({
   classes,
+  defaultClassId: defaultClassIdProp,
   sameDayCount = 0,
   strengthActivities,
   kpiActivities,
   surface = "card",
 }: {
   classes: { id: string; name: string; period: string | null }[];
+  defaultClassId?: string;
   sameDayCount?: number;
   /** School lift library (catalog + custom). Used for weight room sections. */
   strengthActivities?: LiftingSessionActivityMeta[];
@@ -43,10 +45,15 @@ export function NewTestingSessionForm({
     [classes]
   );
 
-  const defaultClassId = useMemo(
-    () => findClassForPeriod(sectionClasses)?.id ?? "",
-    [sectionClasses]
-  );
+  const defaultClassId = useMemo(() => {
+    if (
+      defaultClassIdProp &&
+      sectionClasses.some((c) => c.id === defaultClassIdProp)
+    ) {
+      return defaultClassIdProp;
+    }
+    return findClassForPeriod(sectionClasses)?.id ?? "";
+  }, [sectionClasses, defaultClassIdProp]);
 
   const [classId, setClassId] = useState(defaultClassId);
 

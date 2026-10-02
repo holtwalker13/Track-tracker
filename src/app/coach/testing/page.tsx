@@ -12,18 +12,21 @@ import {
   type SessionActivitySummary,
 } from "@/components/testing/session-results-accordion";
 import { isWithinLiveWindow } from "@/lib/constants";
+import { resolveCoachClassContext } from "@/lib/coach-class-context";
 import { classesForCoachTesting, testingSessionsForCoachView } from "@/lib/queries/coach-classes";
 import { KPI_METRIC_META } from "@/lib/kpi-targets";
 import { ensureCoachActiveKpiSet } from "@/lib/services/kpi-sets";
 
 export default async function TestingSessionsPage() {
   const session = await requireSchoolSession();
+  const coachCtx = await resolveCoachClassContext(session);
+  const activeClassId = coachCtx.classId;
 
   const today = new Date();
   const dayStart = new Date(today.toISOString().slice(0, 10) + "T00:00:00");
   const dayEnd = new Date(today.toISOString().slice(0, 10) + "T23:59:59.999");
 
-  const [sessions, classes, sameDayCount, schoolLifts] = await Promise.all([
+  const [allSessions, classes, sameDayCount, schoolLifts] = await Promise.all([
     testingSessionsForCoachView(session),
     classesForCoachTesting(session),
     prisma.testingSession.count({
@@ -34,6 +37,10 @@ export default async function TestingSessionsPage() {
     }),
     listSchoolLifts(session.schoolId),
   ]);
+
+  const sessions = activeClassId
+    ? allSessions.filter((s) => s.classId === activeClassId)
+    : allSessions;
 
   const strengthActivities = liftsForTestingSession(schoolLifts).map((l) => ({
     slug: l.slug,
@@ -86,8 +93,18 @@ export default async function TestingSessionsPage() {
         </Link>
         ; the full roster stays visible for reference.
       </p>
+      {activeClassId ? (
+        <p className="mb-3 text-sm text-muted">
+          Showing tests for{" "}
+          <span className="font-medium text-foreground">
+            {classes.find((c) => c.id === activeClassId)?.name ?? "selected class"}
+          </span>
+          . Change class in the header to view another group.
+        </p>
+      ) : null}
       <TestingPageActions
         classes={classes}
+        defaultClassId={activeClassId ?? classes[0]?.id}
         sameDayCount={sameDayCount}
         strengthActivities={strengthActivities}
         kpiActivities={kpiActivities}

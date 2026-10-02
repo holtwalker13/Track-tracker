@@ -6,7 +6,10 @@ import { DEFAULT_LEADERBOARD_PERIOD, type LeaderboardPeriod } from "@/lib/leader
 
 export const LEADERBOARD_MAX_N = 500;
 
-export async function getLeaderboardActivities(schoolId: string) {
+export async function getLeaderboardActivities(
+  schoolId: string,
+  kpiSetId?: string | null
+) {
   const featured = ["40-yard-dash", "vertical-jump"];
   const hidden = await prisma.schoolHiddenKpi.findMany({
     where: { schoolId },
@@ -14,16 +17,17 @@ export async function getLeaderboardActivities(schoolId: string) {
   });
   const hiddenSlugs = hidden.map((h) => h.metricSlug);
 
-  // Unranked KPIs (no medal targets in the school default / any ranked set metric) stay off leaderboards
-  const rankedRows = await prisma.kpiSetMetric.findMany({
-    where: {
-      ranked: true,
-      kpiSet: { schoolId },
-    },
-    select: { metricSlug: true },
-  });
-  const rankedSlugs = new Set(rankedRows.map((r) => r.metricSlug));
-  const hasKpiSets = await prisma.kpiSet.count({ where: { schoolId } });
+  const { getRankedMetricSlugs, resolveKpiSetForClassContext } = await import(
+    "@/lib/services/kpi-sets"
+  );
+  const resolvedSetId =
+    kpiSetId ?? (await resolveKpiSetForClassContext(schoolId, null, null));
+  const rankedSlugs = new Set(
+    resolvedSetId ? await getRankedMetricSlugs(resolvedSetId) : []
+  );
+  const hasKpiSets = resolvedSetId
+    ? 1
+    : await prisma.kpiSet.count({ where: { schoolId } });
 
   const activities = await prisma.activity.findMany({
     where: {
@@ -80,9 +84,15 @@ export async function getLeaderboardGrid(
     schoolId: string;
   },
   classId?: string,
-  period: LeaderboardPeriod = DEFAULT_LEADERBOARD_PERIOD
+  period: LeaderboardPeriod = DEFAULT_LEADERBOARD_PERIOD,
+  kpiSetId?: string | null,
+  subgroupId?: string | null
 ) {
-  const activities = await getLeaderboardActivities(schoolId);
+  const { resolveKpiSetForClassContext } = await import("@/lib/services/kpi-sets");
+  const setId =
+    kpiSetId ??
+    (await resolveKpiSetForClassContext(schoolId, classId ?? null, subgroupId ?? null));
+  const activities = await getLeaderboardActivities(schoolId, setId);
   const grades = gradeLevels && gradeLevels.length > 0 ? gradeLevels : undefined;
 
   const boards: LeaderboardBoard[] = [];

@@ -183,6 +183,11 @@ model KpiSet {
   school         School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   coachProfileId String
   coach          CoachProfile @relation("CoachOwnedKpiSets", fields: [coachProfileId], references: [id], onDelete: Cascade)
+  // Optional class / subgroup scope (class-specific KPI packs)
+  classId        String?
+  class          Class?   @relation(fields: [classId], references: [id], onDelete: Cascade)
+  subgroupId     String?
+  subgroup       ClassSubgroup? @relation(fields: [subgroupId], references: [id], onDelete: Cascade)
   name           String
   // Sport / activity this pack applies to (see src/lib/sports.ts)
   sport          String
@@ -205,6 +210,8 @@ model KpiSet {
   @@index([isPublic])
   @@index([sport])
   @@index([schoolId, isDefault])
+  @@index([classId])
+  @@index([subgroupId])
 }
 
 // Which library KPIs are in this set, and whether they are ranked (leaderboard / medal) or unranked.
@@ -325,6 +332,7 @@ model Class {
   subgroups          ClassSubgroup[]
   sessions           TestingSession[]
   workoutAssignments WorkoutAssignment[]
+  kpiSets            KpiSet[]
 
   @@index([schoolId])
   @@index([coachId])
@@ -339,7 +347,9 @@ model ClassSubgroup {
   sortOrder Int      @default(0)
   createdAt DateTime @default(now())
 
-  members ClassSubgroupMember[]
+  members            ClassSubgroupMember[]
+  kpiSets            KpiSet[]
+  workoutAssignments WorkoutAssignment[]
 
   @@index([classId])
 }
@@ -466,6 +476,8 @@ model WorkoutAssignment {
   template      WorkoutTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
   classId       String?
   class         Class?          @relation(fields: [classId], references: [id], onDelete: SetNull)
+  subgroupId    String?
+  subgroup      ClassSubgroup?  @relation(fields: [subgroupId], references: [id], onDelete: SetNull)
   studentId     String?
   student       StudentProfile? @relation(fields: [studentId], references: [id], onDelete: Cascade)
   scheduledDate DateTime

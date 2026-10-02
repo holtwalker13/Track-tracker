@@ -7,6 +7,7 @@ import { ProgramsActions } from "@/components/workouts/programs-actions";
 import { ProgramsLiftPreview } from "@/components/workouts/programs-lift-preview";
 import { COACH_NAV } from "@/lib/navigation";
 import { requireSchoolSession } from "@/lib/auth/session";
+import { resolveCoachClassContext } from "@/lib/coach-class-context";
 import { coachProfileForSession } from "@/lib/auth/coach-scope";
 import { prisma } from "@/lib/db";
 import { liftsForWorkoutPrograms, listSchoolLifts } from "@/lib/queries/lifts";
@@ -48,10 +49,15 @@ export default async function CoachProgramsPage({
     sp.coachId && coaches.some((c) => c.id === sp.coachId) ? sp.coachId : defaultCoachId;
 
   const classes = coachId ? await listClassesForCoach(session.schoolId, coachId) : [];
+  const coachCtx = await resolveCoachClassContext(session, {
+    classId: sp.classId,
+  });
   const classId =
     sp.classId && classes.some((c) => c.id === sp.classId)
       ? sp.classId
-      : classes[0]?.id ?? "";
+      : coachCtx.classId && classes.some((c) => c.id === coachCtx.classId)
+        ? coachCtx.classId
+        : classes[0]?.id ?? "";
 
   const weekStart = weekStartSunday(sp.week?.trim() || today);
   const weeks = Math.min(6, Math.max(1, Number(sp.weeks) || 1));

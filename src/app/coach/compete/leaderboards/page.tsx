@@ -1,10 +1,10 @@
 import { requireSchoolSession } from "@/lib/auth/session";
+import { resolveCoachClassContext } from "@/lib/coach-class-context";
 import { getLeaderboardGrid } from "@/lib/queries/leaderboard-grid";
 import { LeaderboardToolbar } from "@/components/ui/leaderboard-toolbar";
 import { LeaderboardGrid } from "@/components/leaderboards/leaderboard-grid";
 import { gradesFromSearch, gradesLabel } from "@/lib/grades";
 import { parseGenderParam, genderFullLabel } from "@/lib/gender";
-import { prisma } from "@/lib/db";
 import { isGraduatingClassName, classSectionLabel } from "@/lib/periods";
 import {
   parseLeaderboardPeriod,
@@ -25,19 +25,18 @@ export default async function CompeteLeaderboardsPage({
 }) {
   const session = await requireSchoolSession();
   const sp = await searchParams;
+  const coachCtx = await resolveCoachClassContext(session, {
+    classId: sp.classId?.trim() || undefined,
+  });
   const grades = gradesFromSearch(sp);
   const gender = parseGenderParam(sp.gender);
   const scope = sp.scope === "global" ? "global" : "school";
-  const classId = sp.classId?.trim() || undefined;
+  const classId = sp.classId?.trim() || coachCtx.classId || undefined;
   const period = parseLeaderboardPeriod(sp.period);
 
-  const classes = (
-    await prisma.class.findMany({
-      where: { schoolId: session.schoolId },
-      select: { id: true, name: true, period: true },
-      orderBy: [{ period: "asc" }, { name: "asc" }],
-    })
-  ).filter((c) => !isGraduatingClassName(c.name));
+  const classes = coachCtx.classes
+    .map((c) => ({ id: c.id, name: c.name, period: c.period }))
+    .filter((c) => !isGraduatingClassName(c.name));
 
   let classLabel: string | null = null;
   if (classId) {
@@ -56,7 +55,9 @@ export default async function CompeteLeaderboardsPage({
       studentId: session.studentId,
     },
     classId,
-    period
+    period,
+    undefined,
+    coachCtx.subgroupId
   );
 
   return (

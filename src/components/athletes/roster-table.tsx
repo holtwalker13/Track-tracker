@@ -112,6 +112,28 @@ export function RosterTable({
     return copy;
   }, [athletes, sortDir, sortKey, hiddenById]);
 
+  async function deleteSelected() {
+    if (selected.size === 0) return;
+    const count = selected.size;
+    if (
+      !confirm(
+        `Delete ${count} student${count === 1 ? "" : "s"}? This removes their profile, marks, and login access. This cannot be undone.`
+      )
+    ) {
+      return;
+    }
+    setPending(true);
+    const res = await fetch("/api/students/delete", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ studentIds: [...selected] }),
+    });
+    setPending(false);
+    if (!res.ok) return;
+    setSelected(new Set());
+    router.refresh();
+  }
+
   async function setHidden(ids: string[], nameHidden: boolean) {
     if (ids.length === 0) return;
     setPending(true);
@@ -195,6 +217,14 @@ export function RosterTable({
           >
             <Eye className="h-3.5 w-3.5" aria-hidden />
             Show names
+          </button>
+          <button
+            type="button"
+            disabled={pending}
+            onClick={() => void deleteSelected()}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-red-500/40 px-3 py-1.5 text-xs font-semibold text-red-300 hover:bg-red-500/10"
+          >
+            Delete
           </button>
         </div>
       )}

@@ -63,7 +63,8 @@ export function SprintPotentialCard({
   highlightSlug?: string;
 }) {
   const { matched, next, bands } = potential;
-  if (!matched && bands.every((b) => b.tested === 0)) {
+  const display = next ?? matched;
+  if (!display && bands.every((b) => b.tested === 0)) {
     return (
       <Card>
         <CardTitle>Medal standard</CardTitle>
@@ -75,47 +76,61 @@ export function SprintPotentialCard({
     );
   }
 
-  const medal = matched?.band.medal;
-  const medalClass =
-    medal === "gold"
+  const earnedMedal = matched?.band.medal;
+  const earnedClass =
+    earnedMedal === "gold"
       ? "text-sport-gold"
-      : medal === "silver"
+      : earnedMedal === "silver"
         ? "text-sport-silver"
-        : "text-sport-bronze";
-  const meterTone =
-    medal === "gold" || medal === "silver" || medal === "bronze" ? medal : "muted";
+        : earnedMedal === "bronze"
+          ? "text-sport-bronze"
+          : "text-muted";
+
+  const target = next ?? matched;
+  const targetMedal = target?.band.medal;
+  const targetTone =
+    targetMedal === "gold" || targetMedal === "silver" || targetMedal === "bronze"
+      ? targetMedal
+      : "accent";
 
   return (
     <Card>
       <CardTitle>Medal standard</CardTitle>
-      {matched && (
-        <h2 className={`mt-4 text-3xl font-bold ${medalClass}`}>
-          {MEDAL_LABELS[matched.band.medal]}
-        </h2>
+      {earnedMedal ? (
+        <p className="mt-2 text-xs font-semibold uppercase tracking-wider text-muted">
+          Earned{" "}
+          <span className={earnedClass}>{MEDAL_LABELS[earnedMedal]}</span>
+        </p>
+      ) : (
+        <p className="mt-2 text-xs text-muted">No full medal earned yet.</p>
       )}
-      {matched && (
-        <KpiScoreMeter
-          hits={matched.hits}
-          tested={matched.tested}
-          label={`${matched.band.label} KPIs`}
-          tone={meterTone}
-        />
-      )}
-      {next && (
-        <div className="mt-4 border-t border-card-border pt-3">
-          <p className="text-xs font-semibold uppercase tracking-wider text-accent">Next</p>
+      {target && (
+        <>
+          <h2
+            className={`mt-3 text-3xl font-bold ${
+              targetMedal === "gold"
+                ? "text-sport-gold"
+                : targetMedal === "silver"
+                  ? "text-sport-silver"
+                  : targetMedal === "bronze"
+                    ? "text-sport-bronze"
+                    : "text-accent"
+            }`}
+          >
+            {next ? `Target: ${MEDAL_LABELS[target.band.medal]}` : MEDAL_LABELS[target.band.medal]}
+          </h2>
           <KpiScoreMeter
-            hits={next.hits}
-            tested={next.tested}
-            label={next.band.label}
-            tone="accent"
+            hits={target.hits}
+            tested={target.rows.length}
+            label={`${target.band.label} ranked KPIs`}
+            tone={targetTone}
           />
-        </div>
+        </>
       )}
 
-      {matched && (
+      {target && (
         <div className="mt-4 grid grid-cols-2 gap-2 sm:mt-5 sm:gap-3">
-          {matched.rows.map((row) => {
+          {target.rows.map((row) => {
             const meta = KPI_METRIC_META.find((m) => m.slug === row.slug)!;
             const mark =
               row.athlete == null ? "—" : formatActivityValue(row.athlete, meta.unit, row.slug);

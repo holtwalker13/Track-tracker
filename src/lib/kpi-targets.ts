@@ -3,6 +3,8 @@
  * Defaults come from the JHS Athletics key; each school can override them.
  */
 
+import { calculateAthleteMedal } from "@/lib/services/athlete-medal";
+
 export type KpiMetricSlug =
   | "flying-10-meter"
   | "standing-broad-jump"
@@ -215,67 +217,12 @@ export function bandsFromTargets(
   });
 }
 
-function metricSlugsForEvaluation(customBands?: KpiBand[]): KpiMetricSlug[] {
-  if (!customBands?.length) return KPI_METRIC_META.map((m) => m.slug);
-  const slugs = new Set<KpiMetricSlug>();
-  for (const band of customBands) {
-    for (const slug of Object.keys(band.targets) as KpiMetricSlug[]) {
-      if (KPI_METRIC_META.some((m) => m.slug === slug)) slugs.add(slug);
-    }
-  }
-  if (slugs.size === 0) return KPI_METRIC_META.map((m) => m.slug);
-  return KPI_METRIC_META.filter((m) => slugs.has(m.slug)).map((m) => m.slug);
-}
-
 export function evaluateSprintPotential(
   marks: KpiMark[],
   gender?: string | null,
-  customBands?: KpiBand[]
+  customBands?: KpiBand[],
+  rankedSlugs?: string[]
 ): SprintPotential {
-  const g: "F" | "M" = gender === "M" ? "M" : "F";
-  const bySlug = new Map(marks.map((m) => [m.slug, m.value]));
-  const source = customBands?.length ? customBands : kpiBandsForGender(g);
-  const evalSlugs = metricSlugsForEvaluation(customBands);
-  const metaBySlug = KPI_METRIC_META.filter((m) => evalSlugs.includes(m.slug));
-  const bands = source.map((band) => {
-    const rows = metaBySlug.map((meta) => {
-      const athlete = bySlug.get(meta.slug) ?? null;
-      const target = band.targets[meta.slug];
-      const hit = athlete == null ? null : meetsTarget(athlete, target, meta.direction);
-      return {
-        slug: meta.slug,
-        name: meta.name,
-        athlete,
-        target,
-        hit,
-        direction: meta.direction,
-      };
-    });
-    const tested = rows.filter((r) => r.hit != null).length;
-    const hits = rows.filter((r) => r.hit === true).length;
-    return {
-      band,
-      hits,
-      tested,
-      hitRate: tested === 0 ? 0 : hits / tested,
-      rows,
-    };
-  });
-
-  // Gold first. Match the best medal whose hit rate is at least 50% with 2+ KPIs tested.
-  let matched: BandEvaluation | null = null;
-  for (const ev of bands) {
-    if (ev.tested >= 2 && ev.hitRate >= 0.5) {
-      matched = ev;
-      break;
-    }
-  }
-  if (!matched) {
-    matched = [...bands].reverse().find((ev) => ev.tested > 0) ?? null;
-  }
-
-  const matchedIndex = matched ? bands.indexOf(matched) : -1;
-  const next = matchedIndex > 0 ? bands[matchedIndex - 1]! : null;
-
-  return { gender: g, matched, next, bands };
+  return calculateAthleteMedal(marks, gender, customBands, rankedSlugs as KpiMetricSlug[] | undefined)
+    .potential;
 }

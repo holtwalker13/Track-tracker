@@ -653,13 +653,17 @@ export async function ensureKpiSetForClassScope(
     ? `${labels.className} · ${labels.subgroupName}`
     : labels?.className ?? "Class KPIs";
 
-  const existingId = await resolveKpiSetForClassContext(
-    schoolId,
-    classId,
-    subgroupId ?? null
-  );
-  if (existingId) {
-    return getKpiSetById(existingId);
+  // Only reuse a set scoped to this exact class/subgroup. The fallback chain in
+  // resolveKpiSetForClassScope returns the school default set when no scoped set
+  // exists — treating that as "existing" would make class edits overwrite the
+  // school default and would never create the class set.
+  const existing = await prisma.kpiSet.findFirst({
+    where: { schoolId, classId, subgroupId: subgroupId ?? null },
+    orderBy: { updatedAt: "desc" },
+    select: { id: true },
+  });
+  if (existing) {
+    return getKpiSetById(existing.id);
   }
 
   const defaultId = await resolveSchoolKpiSetId(schoolId);

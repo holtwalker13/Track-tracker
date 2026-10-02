@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { dayBoundsFromDateString } from "@/lib/services/workouts";
+import { studentsTargetedByWorkoutAssignment } from "@/lib/queries/workout-assignment-roster";
 
 export async function POST(request: Request) {
   const session = await requireSession(["COACH", "ADMIN"]);
@@ -66,18 +67,24 @@ export async function POST(request: Request) {
         select: {
           name: true,
           period: true,
-          enrollments: { select: { studentId: true } },
         },
       },
     },
   });
 
-  const studentIds = rec.class?.enrollments.map((e) => e.studentId) ?? [];
-  if (studentIds.length > 0) {
+  // Create sessions only for the athletes the assignment targets — a subgroup
+  // assignment must not create sessions for the rest of the class roster.
+  const targeted = await studentsTargetedByWorkoutAssignment({
+    assignmentId: rec.id,
+    classId: rec.classId,
+    subgroupId: rec.subgroupId,
+    studentId: rec.studentId,
+  });
+  if (targeted.length > 0) {
     await prisma.workoutSession.createMany({
-      data: studentIds.map((studentId) => ({
+      data: targeted.map((s) => ({
         assignmentId: rec.id,
-        studentId,
+        studentId: s.id,
         status: "IN_PROGRESS",
       })),
       skipDuplicates: true,

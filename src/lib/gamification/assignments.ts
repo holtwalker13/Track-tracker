@@ -28,11 +28,20 @@ export async function getStudentAssignmentCompletionRows(
     },
   });
 
-  return assignments.map((a) => ({
-    assignmentId: a.id,
-    scheduledDate: a.scheduledDate,
-    completed: a.sessions.some((s) => s.status === "COMPLETED"),
-  }));
+  // Subgroup assignments only count for athletes who belong to the subgroup.
+  const memberSubgroups = await prisma.classSubgroupMember.findMany({
+    where: { studentId },
+    select: { subgroupId: true },
+  });
+  const subgroupSet = new Set(memberSubgroups.map((m) => m.subgroupId));
+
+  return assignments
+    .filter((a) => !a.subgroupId || subgroupSet.has(a.subgroupId))
+    .map((a) => ({
+      assignmentId: a.id,
+      scheduledDate: a.scheduledDate,
+      completed: a.sessions.some((s) => s.status === "COMPLETED"),
+    }));
 }
 
 /** Monday-based week key (local UTC date of assignment). */

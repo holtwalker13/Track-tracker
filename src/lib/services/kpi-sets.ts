@@ -666,11 +666,22 @@ export async function ensureKpiSetForClassScope(
     return getKpiSetById(existing.id);
   }
 
-  const defaultId = await resolveSchoolKpiSetId(schoolId);
-  const defaultSet = defaultId ? await getKpiSetById(defaultId) : null;
+  // Seed the new scoped set from its parent scope so the values currently in
+  // effect carry over: a subgroup set starts from the class set, a class set
+  // from the school default. After creation the sets are fully independent.
+  const parentId = subgroupId
+    ? (
+        await prisma.kpiSet.findFirst({
+          where: { schoolId, classId, subgroupId: null },
+          orderBy: { updatedAt: "desc" },
+          select: { id: true },
+        })
+      )?.id ?? (await resolveSchoolKpiSetId(schoolId))
+    : await resolveSchoolKpiSetId(schoolId);
+  const parentSet = parentId ? await getKpiSetById(parentId) : null;
 
   const metrics =
-    defaultSet?.metrics.map((m) => ({
+    parentSet?.metrics.map((m) => ({
       metricSlug: m.metricSlug,
       ranked: m.ranked,
       sortOrder: m.sortOrder,
@@ -681,7 +692,7 @@ export async function ensureKpiSetForClassScope(
     }));
 
   const targets =
-    defaultSet?.targets.map((t) => ({
+    parentSet?.targets.map((t) => ({
       gender: t.gender,
       medal: t.medal,
       metricSlug: t.metricSlug,

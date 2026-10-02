@@ -606,8 +606,12 @@ export async function getKpiSetBands(
 }
 
 /** Ranked KPI slugs for medal standard / school rank on athlete profiles. */
-export async function getRankedKpiSlugsForSchool(schoolId: string): Promise<string[]> {
-  const setId = await resolveSchoolKpiSetId(schoolId);
+export async function getRankedKpiSlugsForSchool(
+  schoolId: string,
+  classId?: string | null,
+  subgroupId?: string | null
+): Promise<string[]> {
+  const setId = await resolveKpiSetForClassContext(schoolId, classId, subgroupId);
   if (setId) return getRankedMetricSlugs(setId);
 
   const rows = await prisma.kpiSetMetric.findMany({
@@ -635,6 +639,31 @@ export async function getRankedMetricSlugs(kpiSetId: string): Promise<string[]> 
     select: { metricSlug: true },
   });
   return rows.map((r) => r.metricSlug);
+}
+
+/** Resolve KPI set for coach class context (subgroup-specific, then class, then school default). */
+export async function resolveKpiSetForClassContext(
+  schoolId: string,
+  classId?: string | null,
+  subgroupId?: string | null
+): Promise<string | null> {
+  if (subgroupId && classId) {
+    const bySubgroup = await prisma.kpiSet.findFirst({
+      where: { schoolId, classId, subgroupId },
+      orderBy: { updatedAt: "desc" },
+      select: { id: true },
+    });
+    if (bySubgroup) return bySubgroup.id;
+  }
+  if (classId) {
+    const byClass = await prisma.kpiSet.findFirst({
+      where: { schoolId, classId, subgroupId: null },
+      orderBy: { updatedAt: "desc" },
+      select: { id: true },
+    });
+    if (byClass) return byClass.id;
+  }
+  return resolveSchoolKpiSetId(schoolId);
 }
 
 /** Resolve which set to use for a school (default), optionally matching sport. */

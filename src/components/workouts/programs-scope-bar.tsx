@@ -31,6 +31,13 @@ export function ProgramsScopeBar({
       if (next.classId) params.set("classId", next.classId);
       else params.delete("classId");
     }
+    if (next.classId) {
+      void fetch("/api/coach/class-context", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ classId: next.classId, subgroupId: null }),
+      });
+    }
     startTransition(() => {
       router.push(`${pathname}?${params.toString()}`);
     });

@@ -12,6 +12,7 @@ export async function POST(request: Request) {
   const body = await request.json();
   const templateId = String(body.templateId ?? "").trim();
   const classId = body.classId ? String(body.classId).trim() : "";
+  const subgroupId = body.subgroupId ? String(body.subgroupId).trim() : "";
   const dateStr = String(body.scheduledDate ?? "").trim();
 
   if (!templateId) {
@@ -39,6 +40,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Class not found" }, { status: 404 });
   }
 
+  if (subgroupId) {
+    const sg = await prisma.classSubgroup.findFirst({
+      where: { id: subgroupId, classId },
+    });
+    if (!sg) {
+      return NextResponse.json({ error: "Subgroup not found" }, { status: 404 });
+    }
+  }
+
   const scheduledDate = new Date(`${dateStr}T12:00:00`);
 
   const rec = await prisma.workoutAssignment.create({
@@ -46,6 +56,7 @@ export async function POST(request: Request) {
       schoolId: session.schoolId,
       templateId,
       classId,
+      subgroupId: subgroupId || null,
       scheduledDate,
       createdById: session.userId,
     },

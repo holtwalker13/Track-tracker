@@ -105,6 +105,8 @@ export async function getStudentSprintPotential(
   opts: {
     ageBracket?: string | null;
     window?: MedalTimeWindow;
+    classId?: string | null;
+    subgroupId?: string | null;
   } = {}
 ): Promise<SprintPotential & { ageBracket: AgeBracketId; window: MedalTimeWindow }> {
   const { student, currentGrade } = await getStudentContext(studentId);
@@ -147,9 +149,23 @@ export async function getStudentSprintPotential(
     marks.push({ slug, value: r.resultValue });
   }
 
-  const custom = await getSchoolKpiBands(student.schoolId, student.gender, bracket);
+  const { resolveKpiSetForClassContext, getRankedMetricSlugs } = await import(
+    "@/lib/services/kpi-sets"
+  );
+  const kpiSetId = await resolveKpiSetForClassContext(
+    student.schoolId,
+    opts.classId,
+    opts.subgroupId
+  );
+  const custom = await getSchoolKpiBands(
+    student.schoolId,
+    student.gender,
+    bracket,
+    kpiSetId
+  );
+  const rankedSlugs = kpiSetId ? await getRankedMetricSlugs(kpiSetId) : undefined;
   return {
-    ...evaluateSprintPotential(marks, student.gender, custom),
+    ...evaluateSprintPotential(marks, student.gender, custom, rankedSlugs),
     ageBracket: bracket,
     window,
   };

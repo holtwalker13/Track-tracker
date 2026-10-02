@@ -1,5 +1,8 @@
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 import { AppShell } from "@/components/layout/app-shell";
+import { AthleteProfileClassPicker } from "@/components/athletes/athlete-profile-class-picker";
+import { resolveCoachClassContext } from "@/lib/coach-class-context";
 import { Card, CardTitle } from "@/components/ui/card";
 import { COACH_NAV } from "@/lib/navigation";
 import { requireSchoolSession } from "@/lib/auth/session";
@@ -28,11 +31,20 @@ export default async function StudentProfilePage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ from?: string; to?: string; activity?: string; lb?: string; rank?: string; scope?: string }>;
+  searchParams: Promise<{
+    from?: string;
+    to?: string;
+    activity?: string;
+    lb?: string;
+    rank?: string;
+    scope?: string;
+    classId?: string;
+  }>;
 }) {
   const session = await requireSchoolSession();
   const { id } = await params;
   const sp = await searchParams;
+  const coachCtx = await resolveCoachClassContext(session, { classId: sp.classId });
 
   const student = await prisma.studentProfile.findUnique({
     where: { id },
@@ -64,14 +76,29 @@ export default async function StudentProfilePage({
       ? highlight.slug
       : "vertical-jump";
 
-  const rankedSlugs = await getRankedKpiSlugsForSchool(session.schoolId);
+  const enrolledClasses = student.classEnrollments
+    .filter((e) => !isGraduatingClassName(e.class.name))
+    .map((e) => e.class);
+
+  const profileClassId =
+    sp.classId && enrolledClasses.some((c) => c.id === sp.classId)
+      ? sp.classId
+      : coachCtx.classId && enrolledClasses.some((c) => c.id === coachCtx.classId)
+        ? coachCtx.classId
+        : enrolledClasses[0]?.id ?? coachCtx.classId;
+
+  const rankedSlugs = await getRankedKpiSlugsForSchool(
+    session.schoolId,
+    profileClassId,
+    coachCtx.subgroupId
+  );
 
   const [radar, latestGrouped, attemptLog, sprint, marksWindow, progress, activityRanks] =
     await Promise.all([
       getCategoryRadar(id, grade),
       getLatestResultsGrouped(id, schoolYearId),
       getScholasticAttemptLog(id),
-      getStudentSprintPotential(id),
+      getStudentSprintPotential(id, { classId: profileClassId, subgroupId: coachCtx.subgroupId }),
       getStudentMarksWindow(id, sp.from, sp.to),
       getProgressByTestDate(id, activitySlug),
       getStudentActivityRanks(student.schoolId, id, rankedSlugs, {
@@ -87,9 +114,10 @@ export default async function StudentProfilePage({
     user: student.user,
     loginInvite: student.loginInvite,
   });
-  const sections = student.classEnrollments
-    .filter((e) => !isGraduatingClassName(e.class.name))
-    .map((e) => ({ id: e.class.id, label: classSectionLabel(e.class) }));
+  const sections = enrolledClasses.map((c) => ({
+    id: c.id,
+    label: classSectionLabel(c),
+  }));
 
   const schoolClasses = await prisma.class.findMany({
     where: { schoolId: session.schoolId },
@@ -131,6 +159,13 @@ export default async function StudentProfilePage({
           loginStatus={loginStatus}
         />
       </div>
+
+      <Suspense fallback={null}>
+        <AthleteProfileClassPicker
+          classes={enrolledClasses.length > 0 ? enrolledClasses : schoolClasses}
+          selectedClassId={profileClassId ?? null}
+        />
+      </Suspense>
 
       <div className="grid gap-6 lg:grid-cols-2">
         <SprintPotentialCard

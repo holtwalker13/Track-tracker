@@ -1,10 +1,8 @@
-import Link from "next/link";
 import { requireSchoolSession } from "@/lib/auth/session";
 import { coachProfileForSession } from "@/lib/auth/coach-scope";
 import { prisma } from "@/lib/db";
-import { classYearLabel } from "@/lib/grades";
 import { ClassesPageActions } from "@/components/classes/classes-page-actions";
-import { ClassCoachInlineSelect } from "@/components/classes/class-coach-select";
+import { SchoolClassExpandableRow } from "@/components/classes/school-class-expandable-row";
 import { ensureClassCoachRowsFromLead } from "@/lib/services/class-coaches";
 
 export default async function SchoolClassesPage() {
@@ -23,6 +21,22 @@ export default async function SchoolClassesPage() {
             id: true,
             user: { select: { firstName: true, lastName: true } },
           },
+        },
+        subgroups: {
+          orderBy: { sortOrder: "asc" },
+          include: {
+            members: {
+              include: {
+                student: { select: { id: true, firstName: true, lastName: true } },
+              },
+            },
+          },
+        },
+        enrollments: {
+          include: {
+            student: { select: { id: true, firstName: true, lastName: true } },
+          },
+          orderBy: [{ student: { lastName: "asc" } }, { student: { firstName: "asc" } }],
         },
       },
       orderBy: [{ gradeLevel: "asc" }, { name: "asc" }],
@@ -72,43 +86,24 @@ export default async function SchoolClassesPage() {
             assignedIds.length === 0 ||
             (profile != null && assignedIds.includes(profile.id));
           return (
-            <li key={c.id}>
-              <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-card-border bg-card px-4 py-3">
-                <Link
-                  href={`/coach/school/classes/${c.id}`}
-                  className="min-w-0 flex-1 hover:text-accent"
-                >
-                  <span className="font-semibold">{c.name}</span>
-                  <span className="ml-2 text-sm text-muted">
-                    {c.programKind === "TRAINING"
-                      ? "Training · "
-                      : c.programKind === "SCHOLASTIC"
-                        ? "Class · "
-                        : ""}
-                    {c.period ? `${c.period} · ` : ""}
-                    {c.gradeLevel ? classYearLabel(c.gradeLevel) : "mixed"}
-                    {" · "}
-                    {c._count.enrollments} athletes
-                  </span>
-                </Link>
-                <div className="flex flex-wrap items-center gap-2">
-                  {canEdit ? (
-                    <Link
-                      href={`/coach/school/classes/${c.id}?edit=1`}
-                      className="rounded-lg border border-card-border px-3 py-1.5 text-sm text-muted hover:border-sky-400/40 hover:text-foreground"
-                    >
-                      Rename
-                    </Link>
-                  ) : null}
-                  <ClassCoachInlineSelect
-                    classId={c.id}
-                    coachIds={assignedIds}
-                    coaches={coachOptions}
-                    canEdit={canEdit}
-                  />
-                </div>
-              </div>
-            </li>
+            <SchoolClassExpandableRow
+              key={c.id}
+              classId={c.id}
+              name={c.name}
+              period={c.period}
+              programKind={c.programKind}
+              gradeLevel={c.gradeLevel}
+              athleteCount={c._count.enrollments}
+              coachIds={assignedIds}
+              coaches={coachOptions}
+              canEdit={canEdit}
+              subgroups={c.subgroups.map((sg) => ({
+                id: sg.id,
+                name: sg.name,
+                members: sg.members.map((m) => m.student),
+              }))}
+              roster={c.enrollments.map((e) => e.student)}
+            />
           );
         })}
         {classes.length === 0 && <li className="text-sm text-muted">No classes yet.</li>}

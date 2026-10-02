@@ -8,11 +8,13 @@ import { NewTestingSessionForm } from "@/components/testing/new-session-form";
 
 export function TestingPageActions({
   classes,
+  defaultClassId,
   sameDayCount,
   strengthActivities,
   kpiActivities,
 }: {
   classes: { id: string; name: string; period: string | null }[];
+  defaultClassId?: string;
   sameDayCount?: number;
   strengthActivities?: LiftingSessionActivityMeta[];
   kpiActivities?: { slug: string; name: string; ranked?: boolean }[];
@@ -35,6 +37,7 @@ export function TestingPageActions({
         <CoachModal title="New live testing session" onClose={() => setOpen(false)} maxWidth="max-w-2xl">
           <NewTestingSessionForm
             classes={classes}
+            defaultClassId={defaultClassId}
             sameDayCount={sameDayCount}
             strengthActivities={strengthActivities}
             kpiActivities={kpiActivities}

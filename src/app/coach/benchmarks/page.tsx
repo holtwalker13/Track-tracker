@@ -1,6 +1,7 @@
 import { AppShell } from "@/components/layout/app-shell";
 import { COACH_NAV } from "@/lib/navigation";
 import { requireSchoolSession } from "@/lib/auth/session";
+import { resolveCoachClassContext } from "@/lib/coach-class-context";
 import { prisma } from "@/lib/db";
 import { KpiTargetsEditor, type TargetCell, type KpiSetSummary } from "@/components/kpi/kpi-targets-editor";
 import { ImportMarksForm } from "@/components/kpi/import-marks-form";
@@ -9,10 +10,18 @@ import { DEFAULT_AGE_BRACKET } from "@/lib/age-brackets";
 import {
   ensureCoachActiveKpiSet,
   listKpiSetsForCoach,
+  resolveKpiSetForClassContext,
 } from "@/lib/services/kpi-sets";
+import { classSectionLabel } from "@/lib/periods";
 
-export default async function BenchmarksPage() {
+export default async function BenchmarksPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ classId?: string }>;
+}) {
   const session = await requireSchoolSession();
+  const sp = await searchParams;
+  const coachCtx = await resolveCoachClassContext(session, { classId: sp.classId });
 
   await prisma.activityCategory.upsert({
     where: { slug: "flexibility" },
@@ -38,6 +47,15 @@ export default async function BenchmarksPage() {
       coachProfileId = ctx.coach.id;
       activeSetId = ctx.activeSet.id;
     }
+  }
+
+  const classScopedSetId = await resolveKpiSetForClassContext(
+    session.schoolId,
+    coachCtx.classId,
+    coachCtx.subgroupId
+  );
+  if (classScopedSetId) {
+    activeSetId = classScopedSetId;
   }
 
   if (coachProfileId) {
@@ -103,8 +121,26 @@ export default async function BenchmarksPage() {
       })),
   ];
 
+  const classLabel = coachCtx.classId
+    ? classSectionLabel(
+        coachCtx.classes.find((c) => c.id === coachCtx.classId) ?? {
+          name: "Class",
+          period: null,
+        }
+      )
+    : null;
+
   return (
     <AppShell title="KPI targets" nav={COACH_NAV}>
+      {classLabel ? (
+        <p className="mb-4 text-sm text-muted">
+          Editing KPI targets for <span className="font-medium text-foreground">{classLabel}</span>
+          {coachCtx.subgroupId
+            ? ` · ${coachCtx.subgroups.find((s) => s.id === coachCtx.subgroupId)?.name ?? "subgroup"}`
+            : ""}
+          . Change class in the header to switch packs when class-specific sets exist.
+        </p>
+      ) : null}
       <KpiTargetsEditor
         initial={initial}
         metrics={metrics}

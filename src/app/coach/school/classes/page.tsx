@@ -10,7 +10,7 @@ export default async function SchoolClassesPage() {
   const profile = await coachProfileForSession(session);
   await ensureClassCoachRowsFromLead(session.schoolId);
 
-  const [classes, school, coaches] = await Promise.all([
+  const [classes, coaches] = await Promise.all([
     prisma.class.findMany({
       where: { schoolId: session.schoolId },
       include: {

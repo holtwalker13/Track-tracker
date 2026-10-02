@@ -10,7 +10,7 @@ export default async function SchoolClassesPage() {
   const profile = await coachProfileForSession(session);
   await ensureClassCoachRowsFromLead(session.schoolId);
 
-  const [classes, school, coaches] = await Promise.all([
+  const [classes, coaches] = await Promise.all([
     prisma.class.findMany({
       where: { schoolId: session.schoolId },
       include: {
@@ -41,7 +41,6 @@ export default async function SchoolClassesPage() {
       },
       orderBy: [{ gradeLevel: "asc" }, { name: "asc" }],
     }),
-    prisma.school.findUnique({ where: { id: session.schoolId }, select: { slug: true } }),
     prisma.coachProfile.findMany({
       where: { schoolId: session.schoolId },
       orderBy: [{ user: { lastName: "asc" } }, { user: { firstName: "asc" } }],
@@ -52,7 +51,6 @@ export default async function SchoolClassesPage() {
     }),
   ]);
 
-  const showJhsHelp = school?.slug === "jhs";
   const coachOptions = coaches.map((c) => ({
     id: c.id,
     firstName: c.user.firstName,
@@ -65,13 +63,6 @@ export default async function SchoolClassesPage() {
 
   return (
     <>
-      <p className="mb-6 max-w-3xl text-sm text-muted">
-        Create or import classes and training groups. Assign one or more coaches to each class —
-        live testing and programs follow those coaches’ groups.
-        {showJhsHelp
-          ? " This JHS roster starts empty: add weightlifting periods, then upload a spreadsheet."
-          : null}
-      </p>
       <ClassesPageActions coaches={coachOptions} defaultCoachId={defaultCoachId} />
       <ul className="mt-4 space-y-2">
         {classes.map((c) => {

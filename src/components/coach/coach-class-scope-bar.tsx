@@ -3,22 +3,29 @@
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useTransition } from "react";
 import { classSectionLabel } from "@/lib/periods";
-import type { ProgramsClassOption, ProgramsCoachOption } from "@/lib/queries/programs-hub";
 
-function ProgramsScopeBarInner({
+export type ScopeCoachOption = { id: string; firstName: string; lastName: string };
+export type ScopeClassOption = { id: string; name: string; period: string | null };
+export type ScopeSubgroupOption = { id: string; name: string };
+
+function ScopeBarInner({
   coaches,
   classes,
   subgroups,
   coachId,
   classId,
   subgroupId,
+  showCoach,
+  showSubgroup,
 }: {
-  coaches: ProgramsCoachOption[];
-  classes: ProgramsClassOption[];
-  subgroups: { id: string; name: string }[];
+  coaches: ScopeCoachOption[];
+  classes: ScopeClassOption[];
+  subgroups: ScopeSubgroupOption[];
   coachId: string;
   classId: string;
   subgroupId: string;
+  showCoach: boolean;
+  showSubgroup: boolean;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -42,27 +49,25 @@ function ProgramsScopeBarInner({
         pending ? "opacity-70" : ""
       }`}
     >
-      <label className="block min-w-[12rem] flex-1 text-sm">
-        Coach
-        <select
-          value={coachId}
-          onChange={(e) =>
-            push({ coachId: e.target.value, classId: null, subgroupId: null })
-          }
-          className="mt-1 w-full rounded-lg border border-card-border bg-background px-3 py-2"
-        >
-          {coaches.length === 0 ? (
-            <option value="">No coaches</option>
-          ) : (
-            coaches.map((c) => (
+      {showCoach ? (
+        <label className="block min-w-[10rem] flex-1 text-sm">
+          Coach
+          <select
+            value={coachId}
+            onChange={(e) =>
+              push({ coachId: e.target.value, classId: null, subgroupId: null })
+            }
+            className="mt-1 w-full rounded-lg border border-card-border bg-background px-3 py-2"
+          >
+            {coaches.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.firstName} {c.lastName}
               </option>
-            ))
-          )}
-        </select>
-      </label>
-      <label className="block min-w-[12rem] flex-1 text-sm">
+            ))}
+          </select>
+        </label>
+      ) : null}
+      <label className="block min-w-[10rem] flex-1 text-sm">
         Class
         <select
           value={classId}
@@ -71,7 +76,7 @@ function ProgramsScopeBarInner({
           className="mt-1 w-full rounded-lg border border-card-border bg-background px-3 py-2 disabled:opacity-50"
         >
           {classes.length === 0 ? (
-            <option value="">No classes for this coach</option>
+            <option value="">No classes</option>
           ) : (
             classes.map((c) => (
               <option key={c.id} value={c.id}>
@@ -81,8 +86,8 @@ function ProgramsScopeBarInner({
           )}
         </select>
       </label>
-      {classId ? (
-        <label className="block min-w-[12rem] flex-1 text-sm">
+      {showSubgroup && classId ? (
+        <label className="block min-w-[10rem] flex-1 text-sm">
           Subgroup
           <select
             value={subgroupId}
@@ -102,17 +107,24 @@ function ProgramsScopeBarInner({
   );
 }
 
-export function ProgramsScopeBar(props: {
-  coaches: ProgramsCoachOption[];
-  classes: ProgramsClassOption[];
-  subgroups: { id: string; name: string }[];
+export function CoachClassScopeBar(props: {
+  coaches: ScopeCoachOption[];
+  classes: ScopeClassOption[];
+  subgroups: ScopeSubgroupOption[];
   coachId: string;
   classId: string;
   subgroupId?: string;
+  showCoach?: boolean;
+  showSubgroup?: boolean;
 }) {
   return (
-    <Suspense fallback={<div className="h-16 animate-pulse rounded-2xl bg-card/40" />}>
-      <ProgramsScopeBarInner {...props} subgroupId={props.subgroupId ?? ""} />
+    <Suspense fallback={<div className="mb-4 h-16 animate-pulse rounded-2xl bg-card/40" />}>
+      <ScopeBarInner
+        {...props}
+        subgroupId={props.subgroupId ?? ""}
+        showCoach={props.showCoach ?? false}
+        showSubgroup={props.showSubgroup ?? false}
+      />
     </Suspense>
   );
 }

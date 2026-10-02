@@ -59,7 +59,7 @@ export function ClassCoachInlineSelect({
 
   return (
     <div
-      className="relative min-w-[10rem] max-w-[16rem]"
+      className="relative w-full min-w-0 sm:min-w-[10rem] sm:max-w-[16rem]"
       onClick={(e) => {
         e.preventDefault();
         e.stopPropagation();

@@ -641,8 +641,70 @@ export async function getRankedMetricSlugs(kpiSetId: string): Promise<string[]> 
   return rows.map((r) => r.metricSlug);
 }
 
+/** Ensure a KPI set exists for class or class+subgroup (auto-named from school entities). */
+export async function ensureKpiSetForClassScope(
+  schoolId: string,
+  coachProfileId: string,
+  classId: string,
+  subgroupId?: string | null,
+  labels?: { className: string; subgroupName?: string | null }
+) {
+  const name = labels?.subgroupName
+    ? `${labels.className} · ${labels.subgroupName}`
+    : labels?.className ?? "Class KPIs";
+
+  const existingId = await resolveKpiSetForClassContext(
+    schoolId,
+    classId,
+    subgroupId ?? null
+  );
+  if (existingId) {
+    return getKpiSetById(existingId);
+  }
+
+  const defaultId = await resolveSchoolKpiSetId(schoolId);
+  const defaultSet = defaultId ? await getKpiSetById(defaultId) : null;
+
+  const metrics =
+    defaultSet?.metrics.map((m) => ({
+      metricSlug: m.metricSlug,
+      ranked: m.ranked,
+      sortOrder: m.sortOrder,
+    })) ?? KPI_METRIC_META.map((m, i) => ({
+      metricSlug: m.slug,
+      ranked: true,
+      sortOrder: i,
+    }));
+
+  const targets =
+    defaultSet?.targets.map((t) => ({
+      gender: t.gender,
+      medal: t.medal,
+      metricSlug: t.metricSlug,
+      target: t.target,
+      ageBracket: t.ageBracket,
+    })) ?? [];
+
+  return prisma.kpiSet.create({
+    data: {
+      schoolId,
+      coachProfileId,
+      classId,
+      subgroupId: subgroupId || null,
+      name,
+      sport: "pe",
+      description: null,
+      isPublic: false,
+      isDefault: false,
+      metrics: { create: metrics },
+      targets: targets.length ? { create: targets } : undefined,
+    },
+    include: setInclude,
+  });
+}
+
 /** Resolve KPI set for coach class context (subgroup-specific, then class, then school default). */
-export async function resolveKpiSetForClassContext(
+export async function resolveKpiSetForClassScope(
   schoolId: string,
   classId?: string | null,
   subgroupId?: string | null
@@ -665,6 +727,9 @@ export async function resolveKpiSetForClassContext(
   }
   return resolveSchoolKpiSetId(schoolId);
 }
+
+/** @deprecated Alias — use resolveKpiSetForClassScope. */
+export const resolveKpiSetForClassContext = resolveKpiSetForClassScope;
 
 /** Resolve which set to use for a school (default), optionally matching sport. */
 export async function resolveSchoolKpiSetId(

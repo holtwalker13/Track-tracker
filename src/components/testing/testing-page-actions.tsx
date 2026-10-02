@@ -5,15 +5,28 @@ import { useState } from "react";
 import type { LiftingSessionActivityMeta } from "@/lib/lifting";
 import { CoachModal } from "@/components/ui/coach-modal";
 import { NewTestingSessionForm } from "@/components/testing/new-session-form";
+import { CoachClassScopeBar } from "@/components/coach/coach-class-scope-bar";
+import type {
+  ScopeClassOption,
+  ScopeCoachOption,
+} from "@/components/coach/coach-class-scope-bar";
 
 export function TestingPageActions({
+  coaches,
   classes,
+  coachId,
+  classId,
+  showCoachPicker,
   defaultClassId,
   sameDayCount,
   strengthActivities,
   kpiActivities,
 }: {
-  classes: { id: string; name: string; period: string | null }[];
+  coaches: ScopeCoachOption[];
+  classes: ScopeClassOption[];
+  coachId: string;
+  classId: string;
+  showCoachPicker?: boolean;
   defaultClassId?: string;
   sameDayCount?: number;
   strengthActivities?: LiftingSessionActivityMeta[];
@@ -23,7 +36,16 @@ export function TestingPageActions({
 
   return (
     <>
-      <div className="mb-4 flex flex-wrap items-center gap-2">
+      <CoachClassScopeBar
+        coaches={coaches}
+        classes={classes}
+        subgroups={[]}
+        coachId={coachId}
+        classId={classId}
+        showCoach={showCoachPicker}
+        showSubgroup={false}
+      />
+      <div className="mb-4 mt-4 flex flex-wrap items-center gap-2">
         <button
           type="button"
           onClick={() => setOpen(true)}
@@ -37,7 +59,7 @@ export function TestingPageActions({
         <CoachModal title="New live testing session" onClose={() => setOpen(false)} maxWidth="max-w-2xl">
           <NewTestingSessionForm
             classes={classes}
-            defaultClassId={defaultClassId}
+            defaultClassId={defaultClassId ?? classId}
             sameDayCount={sameDayCount}
             strengthActivities={strengthActivities}
             kpiActivities={kpiActivities}

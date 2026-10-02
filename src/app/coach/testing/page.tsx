@@ -12,23 +12,31 @@ import {
   type SessionActivitySummary,
 } from "@/components/testing/session-results-accordion";
 import { isWithinLiveWindow } from "@/lib/constants";
-import { resolveCoachClassContext } from "@/lib/coach-class-context";
-import { classesForCoachTesting, testingSessionsForCoachView } from "@/lib/queries/coach-classes";
+import { resolveCoachClassScopeFromParams } from "@/lib/queries/coach-scope-params";
+import { testingSessionsForCoachView } from "@/lib/queries/coach-classes";
+import { TestingLogNavLink } from "@/components/testing/testing-log-table";
 import { KPI_METRIC_META } from "@/lib/kpi-targets";
 import { ensureCoachActiveKpiSet } from "@/lib/services/kpi-sets";
 
-export default async function TestingSessionsPage() {
+export default async function TestingSessionsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ coachId?: string; classId?: string }>;
+}) {
   const session = await requireSchoolSession();
-  const coachCtx = await resolveCoachClassContext(session);
-  const activeClassId = coachCtx.classId;
+  const sp = await searchParams;
+  const scope = await resolveCoachClassScopeFromParams(session, {
+    coachId: sp.coachId,
+    classId: sp.classId,
+  });
+  const activeClassId = scope.classId;
 
   const today = new Date();
   const dayStart = new Date(today.toISOString().slice(0, 10) + "T00:00:00");
   const dayEnd = new Date(today.toISOString().slice(0, 10) + "T23:59:59.999");
 
-  const [allSessions, classes, sameDayCount, schoolLifts] = await Promise.all([
+  const [allSessions, sameDayCount, schoolLifts] = await Promise.all([
     testingSessionsForCoachView(session),
-    classesForCoachTesting(session),
     prisma.testingSession.count({
       where: {
         schoolId: session.schoolId,
@@ -40,7 +48,8 @@ export default async function TestingSessionsPage() {
 
   const sessions = activeClassId
     ? allSessions.filter((s) => s.classId === activeClassId)
-    : allSessions;
+    : [];
+  const classes = scope.classes;
 
   const strengthActivities = liftsForTestingSession(schoolLifts).map((l) => ({
     slug: l.slug,
@@ -93,17 +102,15 @@ export default async function TestingSessionsPage() {
         </Link>
         ; the full roster stays visible for reference.
       </p>
-      {activeClassId ? (
-        <p className="mb-3 text-sm text-muted">
-          Showing tests for{" "}
-          <span className="font-medium text-foreground">
-            {classes.find((c) => c.id === activeClassId)?.name ?? "selected class"}
-          </span>
-          . Change class in the header to view another group.
-        </p>
-      ) : null}
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <TestingLogNavLink classId={activeClassId || undefined} />
+      </div>
       <TestingPageActions
+        coaches={scope.coaches}
         classes={classes}
+        coachId={scope.coachId}
+        classId={scope.classId}
+        showCoachPicker={session.role === "ADMIN"}
         defaultClassId={activeClassId ?? classes[0]?.id}
         sameDayCount={sameDayCount}
         strengthActivities={strengthActivities}

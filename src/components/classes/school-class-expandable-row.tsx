@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronDown, Trash2 } from "lucide-react";
+import { ChevronDown, Pencil, Trash2 } from "lucide-react";
 import { ClassCoachInlineSelect } from "@/components/classes/class-coach-select";
 import { classYearLabel } from "@/lib/grades";
 import { cn } from "@/lib/utils";
@@ -58,37 +58,41 @@ export function SchoolClassExpandableRow({
 
   return (
     <li className="rounded-xl border border-card-border bg-card">
-      <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
-        <button
-          type="button"
-          onClick={() => setOpen((v) => !v)}
-          className="flex min-w-0 flex-1 items-center gap-2 text-left hover:text-accent"
-        >
-          <ChevronDown
-            className={cn("h-4 w-4 shrink-0 transition", open && "rotate-180")}
-            aria-hidden
-          />
-          <span className="font-semibold">{name}</span>
-          <span className="text-sm text-muted">
-            {programKind === "TRAINING"
-              ? "Training · "
-              : programKind === "SCHOLASTIC"
-                ? "Class · "
-                : ""}
-            {period ? `${period} · ` : ""}
-            {gradeLevel ? classYearLabel(gradeLevel) : "mixed"}
-            {" · "}
-            {athleteCount} athletes
-          </span>
-        </button>
-        <div className="flex flex-wrap items-center gap-2">
+      <div className="px-4 py-3">
+        <div className="flex items-start gap-2">
+          <button
+            type="button"
+            onClick={() => setOpen((v) => !v)}
+            className="flex min-w-0 flex-1 flex-col gap-1 text-left hover:text-accent"
+          >
+            <span className="flex items-start gap-2 pr-1">
+              <ChevronDown
+                className={cn("mt-0.5 h-4 w-4 shrink-0 transition", open && "rotate-180")}
+                aria-hidden
+              />
+              <span className="font-semibold leading-snug">{name}</span>
+            </span>
+            <span className="pl-6 text-sm leading-snug text-muted">
+              {programKind === "TRAINING"
+                ? "Training · "
+                : programKind === "SCHOLASTIC"
+                  ? "Class · "
+                  : ""}
+              {period ? `${period} · ` : ""}
+              {gradeLevel ? classYearLabel(gradeLevel) : "mixed"}
+              {" · "}
+              {athleteCount} athletes
+            </span>
+          </button>
           {canEdit ? (
-            <>
+            <div className="flex shrink-0 items-center gap-1">
               <a
                 href={`/coach/school/classes/${classId}?edit=1`}
-                className="rounded-lg border border-card-border px-3 py-1.5 text-sm text-muted hover:border-sky-400/40 hover:text-foreground"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-card-border text-muted hover:border-sky-400/40 hover:text-foreground"
+                aria-label={`Rename ${name}`}
+                title="Rename"
               >
-                Rename
+                <Pencil className="h-4 w-4" aria-hidden />
               </a>
               <button
                 type="button"
@@ -96,11 +100,14 @@ export function SchoolClassExpandableRow({
                 onClick={() => void deleteClass()}
                 className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-red-500/30 text-red-300 hover:bg-red-500/10"
                 aria-label={`Delete ${name}`}
+                title="Delete class"
               >
                 <Trash2 className="h-4 w-4" />
               </button>
-            </>
+            </div>
           ) : null}
+        </div>
+        <div className="mt-2 pl-6 sm:max-w-xs">
           <ClassCoachInlineSelect
             classId={classId}
             coachIds={coachIds}

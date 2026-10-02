@@ -1,22 +1,46 @@
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
 import { AppShell } from "@/components/layout/app-shell";
 import { WorkoutLogClient } from "@/components/workouts/workout-log-client";
+import { StudentWorkoutClassPicker } from "@/components/workouts/student-workout-class-picker";
 import { STUDENT_NAV } from "@/lib/navigation";
 import { requireSession } from "@/lib/auth/session";
 import { suggestWeightsForPrescribedSets } from "@/lib/queries/workout-1rm";
 import { normalizeSetPrescriptions } from "@/lib/workout-prescriptions";
 import {
   findStudentAssignmentForDate,
+  listStudentAssignmentsForDate,
   getOrCreateWorkoutSession,
   todayDateString,
 } from "@/lib/services/workouts";
 
-export default async function StudentWorkoutPage() {
+export default async function StudentWorkoutPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ classId?: string }>;
+}) {
   const session = await requireSession(["STUDENT"]);
   if (!session?.studentId) redirect("/login");
 
+  const sp = await searchParams;
   const dateStr = todayDateString();
-  const assignment = await findStudentAssignmentForDate(session.studentId, dateStr);
+  const allAssignments = await listStudentAssignmentsForDate(session.studentId, dateStr);
+  const classOptions = allAssignments
+    .filter((a) => a.class)
+    .map((a) => ({
+      id: a.classId!,
+      name: a.class!.name,
+      period: a.class!.period,
+    }));
+  const classId =
+    sp.classId && classOptions.some((c) => c.id === sp.classId)
+      ? sp.classId
+      : classOptions[0]?.id;
+  const assignment = await findStudentAssignmentForDate(
+    session.studentId,
+    dateStr,
+    classId
+  );
 
   let payload: {
     date: string;
@@ -103,6 +127,12 @@ export default async function StudentWorkoutPage() {
 
   return (
     <AppShell nav={STUDENT_NAV} title="Log workout">
+      <Suspense fallback={null}>
+        <StudentWorkoutClassPicker
+          options={classOptions}
+          classId={classId ?? ""}
+        />
+      </Suspense>
       <WorkoutLogClient initial={payload} />
     </AppShell>
   );

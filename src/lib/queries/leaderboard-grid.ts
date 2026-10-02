@@ -29,21 +29,28 @@ export async function getLeaderboardActivities(
     ? 1
     : await prisma.kpiSet.count({ where: { schoolId } });
 
+  const slugFilter =
+    hasKpiSets > 0 && rankedSlugs.size > 0
+      ? [...rankedSlugs].filter((s) => !hiddenSlugs.includes(s))
+      : null;
+
   const activities = await prisma.activity.findMany({
-    where: {
-      OR: [{ schoolId: null }, { schoolId }],
-      slug: {
-        notIn: ["height", "weight", "20-meter-start", ...hiddenSlugs],
-      },
-    },
+    where: slugFilter
+      ? {
+          slug: { in: slugFilter },
+          OR: [{ schoolId: null }, { schoolId }],
+        }
+      : {
+          OR: [{ schoolId: null }, { schoolId }],
+          slug: {
+            notIn: ["height", "weight", "20-meter-start", ...hiddenSlugs],
+          },
+        },
     include: { category: true },
     orderBy: { name: "asc" },
   });
 
-  const filtered =
-    hasKpiSets > 0
-      ? activities.filter((a) => rankedSlugs.has(a.slug))
-      : activities;
+  const filtered = activities;
 
   return [...filtered].sort((a, b) => {
     const ai = featured.indexOf(a.slug);

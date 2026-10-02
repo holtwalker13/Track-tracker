@@ -36,11 +36,13 @@ type ClassOption = { id: string; name: string; period: string | null };
 export function ProgramsActions({
   templates: initialTemplates,
   selectedClass,
+  selectedSubgroupId,
   selectedDate,
   workoutLifts,
 }: {
   templates: TemplateRow[];
   selectedClass: ClassOption | null;
+  selectedSubgroupId?: string | null;
   selectedDate: string;
   workoutLifts: SchoolLiftRow[];
 }) {
@@ -200,6 +202,7 @@ export function ProgramsActions({
       body: JSON.stringify({
         templateId: assignTemplateId,
         classId: selectedClass.id,
+        subgroupId: selectedSubgroupId || undefined,
         scheduledDate: assignDate,
       }),
     });

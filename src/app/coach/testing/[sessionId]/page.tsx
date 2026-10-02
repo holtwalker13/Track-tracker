@@ -99,9 +99,10 @@ export default async function LiveTestingPage({
         const n = r.attemptNumber ?? 1;
         if (!byAttempt.has(n)) byAttempt.set(n, r);
       }
-      const attempts: (string | number)[] = ["", "", ""];
+      const slotCount = Math.max(1, testingSession.attemptSlots ?? 1);
+      const attempts: (string | number)[] = Array.from({ length: slotCount }, () => "");
       for (const [n, r] of byAttempt) {
-        const idx = Math.max(0, Math.min(2, n - 1));
+        const idx = Math.max(0, Math.min(slotCount - 1, n - 1));
         if (r.resultValue != null) attempts[idx] = r.resultValue;
       }
       const best = [...byAttempt.values()].find((r) => r.isBestAttempt);
@@ -175,6 +176,7 @@ export default async function LiveTestingPage({
         rows={rows}
         readOnly={!coachCanEdit}
         selectedStudentId={sp.student}
+        attemptCount={Math.max(1, testingSession.attemptSlots ?? 1)}
       />
     </AppShell>
   );

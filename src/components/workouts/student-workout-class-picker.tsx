@@ -1,26 +1,26 @@
 "use client";
 
-import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { useTransition } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useTransition } from "react";
 import { classSectionLabel } from "@/lib/periods";
 
-export function AthleteProfileClassPicker({
-  classes,
-  selectedClassId,
+function PickerInner({
+  options,
+  classId,
 }: {
-  classes: { id: string; name: string; period: string | null }[];
-  selectedClassId: string | null;
+  options: { id: string; name: string; period: string | null }[];
+  classId: string;
 }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [pending, startTransition] = useTransition();
 
-  if (classes.length === 0) return null;
+  if (options.length <= 1) return null;
 
-  function pick(classId: string) {
+  function pick(next: string) {
     const params = new URLSearchParams(searchParams.toString());
-    if (classId) params.set("classId", classId);
+    if (next) params.set("classId", next);
     else params.delete("classId");
     startTransition(() => {
       router.push(params.toString() ? `${pathname}?${params.toString()}` : pathname);
@@ -29,18 +29,29 @@ export function AthleteProfileClassPicker({
 
   return (
     <label className={`mb-4 block text-sm ${pending ? "opacity-70" : ""}`}>
-      <span className="font-semibold uppercase tracking-wide text-muted">Medal class</span>
+      <span className="font-semibold uppercase tracking-wide text-muted">Class assignment</span>
       <select
-        value={selectedClassId ?? ""}
+        value={classId}
         onChange={(e) => pick(e.target.value)}
         className="mt-1 block w-full max-w-md rounded-lg border border-card-border bg-background px-3 py-2 font-medium"
       >
-        {classes.map((c) => (
+        {options.map((c) => (
           <option key={c.id} value={c.id}>
             {classSectionLabel(c)}
           </option>
         ))}
       </select>
     </label>
+  );
+}
+
+export function StudentWorkoutClassPicker(props: {
+  options: { id: string; name: string; period: string | null }[];
+  classId: string;
+}) {
+  return (
+    <Suspense fallback={null}>
+      <PickerInner {...props} />
+    </Suspense>
   );
 }

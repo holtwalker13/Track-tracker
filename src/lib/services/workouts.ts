@@ -13,9 +13,9 @@ export function todayDateString(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-export async function findStudentAssignmentForDate(studentId: string, dateStr: string) {
+export async function listStudentAssignmentsForDate(studentId: string, dateStr: string) {
   const bounds = dayBoundsFromDateString(dateStr);
-  if (!bounds) return null;
+  if (!bounds) return [];
 
   const classIds = (
     await prisma.classEnrollment.findMany({
@@ -24,12 +24,12 @@ export async function findStudentAssignmentForDate(studentId: string, dateStr: s
     })
   ).map((e) => e.classId);
 
-  if (classIds.length === 0) return null;
+  if (classIds.length === 0) return [];
 
-  const direct = await prisma.workoutAssignment.findFirst({
+  const rows = await prisma.workoutAssignment.findMany({
     where: {
-      studentId,
       scheduledDate: { gte: bounds.start, lte: bounds.end },
+      OR: [{ studentId }, { classId: { in: classIds }, studentId: null }],
     },
     include: {
       template: {
@@ -44,26 +44,34 @@ export async function findStudentAssignmentForDate(studentId: string, dateStr: s
     },
     orderBy: { createdAt: "desc" },
   });
-  if (direct) return direct;
 
-  return prisma.workoutAssignment.findFirst({
-    where: {
-      classId: { in: classIds },
-      scheduledDate: { gte: bounds.start, lte: bounds.end },
-    },
-    include: {
-      template: {
-        include: {
-          exercises: {
-            orderBy: { sortOrder: "asc" },
-            include: { activity: true },
-          },
-        },
-      },
-      class: true,
-    },
-    orderBy: { createdAt: "desc" },
+  const memberSubgroups = await prisma.classSubgroupMember.findMany({
+    where: { studentId },
+    select: { subgroupId: true },
   });
+  const subgroupSet = new Set(memberSubgroups.map((m) => m.subgroupId));
+
+  const seen = new Set<string>();
+  return rows.filter((a) => {
+    if (a.subgroupId && !subgroupSet.has(a.subgroupId)) return false;
+    const key = a.classId ?? a.id;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+export async function findStudentAssignmentForDate(
+  studentId: string,
+  dateStr: string,
+  classId?: string | null
+) {
+  const listed = await listStudentAssignmentsForDate(studentId, dateStr);
+  if (classId) {
+    const match = listed.find((a) => a.classId === classId);
+    if (match) return match;
+  }
+  return listed[0] ?? null;
 }
 
 export async function getOrCreateWorkoutSession(assignmentId: string, studentId: string) {

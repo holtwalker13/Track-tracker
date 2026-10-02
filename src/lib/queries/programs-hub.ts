@@ -90,21 +90,33 @@ export async function listAssignmentsForClassRange(input: {
     },
     include: {
       template: { select: { id: true, name: true } },
-      sessions: { select: { status: true } },
+      sessions: { select: { status: true, studentId: true } },
       class: {
         select: {
           enrollments: { select: { studentId: true } },
         },
       },
+      subgroup: { select: { members: { select: { studentId: true } } } },
     },
     orderBy: [{ scheduledDate: "asc" }, { createdAt: "asc" }],
   });
 
   return assignments.map((a) => {
     const date = a.scheduledDate.toISOString().slice(0, 10);
-    const rosterSize = a.class?.enrollments.length ?? 0;
-    const totalCount = Math.max(rosterSize, a.sessions.length);
-    const completedCount = a.sessions.filter((s) => s.status === "COMPLETED").length;
+    // Count only the athletes the assignment targets: individual, subgroup
+    // members, or the full class roster — so subgroup assignments don't show
+    // class-wide denominators.
+    const targeted = new Set(
+      a.studentId
+        ? [a.studentId]
+        : a.subgroup
+          ? a.subgroup.members.map((m) => m.studentId)
+          : (a.class?.enrollments.map((e) => e.studentId) ?? [])
+    );
+    const totalCount = targeted.size;
+    const completedCount = a.sessions.filter(
+      (s) => s.status === "COMPLETED" && targeted.has(s.studentId)
+    ).length;
     return {
       id: a.id,
       date,

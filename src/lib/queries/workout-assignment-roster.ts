@@ -16,7 +16,8 @@ export type WorkoutAssignmentStudent = {
 
 /** Students who should receive a workout assignment (subgroup, individual, or full class). */
 export async function studentsTargetedByWorkoutAssignment(input: {
-  assignmentId: string;
+  /** Unused by the roster lookup; kept for call-site clarity. */
+  assignmentId?: string;
   classId?: string | null;
   subgroupId?: string | null;
   studentId?: string | null;

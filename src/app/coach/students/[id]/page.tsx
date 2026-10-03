@@ -79,23 +79,22 @@ export default async function StudentProfilePage({
     .filter((e) => !isGraduatingClassName(e.class.name))
     .map((e) => e.class);
 
-  // Default the profile's class context to an enrolled class that actually has
-  // a KPI set, so the medal standard matches the KPIs tab for that class.
+  // Default the profile's class context to the enrolled class whose KPI set was
+  // most recently configured — the same set the athlete-aware resolver shows —
+  // so the medal standard matches the KPIs tab for that class.
   const enrolledClassIds = enrolledClasses.map((c) => c.id);
-  const classSetRows = enrolledClassIds.length
-    ? await prisma.kpiSet.findMany({
+  const latestSetRow = enrolledClassIds.length
+    ? await prisma.kpiSet.findFirst({
         where: { schoolId: session.schoolId, classId: { in: enrolledClassIds } },
+        orderBy: { updatedAt: "desc" },
         select: { classId: true },
       })
-    : [];
-  const classesWithKpiSets = new Set(classSetRows.map((r) => r.classId));
+    : null;
 
   const profileClassId =
     sp.classId && enrolledClasses.some((c) => c.id === sp.classId)
       ? sp.classId
-      : (enrolledClasses.find((c) => classesWithKpiSets.has(c.id))?.id ??
-        enrolledClasses[0]?.id ??
-        null);
+      : (latestSetRow?.classId ?? enrolledClasses[0]?.id ?? null);
 
   const rankedSlugs = await getRankedKpiSlugsForStudent(session.schoolId, id, {
     classId: profileClassId,

@@ -763,9 +763,10 @@ export const resolveKpiSetForClassContext = resolveKpiSetForClassScope;
  * subgroup that has one), falling back to the school default set.
  *
  * An explicit classId/subgroupId (e.g. from a coach scope bar) is honored only
- * when the athlete is actually enrolled in that class — otherwise the athlete's
- * own class context wins, so compare/medal views always reflect the KPI tab
- * configuration for the athlete's class.
+ * when the athlete is actually enrolled in that class. Without an explicit scope
+ * the most recently configured set among the athlete's own scopes wins —
+ * subgroup sets (most specific) first, then class sets — so every view (coach
+ * profile, student dashboard, compare) resolves the same set for the athlete.
  */
 export async function resolveKpiSetForStudentContext(
   schoolId: string,
@@ -777,53 +778,59 @@ export async function resolveKpiSetForStudentContext(
       studentId,
       class: { schoolId, NOT: { name: { startsWith: "Class of" } } },
     },
-    select: { classId: true, class: { select: { period: true } } },
-    orderBy: { class: { period: "asc" } },
+    select: { classId: true },
   });
   const enrolledClassIds = enrollments.map((e) => e.classId);
+  if (enrolledClassIds.length === 0) return resolveSchoolKpiSetId(schoolId);
+
+  const memberships = await prisma.classSubgroupMember.findMany({
+    where: { studentId, subgroup: { classId: { in: enrolledClassIds } } },
+    select: { subgroupId: true, subgroup: { select: { classId: true } } },
+  });
+  const memberSubgroupIds = memberships.map((m) => m.subgroupId);
 
   // Explicit scope only applies when the athlete belongs to it.
   const scopedClassId =
     opts.classId && enrolledClassIds.includes(opts.classId) ? opts.classId : null;
-  const orderedClassIds = scopedClassId
-    ? [scopedClassId, ...enrolledClassIds.filter((id) => id !== scopedClassId)]
-    : enrolledClassIds;
-
-  if (orderedClassIds.length > 0) {
-    const memberships = await prisma.classSubgroupMember.findMany({
-      where: { studentId, subgroup: { classId: { in: orderedClassIds } } },
-      select: { subgroupId: true, subgroup: { select: { classId: true } } },
-    });
-    const subgroupByClass = new Map<string, string[]>();
-    for (const m of memberships) {
-      const list = subgroupByClass.get(m.subgroup.classId) ?? [];
-      list.push(m.subgroupId);
-      subgroupByClass.set(m.subgroup.classId, list);
-    }
-
-    for (const classId of orderedClassIds) {
-      const memberSubgroupIds = subgroupByClass.get(classId) ?? [];
-      // Explicit subgroup scope wins when the athlete is a member.
-      const subgroupCandidates =
-        opts.subgroupId && memberSubgroupIds.includes(opts.subgroupId)
-          ? [opts.subgroupId, ...memberSubgroupIds.filter((id) => id !== opts.subgroupId)]
-          : memberSubgroupIds;
-      if (subgroupCandidates.length > 0) {
-        const bySubgroup = await prisma.kpiSet.findFirst({
-          where: { schoolId, classId, subgroupId: { in: subgroupCandidates } },
-          orderBy: { updatedAt: "desc" },
-          select: { id: true },
-        });
-        if (bySubgroup) return bySubgroup.id;
-      }
-      const byClass = await prisma.kpiSet.findFirst({
-        where: { schoolId, classId, subgroupId: null },
+  if (scopedClassId) {
+    const scopedSubgroupIds = memberships
+      .filter((m) => m.subgroup.classId === scopedClassId)
+      .map((m) => m.subgroupId);
+    const subgroupCandidates =
+      opts.subgroupId && scopedSubgroupIds.includes(opts.subgroupId)
+        ? [opts.subgroupId, ...scopedSubgroupIds.filter((id) => id !== opts.subgroupId)]
+        : scopedSubgroupIds;
+    if (subgroupCandidates.length > 0) {
+      const bySubgroup = await prisma.kpiSet.findFirst({
+        where: { schoolId, classId: scopedClassId, subgroupId: { in: subgroupCandidates } },
         orderBy: { updatedAt: "desc" },
         select: { id: true },
       });
-      if (byClass) return byClass.id;
+      if (bySubgroup) return bySubgroup.id;
     }
+    const byClass = await prisma.kpiSet.findFirst({
+      where: { schoolId, classId: scopedClassId, subgroupId: null },
+      select: { id: true },
+    });
+    if (byClass) return byClass.id;
   }
+
+  // No explicit scope (or it has no set): the athlete's most recently
+  // configured set governs — subgroup sets before class sets.
+  if (memberSubgroupIds.length > 0) {
+    const bySubgroup = await prisma.kpiSet.findFirst({
+      where: { schoolId, subgroupId: { in: memberSubgroupIds } },
+      orderBy: { updatedAt: "desc" },
+      select: { id: true },
+    });
+    if (bySubgroup) return bySubgroup.id;
+  }
+  const byClass = await prisma.kpiSet.findFirst({
+    where: { schoolId, classId: { in: enrolledClassIds }, subgroupId: null },
+    orderBy: { updatedAt: "desc" },
+    select: { id: true },
+  });
+  if (byClass) return byClass.id;
 
   return resolveSchoolKpiSetId(schoolId);
 }

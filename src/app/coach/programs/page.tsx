@@ -136,6 +136,8 @@ export default async function CoachProgramsPage({
                   assignments={assignments}
                   selectedDate={selectedDate}
                   classId={classId}
+                  subgroupId={subgroupId}
+                  subgroupName={subgroups.find((s) => s.id === subgroupId)?.name ?? null}
                   templates={templates.map((t) => ({ id: t.id, name: t.name }))}
                 />
               </Suspense>
@@ -160,6 +162,7 @@ export default async function CoachProgramsPage({
           }))}
           selectedClass={selectedClass}
           selectedSubgroupId={subgroupId}
+          selectedSubgroupName={subgroups.find((s) => s.id === subgroupId)?.name ?? null}
           selectedDate={selectedDate}
           workoutLifts={workoutLifts}
         />

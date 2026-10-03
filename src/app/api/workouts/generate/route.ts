@@ -3,6 +3,7 @@ import { requireSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { buildGeneratorPlan, WORKOUT_GENERATORS, type WorkoutGeneratorKey } from "@/lib/services/workout-generator";
 import { dayBoundsFromDateString } from "@/lib/services/workouts";
+import { studentsTargetedByWorkoutAssignment } from "@/lib/queries/workout-assignment-roster";
 
 export async function POST(request: Request) {
   const session = await requireSession(["COACH", "ADMIN"]);
@@ -17,6 +18,7 @@ export async function POST(request: Request) {
   }
 
   const classId = String(body.classId ?? "").trim();
+  const subgroupId = String(body.subgroupId ?? "").trim();
   const blockName = String(body.blockName ?? "").trim() || "Auto block";
   const dateStr = String(body.startDate ?? "").trim();
   const weeks = Math.min(12, Math.max(1, Number(body.weeks) || 4));
@@ -32,6 +34,19 @@ export async function POST(request: Request) {
     where: { id: classId, schoolId: session.schoolId },
   });
   if (!cls) return NextResponse.json({ error: "Class not found" }, { status: 404 });
+
+  if (subgroupId) {
+    const sg = await prisma.classSubgroup.findFirst({
+      where: { id: subgroupId, classId },
+    });
+    if (!sg) return NextResponse.json({ error: "Subgroup not found" }, { status: 404 });
+  }
+
+  // Same target roster for every generated day: subgroup members or full class.
+  const targeted = await studentsTargetedByWorkoutAssignment({
+    classId,
+    subgroupId: subgroupId || null,
+  });
 
   const startDate = new Date(`${dateStr}T12:00:00`);
   const plan = buildGeneratorPlan(generatorKey, { blockName, startDate, weeks });
@@ -78,21 +93,18 @@ export async function POST(request: Request) {
           schoolId: session.schoolId!,
           templateId: template.id,
           classId,
+          subgroupId: subgroupId || null,
           scheduledDate: new Date(`${dayStr}T12:00:00`),
           generatorBlockId,
           createdById: session.userId,
         },
       });
 
-      const enrollments = await tx.classEnrollment.findMany({
-        where: { classId },
-        select: { studentId: true },
-      });
-      if (enrollments.length > 0) {
+      if (targeted.length > 0) {
         await tx.workoutSession.createMany({
-          data: enrollments.map((e) => ({
+          data: targeted.map((s) => ({
             assignmentId: assignment.id,
-            studentId: e.studentId,
+            studentId: s.id,
             status: "IN_PROGRESS",
           })),
           skipDuplicates: true,

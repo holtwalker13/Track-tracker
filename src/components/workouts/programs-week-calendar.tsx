@@ -27,6 +27,8 @@ export function ProgramsWeekCalendar({
   assignments: initialAssignments,
   selectedDate,
   classId,
+  subgroupId,
+  subgroupName,
   templates,
 }: {
   weekStart: string;
@@ -34,6 +36,8 @@ export function ProgramsWeekCalendar({
   assignments: CalendarAssignment[];
   selectedDate: string;
   classId: string;
+  subgroupId?: string | null;
+  subgroupName?: string | null;
   templates: TemplateOption[];
 }) {
   const router = useRouter();
@@ -159,6 +163,7 @@ export function ProgramsWeekCalendar({
       body: JSON.stringify({
         templateId: addTemplateId,
         classId,
+        subgroupId: subgroupId || undefined,
         scheduledDate: addDate,
       }),
     });
@@ -379,6 +384,11 @@ export function ProgramsWeekCalendar({
         >
           <div className="space-y-3">
             {actionError && <p className="text-sm text-sport-red">{actionError}</p>}
+            {subgroupId && subgroupName ? (
+              <p className="text-xs text-muted">
+                Assigning to: <span className="font-medium text-foreground">{subgroupName}</span>
+              </p>
+            ) : null}
             {templates.length === 0 ? (
               <p className="text-sm text-muted">Create a saved workout first, then add it here.</p>
             ) : (

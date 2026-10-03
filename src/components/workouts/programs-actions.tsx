@@ -37,12 +37,14 @@ export function ProgramsActions({
   templates: initialTemplates,
   selectedClass,
   selectedSubgroupId,
+  selectedSubgroupName,
   selectedDate,
   workoutLifts,
 }: {
   templates: TemplateRow[];
   selectedClass: ClassOption | null;
   selectedSubgroupId?: string | null;
+  selectedSubgroupName?: string | null;
   selectedDate: string;
   workoutLifts: SchoolLiftRow[];
 }) {
@@ -298,6 +300,7 @@ export function ProgramsActions({
       body: JSON.stringify({
         generatorKey: "linear-5x5-mwf",
         classId: selectedClass.id,
+        subgroupId: selectedSubgroupId || undefined,
         startDate: genStartDate,
         blockName: genBlockName,
         weeks: genWeeks,
@@ -318,6 +321,10 @@ export function ProgramsActions({
 
   const canSchedule = Boolean(selectedClass && assignTemplateId && assignLifts.length > 0);
   const classLabel = selectedClass ? classSectionLabel(selectedClass) : "Select a class";
+  const scopeLabel =
+    selectedSubgroupId && selectedSubgroupName
+      ? `${classLabel} · ${selectedSubgroupName}`
+      : classLabel;
 
   const previewReady = useMemo(
     () => Boolean(assignTemplateId && assignLifts.length > 0 && selectedClass),
@@ -345,7 +352,7 @@ export function ProgramsActions({
           <CalendarPlus className="h-5 w-5 shrink-0 text-emerald-300" />
           <span>
             <span className="block text-sm font-semibold">Add workout to schedule</span>
-            <span className="block text-xs text-muted">Pick a saved workout for {classLabel}</span>
+            <span className="block text-xs text-muted">Pick a saved workout for {scopeLabel}</span>
           </span>
         </button>
         <button
@@ -468,7 +475,9 @@ export function ProgramsActions({
                 />
               </label>
             </div>
-            <p className="text-xs text-muted">Class: {classLabel}</p>
+            <p className="text-xs text-muted">
+              Assigning to: <span className="font-medium text-foreground">{scopeLabel}</span>
+            </p>
             <ProgramsSetBuilderGrid
               lifts={assignLifts}
               bulkPercent={bulkPercent}
@@ -594,7 +603,7 @@ export function ProgramsActions({
             {error && <p className="text-sm text-sport-red">{error}</p>}
             <p className="text-xs text-muted">{WORKOUT_GENERATORS["linear-5x5-mwf"].description}</p>
             <p className="text-sm">
-              Class: <span className="font-medium">{classLabel}</span>
+              Assigning to: <span className="font-medium">{scopeLabel}</span>
             </p>
             <label className="block text-sm">
               Block name

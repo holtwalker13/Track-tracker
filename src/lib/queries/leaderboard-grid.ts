@@ -94,13 +94,9 @@ export async function getLeaderboardGrid(
   kpiSetId?: string | null,
   subgroupId?: string | null
 ) {
-  const { resolveKpiSetForClassContext, ensureSchoolDefaultKpiSetId } = await import(
-    "@/lib/services/kpi-sets"
-  );
+  const { resolveKpiSetForCompeteScope } = await import("@/lib/services/kpi-sets");
   const setId =
-    kpiSetId ??
-    (await resolveKpiSetForClassContext(schoolId, classId ?? null, subgroupId ?? null)) ??
-    (await ensureSchoolDefaultKpiSetId(schoolId));
+    kpiSetId ?? (await resolveKpiSetForCompeteScope(schoolId, classId ?? null, subgroupId ?? null));
   const activities = await getLeaderboardActivities(schoolId, setId);
   const grades = gradeLevels && gradeLevels.length > 0 ? gradeLevels : undefined;
 

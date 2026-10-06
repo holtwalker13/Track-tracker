@@ -626,13 +626,23 @@ export async function getRankedKpiSlugsForSchool(
   classId?: string | null,
   subgroupId?: string | null
 ): Promise<string[]> {
-  const setId =
-    (await resolveKpiSetForClassScope(schoolId, classId, subgroupId)) ??
-    (await ensureSchoolDefaultKpiSetId(schoolId));
+  const setId = await resolveKpiSetForCompeteScope(schoolId, classId, subgroupId);
   if (setId) return getRankedMetricSlugs(setId);
 
   // No coach profile exists to own a default set — fall back to the catalog.
   return KPI_METRIC_META.map((m) => m.slug);
+}
+
+/** KPI set for Compete leaderboards & compare (class/subgroup → school default). */
+export async function resolveKpiSetForCompeteScope(
+  schoolId: string,
+  classId?: string | null,
+  subgroupId?: string | null
+): Promise<string | null> {
+  return (
+    (await resolveKpiSetForClassScope(schoolId, classId ?? null, subgroupId ?? null)) ??
+    (await ensureSchoolDefaultKpiSetId(schoolId))
+  );
 }
 
 /** Ranked KPI slugs governing a specific athlete (their class/subgroup set context). */

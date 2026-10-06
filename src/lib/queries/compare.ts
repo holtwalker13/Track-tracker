@@ -7,7 +7,7 @@ import { activityDisplayGroup, DISPLAY_GROUP_ORDER, type ActivityDisplayGroup } 
 import type { ScoringDirection } from "@/lib/constants";
 import { getStudentContext } from "@/lib/queries/student";
 import { getAthleteMedalState } from "@/lib/queries/athlete-medal-state";
-import { KPI_METRIC_META, MEDAL_LABELS } from "@/lib/kpi-targets";
+import { MEDAL_LABELS } from "@/lib/kpi-targets";
 
 export type CompareEventRow = {
   activityId: string;
@@ -108,6 +108,7 @@ export async function getAthleteCompare(
   const medalState = await getAthleteMedalState(studentId, {
     classId: opts?.classId,
     subgroupId: opts?.subgroupId,
+    kpiScope: "compete",
   });
   const rankedSlugs = new Set(medalState.rankedSlugs);
   // Medal targets come from the resolved KPI set's band for the active medal, so
@@ -360,23 +361,16 @@ export async function getAthleteLineup(
   // set when scoped (coach scope bar); otherwise the viewed athlete's own class
   // KPI set. No set at all → legacy full list.
   let rankedFilter: string[] | null = null;
+  const { getRankedKpiSlugsForSchool } = await import("@/lib/services/kpi-sets");
   if (opts?.classId) {
-    const { resolveKpiSetForClassScope, getRankedMetricSlugs, ensureSchoolDefaultKpiSetId } =
-      await import("@/lib/services/kpi-sets");
-    const setId =
-      (await resolveKpiSetForClassScope(schoolId, opts.classId, opts.subgroupId)) ??
-      (await ensureSchoolDefaultKpiSetId(schoolId));
-    // Strict: a selected scope shows exactly its ranked KPIs, even if empty —
-    // the same list Compete > Leaderboards uses for the class.
-    rankedFilter = setId
-      ? await getRankedMetricSlugs(setId)
-      : KPI_METRIC_META.map((m) => m.slug as string);
+    rankedFilter = await getRankedKpiSlugsForSchool(
+      schoolId,
+      opts.classId,
+      opts.subgroupId ?? null
+    );
   } else {
-    const kpiStudentId = opts?.kpiStudentId ?? athletes[0]?.id;
-    if (kpiStudentId && athletes.some((a) => a.id === kpiStudentId)) {
-      const medalState = await getAthleteMedalState(kpiStudentId);
-      if (medalState.kpiSetId) rankedFilter = medalState.rankedSlugs;
-    }
+    // No class filter: same ranked KPIs as Compete > Leaderboards (school default set).
+    rankedFilter = await getRankedKpiSlugsForSchool(schoolId, null, null);
   }
 
   const activities = await prisma.activity.findMany({

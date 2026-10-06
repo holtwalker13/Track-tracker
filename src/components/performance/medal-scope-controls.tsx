@@ -40,7 +40,7 @@ function MedalScopeControlsInner({
       {classes.length > 0 ? (
         <label className="block text-sm">
           <span className="text-xs font-semibold uppercase tracking-wider text-muted">
-            Period / activity
+            Medal class
           </span>
           <select
             value={classId}

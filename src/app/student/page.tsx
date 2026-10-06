@@ -57,7 +57,7 @@ export default async function StudentDashboardPage({
   const sp = await searchParams;
   const highlight = leaderboardHighlightFromSearch(sp);
   const window = sp.window === "week" ? "week" : "all";
-  const classId = sp.classId?.trim() || null;
+  const urlClassId = sp.classId?.trim() || null;
 
   const { student, currentGrade } = await getStudentContext(studentId);
   const schoolYear = await prisma.schoolYear.findFirst({
@@ -100,6 +100,9 @@ export default async function StudentDashboardPage({
   const scorecard = await getStudentScorecard(studentId, currentGrade);
   const radar = await getCategoryRadar(studentId, currentGrade);
   const classTags = await getStudentClassTags(studentId);
+  const enrolledClassIds = classTags.map((c) => c.id);
+  const medalClassId =
+    urlClassId && enrolledClassIds.includes(urlClassId) ? urlClassId : null;
 
   const prs = await prisma.performanceResult.findMany({
     where: {
@@ -133,15 +136,17 @@ export default async function StudentDashboardPage({
   const sprint = await getStudentSprintPotential(studentId, {
     ageBracket: bracket,
     window,
-    classId,
+    classId: medalClassId,
   });
   const peerLeaders = await getStudentPeerLeaders(studentId, {
     ageBracket: bracket,
     window,
-    classId,
+    classId: medalClassId,
   });
-  // Rank chips come from the same KPI set resolution as the medal card above.
-  const rankedSlugs = await getRankedKpiSlugsForStudent(schoolId, studentId, { classId });
+  // Same ranked KPI list as the medal standard card (class scope when a medal class is selected).
+  const rankedSlugs = await getRankedKpiSlugsForStudent(schoolId, studentId, {
+    classId: medalClassId,
+  });
   const kpiRanks = await getStudentActivityRanks(
     schoolId,
     studentId,
@@ -149,7 +154,7 @@ export default async function StudentDashboardPage({
     {
       gender: student.gender ?? undefined,
       scope: "school",
-      classId: classId ?? undefined,
+      classId: medalClassId ?? undefined,
     }
   );
 

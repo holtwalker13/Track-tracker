@@ -24,7 +24,13 @@ const KPI_SLUGS = KPI_METRIC_META.map((m) => m.slug);
 /** Shared medal state for profiles, compare, and compete. */
 export async function getAthleteMedalState(
   studentId: string,
-  opts: { classId?: string | null; subgroupId?: string | null; ageBracket?: string | null } = {}
+  opts: {
+    classId?: string | null;
+    subgroupId?: string | null;
+    ageBracket?: string | null;
+    /** Compete tab: class scope with no class → school default (matches leaderboards). */
+    kpiScope?: "athlete" | "compete";
+  } = {}
 ): Promise<
   AthleteMedalResult & {
     ageBracket: string;
@@ -44,16 +50,24 @@ export async function getAthleteMedalState(
   const bracket =
     opts.ageBracket && isAgeBracketId(opts.ageBracket) ? opts.ageBracket : defaultBracket;
 
-  // An explicit class scope (coach scope bar) drives the KPI list directly:
-  // subgroup set → class set → school default. Without one (student views),
-  // resolve from the athlete's own class context. A school default set is
-  // guaranteed either way so compare/leaderboards/profiles agree.
-  let kpiSetId = opts.classId
-    ? await resolveKpiSetForClassScope(student.schoolId, opts.classId, opts.subgroupId)
-    : await resolveKpiSetForStudentContext(student.schoolId, studentId, {
-        subgroupId: opts.subgroupId,
-      });
-  if (!kpiSetId) kpiSetId = await ensureSchoolDefaultKpiSetId(student.schoolId);
+  const competeScope = opts.kpiScope === "compete";
+  // Compete compare + coach scope bar: same resolution as leaderboards (class/subgroup
+  // set, else school default). Athlete profile / student dashboard: athlete context
+  // unless an explicit class is selected.
+  let kpiSetId: string | null;
+  if (competeScope || opts.classId) {
+    kpiSetId = await resolveKpiSetForClassScope(
+      student.schoolId,
+      opts.classId ?? null,
+      opts.subgroupId ?? null
+    );
+    if (!kpiSetId) kpiSetId = await ensureSchoolDefaultKpiSetId(student.schoolId);
+  } else {
+    kpiSetId = await resolveKpiSetForStudentContext(student.schoolId, studentId, {
+      subgroupId: opts.subgroupId,
+    });
+    if (!kpiSetId) kpiSetId = await ensureSchoolDefaultKpiSetId(student.schoolId);
+  }
   // Strict: only the governing set's ranked KPIs (empty = none ranked).
   const rankedSlugs = kpiSetId ? await getRankedMetricSlugs(kpiSetId) : [...KPI_SLUGS];
 

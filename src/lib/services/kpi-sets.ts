@@ -626,13 +626,23 @@ export async function getRankedKpiSlugsForSchool(
   classId?: string | null,
   subgroupId?: string | null
 ): Promise<string[]> {
-  const setId =
-    (await resolveKpiSetForClassScope(schoolId, classId, subgroupId)) ??
-    (await ensureSchoolDefaultKpiSetId(schoolId));
+  const setId = await resolveKpiSetForCompeteScope(schoolId, classId, subgroupId);
   if (setId) return getRankedMetricSlugs(setId);
 
   // No coach profile exists to own a default set — fall back to the catalog.
   return KPI_METRIC_META.map((m) => m.slug);
+}
+
+/** KPI set for Compete leaderboards & compare (class/subgroup → school default). */
+export async function resolveKpiSetForCompeteScope(
+  schoolId: string,
+  classId?: string | null,
+  subgroupId?: string | null
+): Promise<string | null> {
+  return (
+    (await resolveKpiSetForClassScope(schoolId, classId ?? null, subgroupId ?? null)) ??
+    (await ensureSchoolDefaultKpiSetId(schoolId))
+  );
 }
 
 /** Ranked KPI slugs governing a specific athlete (their class/subgroup set context). */
@@ -641,6 +651,22 @@ export async function getRankedKpiSlugsForStudent(
   studentId: string,
   opts: { classId?: string | null; subgroupId?: string | null } = {}
 ): Promise<string[]> {
+  // When a medal class is explicitly selected, use the same class/subgroup scope
+  // as getStudentSprintPotential / getAthleteMedalState — not the athlete's
+  // subgroup override inside resolveKpiSetForStudentContext.
+  if (opts.classId) {
+    const enrolled = await prisma.classEnrollment.findFirst({
+      where: { studentId, classId: opts.classId },
+      select: { classId: true },
+    });
+    if (enrolled) {
+      return getRankedKpiSlugsForSchool(
+        schoolId,
+        opts.classId,
+        opts.subgroupId ?? null
+      );
+    }
+  }
   const setId = await resolveKpiSetForStudentContext(schoolId, studentId, opts);
   if (setId) return getRankedMetricSlugs(setId);
   return getRankedKpiSlugsForSchool(schoolId, null, null);

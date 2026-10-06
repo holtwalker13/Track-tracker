@@ -4,19 +4,27 @@ import { Card } from "@/components/ui/card";
 import { STUDENT_NAV } from "@/lib/navigation";
 import { requireSession } from "@/lib/auth/session";
 import { getStudentContext } from "@/lib/queries/student";
+import { getStudentClassTags } from "@/lib/queries/kpi";
 import { getAthleteCompare, getAthleteLineup } from "@/lib/queries/compare";
 import { AthleteDuel } from "@/components/compare/athlete-duel";
 import { AthleteMultiPicker } from "@/components/compare/athlete-multi-picker";
 import { AthleteLineup } from "@/components/compare/athlete-lineup";
 import { CompareModeToggle, type CompareMode } from "@/components/compare/compare-mode-toggle";
-import { genderFullLabel } from "@/lib/gender";
+import { genderFullLabel, parseGenderParam } from "@/lib/gender";
 import { classYearLabel } from "@/lib/grades";
 import { listStudents } from "@/lib/queries/coach";
+import { LeaderboardToolbar } from "@/components/ui/leaderboard-toolbar";
 
 export default async function StudentComparePage({
   searchParams,
 }: {
-  searchParams: Promise<{ vs?: string; ids?: string; student?: string; b?: string }>;
+  searchParams: Promise<{
+    vs?: string;
+    ids?: string;
+    student?: string;
+    b?: string;
+    classId?: string;
+  }>;
 }) {
   const session = await requireSession(["STUDENT"]);
   if (!session?.studentId) redirect("/login");
@@ -25,6 +33,10 @@ export default async function StudentComparePage({
     sp.vs === "peer" || sp.vs === "athlete" ? sp.vs : "benchmark";
 
   const { student, currentGrade } = await getStudentContext(session.studentId);
+  const classTags = await getStudentClassTags(session.studentId);
+  const urlClassId = sp.classId?.trim() || null;
+  const classId =
+    urlClassId && classTags.some((c) => c.id === urlClassId) ? urlClassId : undefined;
 
   const peers = await listStudents(student.schoolId, {
     grades: [currentGrade],
@@ -66,28 +78,39 @@ export default async function StudentComparePage({
     }
   }
 
+  const compareOpts = { classId: classId ?? null };
+
   const compare =
     mode !== "athlete"
-      ? await getAthleteCompare(session.studentId, student.schoolId)
+      ? await getAthleteCompare(session.studentId, student.schoolId, undefined, compareOpts)
       : null;
   const lineup =
     mode === "athlete" && lineupIds.length >= 2
       ? await getAthleteLineup(lineupIds, student.schoolId, {
           anonymize: true,
           viewerStudentId: session.studentId,
+          ...compareOpts,
         })
       : null;
 
   const right =
     mode === "peer"
       ? { name: compare?.peerLabel ?? "Class avg", meta: "Same class & gender", isBenchmark: true as const }
-      : { name: "Medal target", meta: "School Silver standard", isBenchmark: true as const };
+      : {
+          name: "Medal target",
+          meta: compare?.medalTargetLabel ?? "Active medal standard",
+          isBenchmark: true as const,
+        };
+
+  const lockedGender = parseGenderParam(student.gender);
 
   return (
     <AppShell title="Compare" nav={STUDENT_NAV}>
       <p className="mb-4 text-sm text-muted">
-        Compare yourself to medal targets, class average, or classmates. Hidden athletes stay nameless.
+        Compare yourself to medal targets, class average, or classmates. KPIs match{" "}
+        <span className="font-medium text-foreground">Leaderboards</span> for the selected class.
       </p>
+      <LeaderboardToolbar classes={classTags} lockedGender={lockedGender} />
       <div className="mb-6">
         <CompareModeToggle allowAthlete athleteLabel="Classmates" />
       </div>

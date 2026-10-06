@@ -61,7 +61,7 @@ function evaluateBandAllRequired(
       slug,
       name: meta.name,
       athlete,
-      target: target ?? 0,
+      target: target ?? null,
       hit,
       direction: meta.direction,
     };

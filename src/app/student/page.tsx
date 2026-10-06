@@ -23,7 +23,7 @@ import { MedalScopeControls } from "@/components/performance/medal-scope-control
 import { PeerLeadersCard } from "@/components/performance/peer-leaders-card";
 import { ProfileBanner } from "@/components/layout/profile-banner";
 import { getStudentActivityRanks } from "@/lib/queries/coach";
-import { getRankedKpiSlugsForSchool } from "@/lib/services/kpi-sets";
+import { getRankedKpiSlugsForStudent } from "@/lib/services/kpi-sets";
 import { leaderboardHighlightFromSearch } from "@/lib/leaderboard-link";
 import { ageBracketForClassYear, isAgeBracketId } from "@/lib/age-brackets";
 import { GamificationSummaryCard } from "@/components/gamification/gamification-summary-card";
@@ -140,7 +140,8 @@ export default async function StudentDashboardPage({
     window,
     classId,
   });
-  const rankedSlugs = await getRankedKpiSlugsForSchool(schoolId, classId);
+  // Rank chips come from the same KPI set resolution as the medal card above.
+  const rankedSlugs = await getRankedKpiSlugsForStudent(schoolId, studentId, { classId });
   const kpiRanks = await getStudentActivityRanks(
     schoolId,
     studentId,

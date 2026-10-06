@@ -7,7 +7,7 @@ import { activityDisplayGroup, DISPLAY_GROUP_ORDER, type ActivityDisplayGroup } 
 import type { ScoringDirection } from "@/lib/constants";
 import { getStudentContext } from "@/lib/queries/student";
 import { getAthleteMedalState } from "@/lib/queries/athlete-medal-state";
-import { MEDAL_LABELS } from "@/lib/kpi-targets";
+import { KPI_METRIC_META, MEDAL_LABELS } from "@/lib/kpi-targets";
 
 export type CompareEventRow = {
   activityId: string;
@@ -361,12 +361,16 @@ export async function getAthleteLineup(
   // KPI set. No set at all → legacy full list.
   let rankedFilter: string[] | null = null;
   if (opts?.classId) {
-    const { resolveKpiSetForClassScope, getRankedMetricSlugs } = await import(
-      "@/lib/services/kpi-sets"
-    );
-    const setId = await resolveKpiSetForClassScope(schoolId, opts.classId, opts.subgroupId);
-    // Strict: a selected scope shows exactly its ranked KPIs, even if empty.
-    rankedFilter = setId ? await getRankedMetricSlugs(setId) : [];
+    const { resolveKpiSetForClassScope, getRankedMetricSlugs, ensureSchoolDefaultKpiSetId } =
+      await import("@/lib/services/kpi-sets");
+    const setId =
+      (await resolveKpiSetForClassScope(schoolId, opts.classId, opts.subgroupId)) ??
+      (await ensureSchoolDefaultKpiSetId(schoolId));
+    // Strict: a selected scope shows exactly its ranked KPIs, even if empty —
+    // the same list Compete > Leaderboards uses for the class.
+    rankedFilter = setId
+      ? await getRankedMetricSlugs(setId)
+      : KPI_METRIC_META.map((m) => m.slug as string);
   } else {
     const kpiStudentId = opts?.kpiStudentId ?? athletes[0]?.id;
     if (kpiStudentId && athletes.some((a) => a.id === kpiStudentId)) {

@@ -52,7 +52,8 @@ docker compose up --build
 
 - **Source of truth:** PostgreSQL (Docker volume locally; Railway Postgres in production). App updates do not wipe athlete marks — see [docs/DATA_DURABILITY.md](docs/DATA_DURABILITY.md).
 - **Girls / boys (Demo)**: marks from `prisma/data/jhs-female-athletes.csv` with **synthetic names** (Jane Doe, Emma Ames, …). Boys are a same-structure analog.
-- **JHS**: empty live school. Coaches upload a roster CSV for weightlifting classes.
+- **JHS (Jackson High School)**: Kendall Leland demo student + weightlifting periods; **Track and Field** class with the same 6 ranked KPIs as General Demo (see `npm run db:setup-track-fixtures` to apply on an existing DB).
+- **General Demo**: full sample roster; **Track and Field** + class KPI set applied on seed (student `student1@demo.local`).
 - **CHS**: separate school system with a smaller test roster.
 - **KPI key**: flying 10m, broad jump, vertical, squat/BW, hang clean/BW, 20m start, and 40yd map to a likely **100m / 40-yard** time. Female 12.5 / 13.0 / 13.5s bands come from the JHS key. The 13.0s flying-10m target is **1.188s** (the source cell listed 1.879s, which was slower than the 13.5s target and treated as a typo).
 - One school year of results (2025–2026), not a multi-year history.

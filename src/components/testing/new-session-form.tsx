@@ -11,7 +11,7 @@ import {
   isGraduatingClassName,
 } from "@/lib/periods";
 
-type KpiLibraryItem = { slug: string; name: string };
+type KpiLibraryItem = { slug: string; name: string; categorySlug?: string };
 
 type ClassKpiOrdering = { ranked: string[]; unranked: string[] };
 
@@ -88,7 +88,7 @@ export function NewTestingSessionForm({
     for (const slug of ordering.ranked) push(slug, true);
     for (const slug of ordering.unranked) push(slug, false);
     const rest = library
-      .filter((a) => !seen.has(a.slug))
+      .filter((a) => !seen.has(a.slug) && a.categorySlug !== "strength")
       .sort((a, b) => a.name.localeCompare(b.name));
     for (const a of rest) push(a.slug, false);
     return ordered;
@@ -206,8 +206,9 @@ export function NewTestingSessionForm({
       <fieldset>
         <legend className="text-sm font-medium text-muted">Tests</legend>
         <p className="mt-1 text-xs text-muted">
-          The class&apos;s ranked KPIs are checked first. Every KPI from the KPIs tab — testing
-          metrics and workout lifts, ranked or not — is available below.
+          The class&apos;s ranked KPIs are checked first, then other testing metrics from the KPIs
+          tab. Workout-only lifts stay in Programs — they are not listed here unless they are part
+          of this class&apos;s KPI set.
         </p>
         <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
           {sessionActivities.map((m) => {

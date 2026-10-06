@@ -224,6 +224,22 @@ export function LiveTestingStudio({
     [attemptCount]
   );
 
+  const rosterStats = useMemo(() => {
+    let logged = 0;
+    for (const r of rows) {
+      if (Boolean(r.saved) && r.status === "COMPLETED") logged += 1;
+    }
+    return { logged, pending: rows.length - logged, total: rows.length };
+  }, [rows]);
+
+  const athleteChipRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
+
+  useEffect(() => {
+    if (!studentId) return;
+    const el = athleteChipRefs.current.get(studentId);
+    el?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [studentId, activitySlug]);
+
   async function addAttemptColumn() {
     if (readOnly) return;
     const res = await fetch(`/api/testing/sessions/${sessionId}`, {
@@ -262,53 +278,73 @@ export function LiveTestingStudio({
         Select an athlete and start tracking live. Results save automatically.
       </p>
 
-      {/* Athlete carousel */}
-      <div
-        className="flex snap-x gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-        role="listbox"
-        aria-label="Athletes"
+      <section
+        className="rounded-2xl border border-card-border bg-card/40"
+        aria-label="Class roster for this test"
       >
-        {rows.map((r) => {
-          const active = r.studentId === row.studentId;
-          const done = Boolean(r.saved) && r.status === "COMPLETED";
-          return (
-            <button
-              key={r.studentId}
-              type="button"
-              role="option"
-              aria-selected={active}
-              onClick={() => selectStudent(r.studentId)}
-              className={cn(
-                "flex w-[7.5rem] shrink-0 snap-start flex-col items-center gap-1.5 rounded-2xl border px-2 py-2.5 text-center transition",
-                active
-                  ? "border-sky-400 bg-sky-400/10 ring-1 ring-sky-400/40"
-                  : "border-card-border bg-card/70 hover:border-sky-400/30"
-              )}
-            >
-              <span
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-card-border px-3 py-2 text-xs">
+          <p className="font-semibold text-foreground">Athletes on this test</p>
+          <p className="tabular-nums text-muted">
+            <span className="text-sky-300">{rosterStats.logged} logged</span>
+            <span className="mx-1.5">·</span>
+            <span>{rosterStats.pending} pending</span>
+            <span className="mx-1.5">·</span>
+            <span>{rosterStats.total} total</span>
+          </p>
+        </div>
+        <div
+          className="grid max-h-[min(16rem,40vh)] grid-cols-1 gap-1.5 overflow-y-auto p-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 [scrollbar-width:thin]"
+          role="listbox"
+          aria-label="Athletes"
+        >
+          {rows.map((r) => {
+            const active = r.studentId === row.studentId;
+            const done = Boolean(r.saved) && r.status === "COMPLETED";
+            const fullName = formatStudentName(r.firstName, r.lastName, false);
+            return (
+              <button
+                key={r.studentId}
+                ref={(el) => {
+                  if (el) athleteChipRefs.current.set(r.studentId, el);
+                  else athleteChipRefs.current.delete(r.studentId);
+                }}
+                type="button"
+                role="option"
+                aria-selected={active}
+                title={fullName}
+                onClick={() => selectStudent(r.studentId)}
                 className={cn(
-                  "flex h-12 w-12 items-center justify-center rounded-full text-sm font-bold",
-                  active ? "bg-sky-500 text-white" : "bg-background text-muted"
+                  "flex min-h-[3.25rem] items-center gap-2 rounded-xl border px-2.5 py-2 text-left transition",
+                  active
+                    ? "border-sky-400 bg-sky-400/10 ring-1 ring-sky-400/40"
+                    : "border-card-border bg-background/60 hover:border-sky-400/30"
                 )}
               >
-                {initials(r.firstName, r.lastName)}
-              </span>
-              <span className="w-full truncate text-xs font-semibold leading-tight">
-                {formatStudentName(r.firstName, r.lastName, true)}
-              </span>
-              <span className="flex items-center gap-1 text-[10px] text-muted">
                 <span
                   className={cn(
-                    "h-1.5 w-1.5 rounded-full",
-                    active ? "bg-emerald-400" : done ? "bg-sky-400" : "bg-muted"
+                    "flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold",
+                    active ? "bg-sky-500 text-white" : "bg-card text-muted"
                   )}
-                />
-                {active ? "Testing" : done ? "Logged" : "Pending"}
-              </span>
-            </button>
-          );
-        })}
-      </div>
+                >
+                  {initials(r.firstName, r.lastName)}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-semibold leading-tight">{fullName}</span>
+                  <span className="mt-0.5 flex items-center gap-1 text-[10px] font-medium uppercase tracking-wide text-muted">
+                    <span
+                      className={cn(
+                        "h-1.5 w-1.5 rounded-full",
+                        active ? "bg-emerald-400" : done ? "bg-sky-400" : "bg-muted/80"
+                      )}
+                    />
+                    {active ? "Testing" : done ? "Logged" : "Pending"}
+                  </span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </section>
 
       {/* Exercise sequence */}
       <div

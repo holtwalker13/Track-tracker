@@ -79,6 +79,27 @@ describe("calculateAthleteMedal", () => {
     assert.equal(fly.hit, null);
   });
 
+  it("treats flying-10-yard as lower-is-better when activity scoring is wired in", () => {
+    const bands = kpiBandsForGender("F").map((band) => ({
+      ...band,
+      targets: {
+        ...band.targets,
+        "flying-10-yard": band.targets["flying-10-meter"],
+      },
+    }));
+    const bronze = bands.find((b) => b.medal === "bronze")!;
+    const metricMeta = new Map([
+      ["flying-10-yard", { name: "Flying 10 yd", direction: "LOWER_BETTER" as const }],
+    ]);
+    const marks = [{ slug: "flying-10-yard" as const, value: 1.21 }];
+    const result = calculateAthleteMedal(marks, "F", bands, ["flying-10-yard"], metricMeta);
+    assert.equal(result.earnedMedal, "bronze");
+    const bronzeEval = result.potential.bands.find((b) => b.band.medal === "bronze")!;
+    const fly = bronzeEval.rows.find((r) => r.slug === "flying-10-yard")!;
+    assert.equal(fly.hit, true);
+    assert.equal(fly.target, bronze.targets["flying-10-yard"]);
+  });
+
   it("shows an empty evaluation when the governing set ranks nothing", () => {
     const bands = ["gold", "silver", "bronze"].map((medal) => ({
       id: `M-${medal}`,

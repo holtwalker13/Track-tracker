@@ -198,7 +198,17 @@ export async function getLeaderboard(
     };
   } = {}
 ) {
-  const activity = await prisma.activity.findUniqueOrThrow({ where: { slug: activitySlug } });
+  const { markAliasSlugsFor } = await import("@/lib/kpi-marks");
+  const slugGroup = markAliasSlugsFor(activitySlug);
+  const activityRows = await prisma.activity.findMany({
+    where: { slug: { in: slugGroup } },
+  });
+  const activity =
+    activityRows.find((a) => a.slug === activitySlug) ?? activityRows[0];
+  if (!activity) {
+    throw new Error(`Unknown activity slug: ${activitySlug}`);
+  }
+  const activityIds = activityRows.map((a) => a.id);
   const scope = opts.scope === "global" ? "global" : "school";
   const currentYear =
     scope === "school"
@@ -234,11 +244,13 @@ export async function getLeaderboard(
 
   const results = await prisma.performanceResult.findMany({
     where: {
-      activityId: activity.id,
+      activityId: { in: activityIds },
       status: "COMPLETED",
       isBestAttempt: true,
       resultValue: { not: null },
-      testingDate: { gte: range.start, lte: range.end },
+      ...(period === "semester"
+        ? {}
+        : { testingDate: { gte: range.start, lte: range.end } }),
       ...(scope === "school"
         ? { schoolId, schoolYearId: currentYear!.id }
         : {}),

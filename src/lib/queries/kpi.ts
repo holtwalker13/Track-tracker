@@ -129,26 +129,22 @@ export async function getStudentSprintPotential(
   const window: MedalTimeWindow = opts.window === "week" ? "week" : "all";
 
   const {
-    resolveKpiSetForClassScope,
+    resolveKpiSetForCompeteScope,
     resolveKpiSetForStudentContext,
     getRankedMetricSlugs,
     ensureSchoolDefaultKpiSetId,
   } = await import("@/lib/services/kpi-sets");
-  // An explicit class scope (profile class picker, dashboard period picker)
-  // drives the medal standard directly — it always matches the KPIs tab for
-  // that class. Without a scope ("All my periods"), resolve from the athlete's
-  // own class context. A school default set is guaranteed either way so every
-  // view agrees on the same ranked KPI list.
+  // Explicit class scope uses only that class/subgroup KPI set (no school default).
   let kpiSetId = opts.classId
-    ? await resolveKpiSetForClassScope(student.schoolId, opts.classId, opts.subgroupId)
+    ? await resolveKpiSetForCompeteScope(student.schoolId, opts.classId, opts.subgroupId)
     : await resolveKpiSetForStudentContext(student.schoolId, studentId, {
         subgroupId: opts.subgroupId,
       });
-  if (!kpiSetId) kpiSetId = await ensureSchoolDefaultKpiSetId(student.schoolId);
+  if (!kpiSetId && !opts.classId) {
+    kpiSetId = await ensureSchoolDefaultKpiSetId(student.schoolId);
+  }
   // Strict: only the governing set's ranked KPIs count (empty set = none).
-  const rankedSlugList = kpiSetId
-    ? await getRankedMetricSlugs(kpiSetId)
-    : (KPI_SLUGS as string[]);
+  const rankedSlugList = kpiSetId ? await getRankedMetricSlugs(kpiSetId) : [];
   const querySlugs = expandSlugsWithMarkAliases(rankedSlugList);
 
   const activities = await prisma.activity.findMany({

@@ -629,19 +629,45 @@ export async function getRankedKpiSlugsForSchool(
   const setId = await resolveKpiSetForCompeteScope(schoolId, classId, subgroupId);
   if (setId) return getRankedMetricSlugs(setId);
 
-  // No coach profile exists to own a default set — fall back to the catalog.
+  // Class/subgroup scope with no dedicated set → nothing ranked (matches KPI tab).
+  if (classId || subgroupId) return [];
+
+  // School-wide with no default set yet — legacy catalog fallback.
   return KPI_METRIC_META.map((m) => m.slug);
 }
 
-/** KPI set for Compete leaderboards & compare (class/subgroup → school default). */
+/**
+ * KPI set for Compete leaderboards, compare, and profile medal class.
+ * With a class/subgroup selected, only that scope's set applies — never the
+ * school default (so unranked school KPIs do not bleed into a class view).
+ */
 export async function resolveKpiSetForCompeteScope(
   schoolId: string,
   classId?: string | null,
   subgroupId?: string | null
 ): Promise<string | null> {
+  if (classId || subgroupId) {
+    if (subgroupId && classId) {
+      const bySubgroup = await prisma.kpiSet.findFirst({
+        where: { schoolId, classId, subgroupId },
+        orderBy: { updatedAt: "desc" },
+        select: { id: true },
+      });
+      if (bySubgroup) return bySubgroup.id;
+    }
+    if (classId) {
+      const byClass = await prisma.kpiSet.findFirst({
+        where: { schoolId, classId, subgroupId: null },
+        orderBy: { updatedAt: "desc" },
+        select: { id: true },
+      });
+      if (byClass) return byClass.id;
+    }
+    return null;
+  }
   return (
-    (await resolveKpiSetForClassScope(schoolId, classId ?? null, subgroupId ?? null)) ??
-    (await ensureSchoolDefaultKpiSetId(schoolId))
+    (await ensureSchoolDefaultKpiSetId(schoolId)) ??
+    (await resolveSchoolKpiSetId(schoolId))
   );
 }
 

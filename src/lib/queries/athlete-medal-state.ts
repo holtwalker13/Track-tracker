@@ -15,7 +15,6 @@ import {
 import {
   ensureSchoolDefaultKpiSetId,
   getRankedMetricSlugs,
-  resolveKpiSetForClassScope,
   resolveKpiSetForStudentContext,
 } from "@/lib/services/kpi-sets";
 import {
@@ -62,12 +61,12 @@ export async function getAthleteMedalState(
   // unless an explicit class is selected.
   let kpiSetId: string | null;
   if (competeScope || opts.classId) {
-    kpiSetId = await resolveKpiSetForClassScope(
+    const { resolveKpiSetForCompeteScope } = await import("@/lib/services/kpi-sets");
+    kpiSetId = await resolveKpiSetForCompeteScope(
       student.schoolId,
       opts.classId ?? null,
       opts.subgroupId ?? null
     );
-    if (!kpiSetId) kpiSetId = await ensureSchoolDefaultKpiSetId(student.schoolId);
   } else {
     kpiSetId = await resolveKpiSetForStudentContext(student.schoolId, studentId, {
       subgroupId: opts.subgroupId,
@@ -75,7 +74,7 @@ export async function getAthleteMedalState(
     if (!kpiSetId) kpiSetId = await ensureSchoolDefaultKpiSetId(student.schoolId);
   }
   // Strict: only the governing set's ranked KPIs (empty = none ranked).
-  const rankedSlugs = kpiSetId ? await getRankedMetricSlugs(kpiSetId) : [...KPI_SLUGS];
+  const rankedSlugs = kpiSetId ? await getRankedMetricSlugs(kpiSetId) : [];
 
   const querySlugs = expandSlugsWithMarkAliases(rankedSlugs);
   const activities = await prisma.activity.findMany({

@@ -5,6 +5,7 @@ import { KPI_METRIC_META } from "@/lib/kpi-targets";
 import { classSectionLabel, isGraduatingClassName } from "@/lib/periods";
 import { coachCanAdministerTestsForClass } from "@/lib/auth/coach-scope";
 import { calendarDateAtNoonUtc } from "@/lib/calendar-date";
+import { resolveSchoolYearForDate } from "@/lib/school-year";
 
 export async function POST(request: Request) {
   const session = await requireSession(["COACH", "ADMIN"]);
@@ -30,11 +31,9 @@ export async function POST(request: Request) {
     );
   }
 
-  const schoolYear = await prisma.schoolYear.findFirst({
-    where: { schoolId: session.schoolId, isCurrent: true },
-  });
+  const schoolYear = await resolveSchoolYearForDate(session.schoolId, testingDate);
   if (!schoolYear) {
-    return NextResponse.json({ error: "No current school year" }, { status: 400 });
+    return NextResponse.json({ error: "No school year configured for this date" }, { status: 400 });
   }
 
   const cls = await prisma.class.findFirst({

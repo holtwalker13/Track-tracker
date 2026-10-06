@@ -7,6 +7,7 @@ import { activityDisplayGroup, DISPLAY_GROUP_ORDER, type ActivityDisplayGroup } 
 import type { ScoringDirection } from "@/lib/constants";
 import { getStudentContext } from "@/lib/queries/student";
 import { getAthleteMedalState } from "@/lib/queries/athlete-medal-state";
+import { markAliasSlugsFor } from "@/lib/kpi-marks";
 import { MEDAL_LABELS } from "@/lib/kpi-targets";
 
 export type CompareEventRow = {
@@ -151,12 +152,18 @@ export async function getAthleteCompare(
 
   for (const act of activities) {
     const direction = act.scoringDirection as ScoringDirection;
+    const aliasSlugs = markAliasSlugsFor(act.slug);
+    const aliasActivities = await prisma.activity.findMany({
+      where: { slug: { in: aliasSlugs } },
+      select: { id: true },
+    });
+    const activityIds = aliasActivities.map((a) => a.id);
     // Best result (not most recent): isBestAttempt is per-session best, so
     // order by value in the scoring direction.
     const best = await prisma.performanceResult.findFirst({
       where: {
         studentId,
-        activityId: act.id,
+        activityId: { in: activityIds.length ? activityIds : [act.id] },
         status: "COMPLETED",
         isBestAttempt: true,
         resultValue: { not: null },
@@ -167,7 +174,7 @@ export async function getAthleteCompare(
 
     const peerWhere = {
       schoolId,
-      activityId: act.id,
+      activityId: { in: activityIds.length ? activityIds : [act.id] },
       gradeLevel: currentGrade,
       status: "COMPLETED" as const,
       isBestAttempt: true,
@@ -214,7 +221,7 @@ export async function getAthleteCompare(
       ? await prisma.performanceResult.findFirst({
           where: {
             studentId: opponentStudentId,
-            activityId: act.id,
+            activityId: { in: activityIds.length ? activityIds : [act.id] },
             status: "COMPLETED",
             isBestAttempt: true,
             resultValue: { not: null },

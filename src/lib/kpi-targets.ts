@@ -175,7 +175,8 @@ export type BandEvaluation = {
     slug: string;
     name: string;
     athlete: number | null;
-    target: number;
+    /** null = ranked KPI has no coach-set target for this medal band. */
+    target: number | null;
     hit: boolean | null;
     direction: "HIGHER_BETTER" | "LOWER_BETTER";
   }[];

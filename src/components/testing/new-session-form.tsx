@@ -4,34 +4,32 @@ import { Check } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ActivityIcon } from "@/lib/activity-icons";
-import { KPI_METRIC_META } from "@/lib/kpi-targets";
-import {
-  defaultSessionNameForClass,
-  isWeightliftingClassName,
-  LIFTING_SESSION_ACTIVITIES,
-  type LiftingSessionActivityMeta,
-} from "@/lib/lifting";
+import { defaultSessionNameForClass } from "@/lib/lifting";
 import {
   classSectionLabel,
   findClassForPeriod,
   isGraduatingClassName,
 } from "@/lib/periods";
 
+type KpiLibraryItem = { slug: string; name: string };
+
+type ClassKpiOrdering = { ranked: string[]; unranked: string[] };
+
 export function NewTestingSessionForm({
   classes,
   defaultClassId: defaultClassIdProp,
   sameDayCount = 0,
-  strengthActivities,
-  kpiActivities,
+  kpiLibrary,
+  metricsByClassId,
   surface = "card",
 }: {
   classes: { id: string; name: string; period: string | null }[];
   defaultClassId?: string;
   sameDayCount?: number;
-  /** School lift library (catalog + custom). Used for weight room sections. */
-  strengthActivities?: LiftingSessionActivityMeta[];
-  /** KPI library with ranked-first ordering from the coach's active set. */
-  kpiActivities?: { slug: string; name: string; ranked?: boolean }[];
+  /** Full school KPI library (testing metrics + workout lifts + customs). */
+  kpiLibrary?: KpiLibraryItem[];
+  /** Per-class KPI set ordering: ranked slugs first, then unranked set members. */
+  metricsByClassId?: Record<string, ClassKpiOrdering>;
   /** `card` = inline page block; `none` = body inside a modal shell */
   surface?: "card" | "none";
 }) {
@@ -62,26 +60,55 @@ export function NewTestingSessionForm({
     [sectionClasses, classId]
   );
 
-  const liftingOnly = selectedClass ? isWeightliftingClassName(selectedClass.name) : false;
+  const library = useMemo<KpiLibraryItem[]>(
+    () => (kpiLibrary?.length ? kpiLibrary : []),
+    [kpiLibrary]
+  );
+  const libraryBySlug = useMemo(
+    () => new Map(library.map((a) => [a.slug, a])),
+    [library]
+  );
 
-  const liftCatalog =
-    strengthActivities && strengthActivities.length > 0
-      ? strengthActivities
-      : LIFTING_SESSION_ACTIVITIES;
+  /**
+   * Test list for the selected class: the class KPI set's ranked KPIs first
+   * (pre-checked), then the set's unranked KPIs, then the rest of the school
+   * KPI library — every KPI from the KPIs tab is available for testing.
+   */
+  const ordering = metricsByClassId?.[classId] ?? { ranked: [], unranked: [] };
+  const sessionActivities = useMemo(() => {
+    const seen = new Set<string>();
+    const ordered: { slug: string; name: string; ranked: boolean }[] = [];
+    const push = (slug: string, ranked: boolean) => {
+      if (seen.has(slug)) return;
+      const meta = libraryBySlug.get(slug);
+      if (!meta) return;
+      seen.add(slug);
+      ordered.push({ slug, name: meta.name, ranked });
+    };
+    for (const slug of ordering.ranked) push(slug, true);
+    for (const slug of ordering.unranked) push(slug, false);
+    const rest = library
+      .filter((a) => !seen.has(a.slug))
+      .sort((a, b) => a.name.localeCompare(b.name));
+    for (const a of rest) push(a.slug, false);
+    return ordered;
+  }, [ordering.ranked, ordering.unranked, library, libraryBySlug]);
 
-  const kpiCatalog = useMemo(() => {
-    const base = kpiActivities?.length
-      ? kpiActivities
-      : KPI_METRIC_META.map((m) => ({ slug: m.slug, name: m.name, ranked: true }));
-    return [...base].sort((a, b) => {
-      const ar = a.ranked === false ? 1 : 0;
-      const br = b.ranked === false ? 1 : 0;
-      if (ar !== br) return ar - br;
-      return a.name.localeCompare(b.name);
+  const [checked, setChecked] = useState<Set<string>>(() => new Set(ordering.ranked));
+
+  function onClassChange(nextClassId: string) {
+    setClassId(nextClassId);
+    setChecked(new Set(metricsByClassId?.[nextClassId]?.ranked ?? []));
+  }
+
+  function toggle(slug: string) {
+    setChecked((prev) => {
+      const next = new Set(prev);
+      if (next.has(slug)) next.delete(slug);
+      else next.add(slug);
+      return next;
     });
-  }, [kpiActivities]);
-
-  const sessionActivities = liftingOnly ? liftCatalog : kpiCatalog;
+  }
 
   const defaultName = defaultSessionNameForClass(
     selectedClass?.name ?? "Performance Test",
@@ -156,7 +183,7 @@ export function NewTestingSessionForm({
             required
             name="classId"
             value={classId}
-            onChange={(e) => setClassId(e.target.value)}
+            onChange={(e) => onClassChange(e.target.value)}
             className="mt-1 w-full rounded-lg border border-card-border bg-background px-3 py-2"
           >
             <option value="" disabled>
@@ -176,24 +203,15 @@ export function NewTestingSessionForm({
           under Classes first.
         </p>
       )}
-      {liftingOnly && (
-        <p className="text-sm text-muted">
-          Strength-only preset for this weight room section. Speed and jump KPIs stay available in
-          other class sessions.
-        </p>
-      )}
       <fieldset>
-        <legend className="text-sm font-medium text-muted">
-          {liftingOnly ? "Lifts" : "Events"}
-        </legend>
-        {!liftingOnly && (
-          <p className="mt-1 text-xs text-muted">
-            Ranked KPIs from your active set appear first. Unranked stay available but sort below.
-          </p>
-        )}
+        <legend className="text-sm font-medium text-muted">Tests</legend>
+        <p className="mt-1 text-xs text-muted">
+          The class&apos;s ranked KPIs are checked first. Every KPI from the KPIs tab — testing
+          metrics and workout lifts, ranked or not — is available below.
+        </p>
         <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
           {sessionActivities.map((m) => {
-            const ranked = "ranked" in m ? m.ranked !== false : true;
+            const ranked = m.ranked;
             return (
             <label
               key={m.slug}
@@ -203,7 +221,8 @@ export function NewTestingSessionForm({
                 type="checkbox"
                 name="activity"
                 value={m.slug}
-                defaultChecked={ranked}
+                checked={checked.has(m.slug)}
+                onChange={() => toggle(m.slug)}
                 className="peer sr-only"
               />
               <span className="pointer-events-none absolute right-2.5 top-2.5 flex h-5 w-5 items-center justify-center rounded-full border border-card-border bg-background/80 text-transparent transition peer-checked:border-sky-400 peer-checked:bg-sky-500 peer-checked:text-white">
@@ -211,7 +230,7 @@ export function NewTestingSessionForm({
               </span>
               <ActivityIcon slug={m.slug} className="pointer-events-none h-6 w-6" />
               <span className="pointer-events-none pr-5 text-sm font-semibold leading-snug">{m.name}</span>
-              {!liftingOnly && !ranked ? (
+              {!ranked ? (
                 <span className="pointer-events-none text-[10px] font-semibold uppercase tracking-wider text-muted">
                   Unranked
                 </span>

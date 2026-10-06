@@ -3,7 +3,7 @@ import {
   ALL_KPI_BANDS,
   KPI_METRIC_META,
   MEDALS,
-  bandsFromTargets,
+  MEDAL_LABELS,
   type KpiBand,
   type KpiMetricSlug,
   type Medal,
@@ -11,6 +11,7 @@ import {
 import { DEFAULT_AGE_BRACKET, isAgeBracketId } from "@/lib/age-brackets";
 import { isCoachingSportId, sportLabel } from "@/lib/sports";
 import { ensureSchoolKpiTargets } from "@/lib/queries/kpi";
+import { listSchoolKpiLibrary } from "@/lib/queries/kpi-library";
 
 export type KpiSetTargetCell = {
   gender: "F" | "M";
@@ -51,13 +52,24 @@ export async function ensureDefaultKpiSet(schoolId: string, coachProfileId: stri
   await ensureSchoolKpiTargets(schoolId);
 
   const existingDefault = await prisma.kpiSet.findFirst({
-    where: { schoolId, isDefault: true },
+    where: { schoolId, isDefault: true, classId: null, subgroupId: null },
     include: setInclude,
   });
   if (existingDefault) return existingDefault;
 
+  // A class/subgroup-scoped set must never double as the school-wide default:
+  // clear stale flags so scoped sets stay scoped to their class.
+  await prisma.kpiSet.updateMany({
+    where: {
+      schoolId,
+      isDefault: true,
+      OR: [{ classId: { not: null } }, { subgroupId: { not: null } }],
+    },
+    data: { isDefault: false },
+  });
+
   const anySet = await prisma.kpiSet.findFirst({
-    where: { schoolId },
+    where: { schoolId, classId: null, subgroupId: null },
     include: setInclude,
     orderBy: { createdAt: "asc" },
   });
@@ -76,15 +88,8 @@ export async function ensureDefaultKpiSet(schoolId: string, coachProfileId: stri
   });
   const hiddenSet = new Set(hidden.map((h) => h.metricSlug));
 
-  const custom = await prisma.activity.findMany({
-    where: { schoolId },
-    select: { slug: true },
-  });
-
-  const librarySlugs = [
-    ...KPI_METRIC_META.map((m) => m.slug),
-    ...custom.map((c) => c.slug),
-  ].filter((slug) => !hiddenSet.has(slug));
+  // Full KPI library (testing metrics + workout lifts + customs), minus hidden.
+  const librarySlugs = (await listSchoolKpiLibrary(schoolId)).map((a) => a.slug);
 
   const uniqueSlugs = [...new Set(librarySlugs)];
 
@@ -214,14 +219,9 @@ export async function createKpiSet(input: {
 
   let slugs = input.metricSlugs;
   if (!slugs?.length) {
-    const custom = await prisma.activity.findMany({
-      where: { schoolId: input.schoolId },
-      select: { slug: true },
-    });
-    slugs = [
-      ...KPI_METRIC_META.map((m) => m.slug),
-      ...custom.map((c) => c.slug),
-    ].filter((s) => !hiddenSet.has(s));
+    // New sets start from the full KPI library (testing metrics + workout
+    // lifts + customs) so every school KPI is available to rank.
+    slugs = (await listSchoolKpiLibrary(input.schoolId)).map((a) => a.slug);
   } else {
     slugs = slugs.filter((s) => !hiddenSet.has(s));
   }
@@ -575,7 +575,11 @@ export async function deleteKpiSet(setId: string, coachProfileId: string) {
   });
 }
 
-/** Build KpiBand[] from a KPI set (ranked metrics only). */
+/**
+ * Build KpiBand[] from a KPI set (ranked metrics only). Targets are exactly
+ * what the coach entered on the KPI tab — ranked KPIs without a target for a
+ * medal stay unset instead of falling back to hardcoded defaults.
+ */
 export async function getKpiSetBands(
   kpiSetId: string,
   gender?: string | null,
@@ -602,32 +606,32 @@ export async function getKpiSetBands(
     if (row.medal !== "gold" && row.medal !== "silver" && row.medal !== "bronze") continue;
     byMedal[row.medal as Medal][row.metricSlug as KpiMetricSlug] = row.target;
   }
-  return bandsFromTargets(g, byMedal);
+  return MEDALS.map((medal) => ({
+    id: `${g}-${medal}`,
+    gender: g,
+    medal,
+    label: g === "M" ? `Boys ${MEDAL_LABELS[medal]}` : `Girls ${MEDAL_LABELS[medal]}`,
+    targets: byMedal[medal],
+  }));
 }
 
-/** Ranked KPI slugs for medal standard / school rank on athlete profiles. */
+/**
+ * Ranked KPI slugs for a class scope (medal standards, leaderboards, compare).
+ * Resolution: subgroup set → class set → school default set (created on
+ * demand so every view agrees). Only ranked KPIs are returned — exactly what
+ * the KPI tab shows as ranked for that scope.
+ */
 export async function getRankedKpiSlugsForSchool(
   schoolId: string,
   classId?: string | null,
   subgroupId?: string | null
 ): Promise<string[]> {
-  const setId = await resolveKpiSetForClassContext(schoolId, classId, subgroupId);
+  const setId =
+    (await resolveKpiSetForClassScope(schoolId, classId, subgroupId)) ??
+    (await ensureSchoolDefaultKpiSetId(schoolId));
   if (setId) return getRankedMetricSlugs(setId);
 
-  const rows = await prisma.kpiSetMetric.findMany({
-    where: { ranked: true, kpiSet: { schoolId } },
-    select: { metricSlug: true },
-    distinct: ["metricSlug"],
-  });
-  if (rows.length > 0) return rows.map((r) => r.metricSlug);
-
-  const legacy = await prisma.schoolKpiTarget.findMany({
-    where: { schoolId },
-    select: { metricSlug: true },
-    distinct: ["metricSlug"],
-  });
-  if (legacy.length > 0) return legacy.map((r) => r.metricSlug);
-
+  // No coach profile exists to own a default set — fall back to the catalog.
   return KPI_METRIC_META.map((m) => m.slug);
 }
 
@@ -650,6 +654,28 @@ export async function getRankedMetricSlugs(kpiSetId: string): Promise<string[]> 
     select: { metricSlug: true },
   });
   return rows.map((r) => r.metricSlug);
+}
+
+/**
+ * Ranked + unranked metric slugs of the KPI set governing a class scope, in
+ * the set's configured order. Used to prioritize the testing-session builder:
+ * the coach's ranked KPIs first, then the set's unranked KPIs.
+ */
+export async function getKpiSetMetricOrderingForClassScope(
+  schoolId: string,
+  classId: string
+): Promise<{ ranked: string[]; unranked: string[] }> {
+  const setId = await resolveKpiSetForClassScope(schoolId, classId, null);
+  if (!setId) return { ranked: [], unranked: [] };
+  const rows = await prisma.kpiSetMetric.findMany({
+    where: { kpiSetId: setId },
+    orderBy: [{ sortOrder: "asc" }, { metricSlug: "asc" }],
+    select: { metricSlug: true, ranked: true },
+  });
+  return {
+    ranked: rows.filter((r) => r.ranked).map((r) => r.metricSlug),
+    unranked: rows.filter((r) => !r.ranked).map((r) => r.metricSlug),
+  };
 }
 
 /** Ensure a KPI set exists for class or class+subgroup (auto-named from school entities). */
@@ -855,10 +881,31 @@ export async function resolveSchoolKpiSetId(
     if (anySport) return anySport.id;
   }
   const def = await prisma.kpiSet.findFirst({
-    where: { schoolId, isDefault: true },
+    where: { schoolId, isDefault: true, classId: null, subgroupId: null },
     select: { id: true },
   });
   return def?.id ?? null;
+}
+
+/**
+ * Guarantee a school-wide default KPI set exists and return its id.
+ * Returns null only when the school has no coach profile to own one.
+ */
+export async function ensureSchoolDefaultKpiSetId(schoolId: string): Promise<string | null> {
+  const existing = await prisma.kpiSet.findFirst({
+    where: { schoolId, isDefault: true, classId: null, subgroupId: null },
+    select: { id: true },
+  });
+  if (existing) return existing.id;
+
+  const anyCoach = await prisma.coachProfile.findFirst({
+    where: { schoolId },
+    orderBy: { createdAt: "asc" },
+    select: { id: true },
+  });
+  if (!anyCoach) return null;
+  const set = await ensureDefaultKpiSet(schoolId, anyCoach.id);
+  return set.id;
 }
 
 /** Seed helper used when no SchoolKpiTarget rows exist yet. */

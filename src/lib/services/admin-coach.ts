@@ -54,6 +54,49 @@ export async function createSchoolCoach(input: CreateSchoolCoachInput) {
   };
 }
 
+/**
+ * Remove a coach from the school: deletes their login (User) and coach
+ * profile. Classes they led stay (lead coach cleared); results they entered
+ * keep their marks (enteredBy nulled). Their KPI sets are reassigned to
+ * another coach at the school when one exists so class/school KPI
+ * configuration survives the coach's departure.
+ */
+export async function deleteSchoolCoach(input: {
+  schoolId: string;
+  coachProfileId: string;
+  actingUserId: string;
+}) {
+  const coach = await prisma.coachProfile.findFirst({
+    where: { id: input.coachProfileId, schoolId: input.schoolId },
+    include: { user: { select: { id: true, email: true, role: true } } },
+  });
+  if (!coach) throw new Error("Coach not found");
+  if (coach.userId === input.actingUserId) {
+    throw new Error("You can't delete the account you're signed in with");
+  }
+
+  const fallbackCoach = await prisma.coachProfile.findFirst({
+    where: { schoolId: input.schoolId, id: { not: coach.id } },
+    orderBy: { createdAt: "asc" },
+    select: { id: true },
+  });
+
+  await prisma.$transaction(async (tx) => {
+    if (fallbackCoach) {
+      await tx.kpiSet.updateMany({
+        where: { coachProfileId: coach.id },
+        data: { coachProfileId: fallbackCoach.id },
+      });
+    }
+    // FK cascades remove the coach profile, class assignments, and login
+    // invite; Class.coachId / PerformanceResult.enteredById /
+    // WorkoutTemplate.createdById / WorkoutAssignment.createdById are SET NULL.
+    await tx.user.delete({ where: { id: coach.userId } });
+  });
+
+  return { email: coach.user.email };
+}
+
 export async function listSchoolCoaches(schoolId: string) {
   const rows = await prisma.coachProfile.findMany({
     where: { schoolId },

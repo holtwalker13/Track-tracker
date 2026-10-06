@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { getLeaderboard } from "./coach";
 import { activityDisplayGroup, type ActivityDisplayGroup } from "@/lib/activity-groups";
+import { KPI_METRIC_META } from "@/lib/kpi-targets";
 import type { Activity, ActivityCategory } from "@prisma/client";
 import { DEFAULT_LEADERBOARD_PERIOD, type LeaderboardPeriod } from "@/lib/leaderboard-periods";
 
@@ -17,38 +18,36 @@ export async function getLeaderboardActivities(
   });
   const hiddenSlugs = hidden.map((h) => h.metricSlug);
 
-  const { getRankedMetricSlugs, resolveKpiSetForClassContext } = await import(
-    "@/lib/services/kpi-sets"
-  );
+  const {
+    getRankedMetricSlugs,
+    resolveKpiSetForClassContext,
+    ensureSchoolDefaultKpiSetId,
+  } = await import("@/lib/services/kpi-sets");
   const resolvedSetId =
-    kpiSetId ?? (await resolveKpiSetForClassContext(schoolId, null, null));
+    kpiSetId ??
+    (await resolveKpiSetForClassContext(schoolId, null, null)) ??
+    (await ensureSchoolDefaultKpiSetId(schoolId));
+  // Leaderboards show exactly the governing set's ranked KPIs (the same list
+  // the KPIs tab configures). Only when no set can exist at all (no coach
+  // profile) do we fall back to the built-in catalog KPIs.
   const rankedSlugs = new Set(
-    resolvedSetId ? await getRankedMetricSlugs(resolvedSetId) : []
+    resolvedSetId
+      ? await getRankedMetricSlugs(resolvedSetId)
+      : KPI_METRIC_META.map((m) => m.slug as string)
   );
-  const hasKpiSets = resolvedSetId
-    ? 1
-    : await prisma.kpiSet.count({ where: { schoolId } });
 
-  const slugFilter =
-    hasKpiSets > 0 && rankedSlugs.size > 0
-      ? [...rankedSlugs].filter((s) => !hiddenSlugs.includes(s))
-      : null;
+  const slugFilter = [...rankedSlugs].filter((s) => !hiddenSlugs.includes(s));
 
-  const activities = await prisma.activity.findMany({
-    where: slugFilter
-      ? {
+  const activities = slugFilter.length
+    ? await prisma.activity.findMany({
+        where: {
           slug: { in: slugFilter },
           OR: [{ schoolId: null }, { schoolId }],
-        }
-      : {
-          OR: [{ schoolId: null }, { schoolId }],
-          slug: {
-            notIn: ["height", "weight", "20-meter-start", ...hiddenSlugs],
-          },
         },
-    include: { category: true },
-    orderBy: { name: "asc" },
-  });
+        include: { category: true },
+        orderBy: { name: "asc" },
+      })
+    : [];
 
   const filtered = activities;
 
@@ -95,10 +94,13 @@ export async function getLeaderboardGrid(
   kpiSetId?: string | null,
   subgroupId?: string | null
 ) {
-  const { resolveKpiSetForClassContext } = await import("@/lib/services/kpi-sets");
+  const { resolveKpiSetForClassContext, ensureSchoolDefaultKpiSetId } = await import(
+    "@/lib/services/kpi-sets"
+  );
   const setId =
     kpiSetId ??
-    (await resolveKpiSetForClassContext(schoolId, classId ?? null, subgroupId ?? null));
+    (await resolveKpiSetForClassContext(schoolId, classId ?? null, subgroupId ?? null)) ??
+    (await ensureSchoolDefaultKpiSetId(schoolId));
   const activities = await getLeaderboardActivities(schoolId, setId);
   const grades = gradeLevels && gradeLevels.length > 0 ? gradeLevels : undefined;
 

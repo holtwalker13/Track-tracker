@@ -137,7 +137,8 @@ export function SprintPotentialCard({
               row.athlete == null
                 ? "—"
                 : formatActivityValue(row.athlete, unit, row.slug);
-            const targetVal = formatActivityValue(row.target, unit, row.slug);
+            const targetVal =
+              row.target != null ? formatActivityValue(row.target, unit, row.slug) : "—";
             const rank = ranks?.[row.slug];
             const highlighted = highlightSlug === row.slug;
             return (

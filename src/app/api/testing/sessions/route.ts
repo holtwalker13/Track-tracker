@@ -84,8 +84,12 @@ export async function POST(request: Request) {
       ? body.activitySlugs
       : KPI_METRIC_META.map((m) => m.slug);
 
+  // Only the school's own KPI library (global catalog + school customs).
   const activities = await prisma.activity.findMany({
-    where: { slug: { in: slugs } },
+    where: {
+      slug: { in: slugs },
+      OR: [{ schoolId: null }, { schoolId: session.schoolId }],
+    },
   });
 
   const now = new Date();

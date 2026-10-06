@@ -122,20 +122,28 @@ export async function getStudentSprintPotential(
     opts.ageBracket && isAgeBracketId(opts.ageBracket) ? opts.ageBracket : defaultBracket;
   const window: MedalTimeWindow = opts.window === "week" ? "week" : "all";
 
-  const { resolveKpiSetForClassScope, resolveKpiSetForStudentContext, getRankedMetricSlugs } =
-    await import("@/lib/services/kpi-sets");
+  const {
+    resolveKpiSetForClassScope,
+    resolveKpiSetForStudentContext,
+    getRankedMetricSlugs,
+    ensureSchoolDefaultKpiSetId,
+  } = await import("@/lib/services/kpi-sets");
   // An explicit class scope (profile class picker, dashboard period picker)
   // drives the medal standard directly — it always matches the KPIs tab for
   // that class. Without a scope ("All my periods"), resolve from the athlete's
-  // own class context.
-  const kpiSetId = opts.classId
+  // own class context. A school default set is guaranteed either way so every
+  // view agrees on the same ranked KPI list.
+  let kpiSetId = opts.classId
     ? await resolveKpiSetForClassScope(student.schoolId, opts.classId, opts.subgroupId)
     : await resolveKpiSetForStudentContext(student.schoolId, studentId, {
         subgroupId: opts.subgroupId,
       });
-  const rankedSlugList = kpiSetId ? await getRankedMetricSlugs(kpiSetId) : [];
-  const markSlugs =
-    rankedSlugList.length > 0 ? rankedSlugList : (KPI_SLUGS as string[]);
+  if (!kpiSetId) kpiSetId = await ensureSchoolDefaultKpiSetId(student.schoolId);
+  // Strict: only the governing set's ranked KPIs count (empty set = none).
+  const rankedSlugList = kpiSetId
+    ? await getRankedMetricSlugs(kpiSetId)
+    : (KPI_SLUGS as string[]);
+  const markSlugs = rankedSlugList;
 
   const activities = await prisma.activity.findMany({
     where: { slug: { in: markSlugs } },
@@ -179,9 +187,8 @@ export async function getStudentSprintPotential(
     bracket,
     kpiSetId
   );
-  const rankedSlugs = rankedSlugList.length > 0 ? rankedSlugList : undefined;
   return {
-    ...evaluateSprintPotential(marks, student.gender, custom, rankedSlugs),
+    ...evaluateSprintPotential(marks, student.gender, custom, rankedSlugList),
     ageBracket: bracket,
     window,
   };

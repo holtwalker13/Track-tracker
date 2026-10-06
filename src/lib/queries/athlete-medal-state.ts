@@ -13,6 +13,7 @@ import {
   type AthleteMedalResult,
 } from "@/lib/services/athlete-medal";
 import {
+  ensureSchoolDefaultKpiSetId,
   getRankedMetricSlugs,
   resolveKpiSetForClassScope,
   resolveKpiSetForStudentContext,
@@ -45,18 +46,21 @@ export async function getAthleteMedalState(
 
   // An explicit class scope (coach scope bar) drives the KPI list directly:
   // subgroup set → class set → school default. Without one (student views),
-  // resolve from the athlete's own class context.
-  const kpiSetId = opts.classId
+  // resolve from the athlete's own class context. A school default set is
+  // guaranteed either way so compare/leaderboards/profiles agree.
+  let kpiSetId = opts.classId
     ? await resolveKpiSetForClassScope(student.schoolId, opts.classId, opts.subgroupId)
     : await resolveKpiSetForStudentContext(student.schoolId, studentId, {
         subgroupId: opts.subgroupId,
       });
-  const rankedSlugs = kpiSetId ? await getRankedMetricSlugs(kpiSetId) : [];
+  if (!kpiSetId) kpiSetId = await ensureSchoolDefaultKpiSetId(student.schoolId);
+  // Strict: only the governing set's ranked KPIs (empty = none ranked).
+  const rankedSlugs = kpiSetId ? await getRankedMetricSlugs(kpiSetId) : [...KPI_SLUGS];
 
   const activities = await prisma.activity.findMany({
     where: {
       slug: {
-        in: rankedSlugs.length > 0 ? rankedSlugs : KPI_SLUGS,
+        in: rankedSlugs,
       },
     },
     select: { id: true, slug: true, scoringDirection: true },

@@ -2,7 +2,6 @@
 
 import { Plus } from "lucide-react";
 import { useState } from "react";
-import type { LiftingSessionActivityMeta } from "@/lib/lifting";
 import { CoachModal } from "@/components/ui/coach-modal";
 import { NewTestingSessionForm } from "@/components/testing/new-session-form";
 import { CoachClassScopeBar } from "@/components/coach/coach-class-scope-bar";
@@ -19,8 +18,8 @@ export function TestingPageActions({
   showCoachPicker,
   defaultClassId,
   sameDayCount,
-  strengthActivities,
-  kpiActivities,
+  kpiLibrary,
+  metricsByClassId,
 }: {
   coaches: ScopeCoachOption[];
   classes: ScopeClassOption[];
@@ -29,8 +28,10 @@ export function TestingPageActions({
   showCoachPicker?: boolean;
   defaultClassId?: string;
   sameDayCount?: number;
-  strengthActivities?: LiftingSessionActivityMeta[];
-  kpiActivities?: { slug: string; name: string; ranked?: boolean }[];
+  /** Full school KPI library (testing metrics + workout lifts + customs). */
+  kpiLibrary?: { slug: string; name: string }[];
+  /** Per-class KPI set ordering: ranked slugs first, then unranked set members. */
+  metricsByClassId?: Record<string, { ranked: string[]; unranked: string[] }>;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -61,8 +62,8 @@ export function TestingPageActions({
             classes={classes}
             defaultClassId={defaultClassId ?? classId}
             sameDayCount={sameDayCount}
-            strengthActivities={strengthActivities}
-            kpiActivities={kpiActivities}
+            kpiLibrary={kpiLibrary}
+            metricsByClassId={metricsByClassId}
             surface="none"
           />
         </CoachModal>

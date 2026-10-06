@@ -52,4 +52,45 @@ describe("calculateAthleteMedal", () => {
     assert.equal(result.nextMedal, "bronze");
     assert.equal(result.progressCount, 3);
   });
+
+  it("treats ranked KPIs without a coach-set target as unconfigured (null target, no hit)", () => {
+    // Exact KPI-tab bands: only vertical-jump has a bronze target; every other
+    // ranked KPI has no target and must not fall back to hardcoded defaults.
+    const bands = ["gold", "silver", "bronze"].map((medal) => ({
+      id: `M-${medal}`,
+      gender: "M" as const,
+      medal: medal as "gold" | "silver" | "bronze",
+      label: `Boys ${medal}`,
+      targets: { "vertical-jump": 24 } as Record<KpiMetricSlug, number>,
+    }));
+
+    const marks = ranked.map((slug) => ({ slug, value: 999 }));
+
+    const result = calculateAthleteMedal(marks, "M", bands, ranked);
+    // Only the targeted KPI can hit; medal stays unearned.
+    assert.equal(result.earnedMedal, null);
+    assert.equal(result.nextMedal, "bronze");
+    const bronzeEval = result.potential.bands.find((b) => b.band.medal === "bronze")!;
+    const vj = bronzeEval.rows.find((r) => r.slug === "vertical-jump")!;
+    assert.equal(vj.target, 24);
+    assert.equal(vj.hit, true);
+    const fly = bronzeEval.rows.find((r) => r.slug === "flying-10-meter")!;
+    assert.equal(fly.target, null);
+    assert.equal(fly.hit, null);
+  });
+
+  it("shows an empty evaluation when the governing set ranks nothing", () => {
+    const bands = ["gold", "silver", "bronze"].map((medal) => ({
+      id: `M-${medal}`,
+      gender: "M" as const,
+      medal: medal as "gold" | "silver" | "bronze",
+      label: `Boys ${medal}`,
+      targets: {} as Record<KpiMetricSlug, number>,
+    }));
+
+    const result = calculateAthleteMedal([], "M", bands, []);
+    assert.equal(result.earnedMedal, null);
+    assert.equal(result.nextMedal, null);
+    assert.equal(result.potential.bands.every((b) => b.rows.length === 0), true);
+  });
 });

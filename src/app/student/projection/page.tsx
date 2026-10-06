@@ -42,6 +42,7 @@ export default async function ProjectionPage({
   const potential = await getStudentSprintPotential(session.studentId, {
     ageBracket: bracket,
     window,
+    classId,
   });
   const classTags = await getStudentClassTags(session.studentId);
   const peerLeaders = await getStudentPeerLeaders(session.studentId, {
@@ -67,12 +68,21 @@ export default async function ProjectionPage({
           <CardTitle>Gaps to {MEDAL_LABELS[next.band.medal]}</CardTitle>
           <ul className="mt-4 space-y-2 text-sm">
             {next.rows.map((row) => {
-              const meta = KPI_METRIC_META.find((m) => m.slug === row.slug)!;
+              const meta = KPI_METRIC_META.find((m) => m.slug === row.slug);
+              const unit = meta?.unit ?? "";
               if (row.athlete == null) {
                 return (
                   <li key={row.slug} className="flex justify-between text-muted">
                     <span>{row.name}</span>
                     <span>not tested</span>
+                  </li>
+                );
+              }
+              if (row.target == null) {
+                return (
+                  <li key={row.slug} className="flex justify-between text-muted">
+                    <span>{row.name}</span>
+                    <span>no target set</span>
                   </li>
                 );
               }
@@ -86,7 +96,7 @@ export default async function ProjectionPage({
                   <span className="tabular-nums">
                     {row.hit
                       ? "on target"
-                      : `${formatActivityValue(Math.abs(gap), meta.unit, row.slug)} to go`}
+                      : `${formatActivityValue(Math.abs(gap), unit, row.slug)} to go`}
                   </span>
                 </li>
               );

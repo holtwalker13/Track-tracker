@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Trash2 } from "lucide-react";
 import { CoachLoginLinkButton } from "@/components/admin/coach-login-link-button";
 import type { CoachLoginStatus } from "@/lib/services/coach-login-invite";
 
@@ -26,6 +27,7 @@ export function CoachStaffPanel({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -79,6 +81,34 @@ export function CoachStaffPanel({
     e.currentTarget.reset();
     await load();
     router.refresh();
+  }
+
+  async function onDeleteCoach(coach: CoachRow) {
+    if (!canManage || deletingId) return;
+    const confirmed = window.confirm(
+      `Delete ${coach.fullName} (${coach.email})?\n\nTheir login and coach access are removed. Classes and athlete marks they entered are kept; their KPI sets move to another coach at this school.`
+    );
+    if (!confirmed) return;
+    setDeletingId(coach.coachProfileId);
+    setError(null);
+    setMsg(null);
+    try {
+      const res = await fetch(`/api/admin/coaches/${coach.coachProfileId}`, {
+        method: "DELETE",
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? "Could not delete coach");
+        return;
+      }
+      setMsg(`Deleted ${coach.fullName}.`);
+      await load();
+      router.refresh();
+    } catch {
+      setError("Could not delete coach");
+    } finally {
+      setDeletingId(null);
+    }
   }
 
   return (
@@ -166,11 +196,24 @@ export function CoachStaffPanel({
                   )}
                 </div>
                 {canManage ? (
-                  <CoachLoginLinkButton
-                    coachProfileId={c.coachProfileId}
-                    fullName={c.fullName}
-                    loginStatus={c.loginStatus}
-                  />
+                  <div className="flex shrink-0 items-center gap-2">
+                    <CoachLoginLinkButton
+                      coachProfileId={c.coachProfileId}
+                      fullName={c.fullName}
+                      loginStatus={c.loginStatus}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => onDeleteCoach(c)}
+                      disabled={deletingId === c.coachProfileId}
+                      title={`Delete ${c.fullName}`}
+                      aria-label={`Delete ${c.fullName}`}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-card-border px-3 py-2 text-xs font-semibold text-muted transition hover:border-sport-red/50 hover:text-sport-red disabled:opacity-50"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" aria-hidden />
+                      {deletingId === c.coachProfileId ? "Deleting…" : "Delete"}
+                    </button>
+                  </div>
                 ) : null}
               </li>
             ))}

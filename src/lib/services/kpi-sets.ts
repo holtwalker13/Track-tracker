@@ -641,6 +641,22 @@ export async function getRankedKpiSlugsForStudent(
   studentId: string,
   opts: { classId?: string | null; subgroupId?: string | null } = {}
 ): Promise<string[]> {
+  // When a medal class is explicitly selected, use the same class/subgroup scope
+  // as getStudentSprintPotential / getAthleteMedalState — not the athlete's
+  // subgroup override inside resolveKpiSetForStudentContext.
+  if (opts.classId) {
+    const enrolled = await prisma.classEnrollment.findFirst({
+      where: { studentId, classId: opts.classId },
+      select: { classId: true },
+    });
+    if (enrolled) {
+      return getRankedKpiSlugsForSchool(
+        schoolId,
+        opts.classId,
+        opts.subgroupId ?? null
+      );
+    }
+  }
   const setId = await resolveKpiSetForStudentContext(schoolId, studentId, opts);
   if (setId) return getRankedMetricSlugs(setId);
   return getRankedKpiSlugsForSchool(schoolId, null, null);

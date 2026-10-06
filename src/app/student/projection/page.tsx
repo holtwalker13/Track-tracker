@@ -27,7 +27,7 @@ export default async function ProjectionPage({
 
   const sp = await searchParams;
   const window = sp.window === "week" ? "week" : "all";
-  const classId = sp.classId?.trim() || null;
+  const urlClassId = sp.classId?.trim() || null;
 
   const { currentGrade, student } = await getStudentContext(session.studentId);
   const schoolYear = await prisma.schoolYear.findFirst({
@@ -39,16 +39,20 @@ export default async function ProjectionPage({
   const bracket =
     sp.bracket && isAgeBracketId(sp.bracket) ? sp.bracket : defaultBracket;
 
+  const classTags = await getStudentClassTags(session.studentId);
+  const enrolledClassIds = classTags.map((c) => c.id);
+  const medalClassId =
+    urlClassId && enrolledClassIds.includes(urlClassId) ? urlClassId : null;
+
   const potential = await getStudentSprintPotential(session.studentId, {
     ageBracket: bracket,
     window,
-    classId,
+    classId: medalClassId,
   });
-  const classTags = await getStudentClassTags(session.studentId);
   const peerLeaders = await getStudentPeerLeaders(session.studentId, {
     ageBracket: bracket,
     window,
-    classId,
+    classId: medalClassId,
   });
   const next = potential.next;
 

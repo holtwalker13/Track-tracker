@@ -18,7 +18,7 @@ import { AthleteResultsHistory } from "@/components/performance/athlete-results-
 import { SprintPotentialCard } from "@/components/performance/sprint-potential";
 import { GamificationSummaryCard } from "@/components/gamification/gamification-summary-card";
 import { getGamificationSummary } from "@/lib/gamification/dynamic-accolades";
-import { getRankedKpiSlugsForStudent } from "@/lib/services/kpi-sets";
+import { getRankedKpiSlugsForSchool } from "@/lib/services/kpi-sets";
 import { classYearLabel, DEFAULT_CLASS_YEAR } from "@/lib/grades";
 import { classSectionLabel, isGraduatingClassName } from "@/lib/periods";
 import { AthleteProfileCard } from "@/components/athletes/athlete-profile-card";
@@ -96,9 +96,12 @@ export default async function StudentProfilePage({
       ? sp.classId
       : (latestSetRow?.classId ?? enrolledClasses[0]?.id ?? null);
 
-  const rankedSlugs = await getRankedKpiSlugsForStudent(session.schoolId, id, {
-    classId: profileClassId,
-  });
+  // Rank chips use the same class-scoped set as the medal standard card.
+  const rankedSlugs = await getRankedKpiSlugsForSchool(
+    session.schoolId,
+    profileClassId,
+    null
+  );
 
   const gamification = await getGamificationSummary(id);
 

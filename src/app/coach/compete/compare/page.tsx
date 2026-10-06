@@ -98,7 +98,10 @@ export default async function CompeteComparePage({
       : null;
   const lineup =
     mode === "athlete" && filledLineup.length >= 2
-      ? await getAthleteLineup(filledLineup, session.schoolId)
+      ? await getAthleteLineup(filledLineup, session.schoolId, {
+          classId: scopeCtx.classId,
+          subgroupId: scopeCtx.subgroupId,
+        })
       : null;
 
   const right =

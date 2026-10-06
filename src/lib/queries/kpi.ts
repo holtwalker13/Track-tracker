@@ -122,25 +122,27 @@ export async function getStudentSprintPotential(
     opts.ageBracket && isAgeBracketId(opts.ageBracket) ? opts.ageBracket : defaultBracket;
   const window: MedalTimeWindow = opts.window === "week" ? "week" : "all";
 
-  const { resolveKpiSetForStudentContext, getRankedMetricSlugs } = await import(
-    "@/lib/services/kpi-sets"
-  );
-  // Athlete-aware: the athlete's own class/subgroup KPI set governs the medal
-  // standard; an explicit class scope is honored only when the athlete is
-  // enrolled in it. Keeps coach profile and student views on the same source.
-  const kpiSetId = await resolveKpiSetForStudentContext(student.schoolId, studentId, {
-    classId: opts.classId,
-    subgroupId: opts.subgroupId,
-  });
+  const { resolveKpiSetForClassScope, resolveKpiSetForStudentContext, getRankedMetricSlugs } =
+    await import("@/lib/services/kpi-sets");
+  // An explicit class scope (profile class picker, dashboard period picker)
+  // drives the medal standard directly — it always matches the KPIs tab for
+  // that class. Without a scope ("All my periods"), resolve from the athlete's
+  // own class context.
+  const kpiSetId = opts.classId
+    ? await resolveKpiSetForClassScope(student.schoolId, opts.classId, opts.subgroupId)
+    : await resolveKpiSetForStudentContext(student.schoolId, studentId, {
+        subgroupId: opts.subgroupId,
+      });
   const rankedSlugList = kpiSetId ? await getRankedMetricSlugs(kpiSetId) : [];
   const markSlugs =
     rankedSlugList.length > 0 ? rankedSlugList : (KPI_SLUGS as string[]);
 
   const activities = await prisma.activity.findMany({
     where: { slug: { in: markSlugs } },
-    select: { id: true, slug: true },
+    select: { id: true, slug: true, scoringDirection: true },
   });
   const idToSlug = new Map(activities.map((a) => [a.id, a.slug as KpiMetricSlug]));
+  const directionBySlug = new Map(activities.map((a) => [a.slug, a.scoringDirection]));
 
   const results = await prisma.performanceResult.findMany({
     where: {
@@ -151,17 +153,25 @@ export async function getStudentSprintPotential(
       resultValue: { not: null },
       ...(window === "week" ? { testingDate: { gte: weekStart() } } : {}),
     },
-    orderBy: { testingDate: "desc" },
   });
 
-  const seen = new Set<string>();
-  const marks: KpiMark[] = [];
+  // isBestAttempt marks the best attempt of each testing session — show the
+  // best value per KPI (all-time, or within the week window), not the most
+  // recent session's best.
+  const bestBySlug = new Map<string, number>();
   for (const r of results) {
     const slug = idToSlug.get(r.activityId);
-    if (!slug || seen.has(slug) || r.resultValue == null) continue;
-    seen.add(slug);
-    marks.push({ slug, value: r.resultValue });
+    if (!slug || r.resultValue == null) continue;
+    const current = bestBySlug.get(slug);
+    const lower = directionBySlug.get(slug) === "LOWER_BETTER";
+    if (current == null || (lower ? r.resultValue < current : r.resultValue > current)) {
+      bestBySlug.set(slug, r.resultValue);
+    }
   }
+  const marks: KpiMark[] = [...bestBySlug].map(([slug, value]) => ({
+    slug: slug as KpiMetricSlug,
+    value,
+  }));
 
   const custom = await getSchoolKpiBands(
     student.schoolId,

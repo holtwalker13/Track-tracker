@@ -84,6 +84,27 @@ export async function getAthleteCompare(
     where: { schoolId, isCurrent: true },
   });
 
+  // Peer baseline comes from the selected class/subgroup roster when scoped.
+  let peerStudentIds: string[] | null = null;
+  let peerScopeName: string | null = null;
+  if (opts?.classId) {
+    if (opts.subgroupId) {
+      const sg = await prisma.classSubgroup.findFirst({
+        where: { id: opts.subgroupId, classId: opts.classId },
+        select: { name: true, members: { select: { studentId: true } } },
+      });
+      peerStudentIds = sg ? sg.members.map((m) => m.studentId) : [];
+      peerScopeName = sg?.name ?? null;
+    } else {
+      const cls = await prisma.class.findFirst({
+        where: { id: opts.classId, schoolId },
+        select: { name: true, enrollments: { select: { studentId: true } } },
+      });
+      peerStudentIds = cls ? cls.enrollments.map((e) => e.studentId) : [];
+      peerScopeName = cls?.name ?? null;
+    }
+  }
+
   const medalState = await getAthleteMedalState(studentId, {
     classId: opts?.classId,
     subgroupId: opts?.subgroupId,
@@ -129,6 +150,8 @@ export async function getAthleteCompare(
 
   for (const act of activities) {
     const direction = act.scoringDirection as ScoringDirection;
+    // Best result (not most recent): isBestAttempt is per-session best, so
+    // order by value in the scoring direction.
     const best = await prisma.performanceResult.findFirst({
       where: {
         studentId,
@@ -138,7 +161,7 @@ export async function getAthleteCompare(
         resultValue: { not: null },
         ...(currentYear ? { schoolYearId: currentYear.id } : {}),
       },
-      orderBy: { testingDate: "desc" },
+      orderBy: { resultValue: direction === "LOWER_BETTER" ? "asc" : "desc" },
     });
 
     const peerWhere = {
@@ -148,21 +171,38 @@ export async function getAthleteCompare(
       status: "COMPLETED" as const,
       isBestAttempt: true,
       resultValue: { not: null },
-      studentId: { not: studentId },
+      studentId: {
+        not: studentId,
+        ...(peerStudentIds ? { in: peerStudentIds } : {}),
+      },
       ...(currentYear ? { schoolYearId: currentYear.id } : {}),
       ...(gender ? { student: { gender } } : {}),
     };
 
-    const peerAgg = await prisma.performanceResult.aggregate({
+    // Average of each peer's best result (not all session bests blended).
+    const peerRows = await prisma.performanceResult.findMany({
       where: peerWhere,
-      _avg: { resultValue: true },
+      select: { studentId: true, resultValue: true },
     });
+    const bestByPeer = new Map<string, number>();
+    for (const r of peerRows) {
+      if (r.resultValue == null) continue;
+      const current = bestByPeer.get(r.studentId);
+      const lower = direction === "LOWER_BETTER";
+      if (current == null || (lower ? r.resultValue < current : r.resultValue > current)) {
+        bestByPeer.set(r.studentId, r.resultValue);
+      }
+    }
+    const peerBestAvg =
+      bestByPeer.size > 0
+        ? [...bestByPeer.values()].reduce((a, b) => a + b, 0) / bestByPeer.size
+        : null;
 
     const bench = await getKpiBenchmark(act.id, gender, schoolId);
     const medalTarget = targetBySlug.get(act.slug) ?? null;
 
     const athleteValue = best?.resultValue ?? null;
-    const peerAvg = peerAgg._avg.resultValue ?? null;
+    const peerAvg = peerBestAvg;
     const delta = vsPeer(athleteValue, peerAvg, direction);
     const percentile =
       athleteValue != null
@@ -179,7 +219,7 @@ export async function getAthleteCompare(
             resultValue: { not: null },
             ...(currentYear ? { schoolYearId: currentYear.id } : {}),
           },
-          orderBy: { testingDate: "desc" },
+          orderBy: { resultValue: direction === "LOWER_BETTER" ? "asc" : "desc" },
         })
       : null;
     const opponentValue = oppBest?.resultValue ?? null;
@@ -237,7 +277,9 @@ export async function getAthleteCompare(
       studentNumber: student.studentNumber,
       schoolId: student.schoolId,
     },
-    peerLabel: `${classYearLabel(currentGrade)} ${genderGroupLabel(gender)} avg`,
+    peerLabel: peerScopeName
+      ? `${peerScopeName} avg`
+      : `${classYearLabel(currentGrade)} ${genderGroupLabel(gender)} avg`,
     opponent: opponentCtx
       ? {
           id: opponentCtx.student.id,
@@ -281,7 +323,13 @@ const MAX_LINEUP = 5;
 export async function getAthleteLineup(
   studentIds: string[],
   schoolId: string,
-  opts?: { anonymize?: boolean; viewerStudentId?: string; kpiStudentId?: string }
+  opts?: {
+    anonymize?: boolean;
+    viewerStudentId?: string;
+    kpiStudentId?: string;
+    classId?: string | null;
+    subgroupId?: string | null;
+  }
 ): Promise<AthleteLineupView> {
   const unique = [...new Set(studentIds)].slice(0, MAX_LINEUP);
   const currentYear = await prisma.schoolYear.findFirst({
@@ -308,13 +356,23 @@ export async function getAthleteLineup(
     });
   }
 
-  // Restrict the lineup to the ranked KPIs from the class KPI set of the
-  // athlete being viewed (same source as the KPIs tab). No set → legacy list.
+  // Restrict the lineup to the ranked KPIs of the selected class/subgroup KPI
+  // set when scoped (coach scope bar); otherwise the viewed athlete's own class
+  // KPI set. No set at all → legacy full list.
   let rankedFilter: string[] | null = null;
-  const kpiStudentId = opts?.kpiStudentId ?? athletes[0]?.id;
-  if (kpiStudentId && athletes.some((a) => a.id === kpiStudentId)) {
-    const medalState = await getAthleteMedalState(kpiStudentId);
-    if (medalState.kpiSetId) rankedFilter = medalState.rankedSlugs;
+  if (opts?.classId) {
+    const { resolveKpiSetForClassScope, getRankedMetricSlugs } = await import(
+      "@/lib/services/kpi-sets"
+    );
+    const setId = await resolveKpiSetForClassScope(schoolId, opts.classId, opts.subgroupId);
+    // Strict: a selected scope shows exactly its ranked KPIs, even if empty.
+    rankedFilter = setId ? await getRankedMetricSlugs(setId) : [];
+  } else {
+    const kpiStudentId = opts?.kpiStudentId ?? athletes[0]?.id;
+    if (kpiStudentId && athletes.some((a) => a.id === kpiStudentId)) {
+      const medalState = await getAthleteMedalState(kpiStudentId);
+      if (medalState.kpiSetId) rankedFilter = medalState.rankedSlugs;
+    }
   }
 
   const activities = await prisma.activity.findMany({
@@ -339,15 +397,21 @@ export async function getAthleteLineup(
     orderBy: { testingDate: "desc" },
   });
 
+  // Best result per athlete per KPI (isBestAttempt is per-session best).
   const best = new Map<string, { value: number; display: string }>();
   for (const r of results) {
     if (r.resultValue == null) continue;
     const key = `${r.studentId}:${r.activityId}`;
-    if (best.has(key)) continue;
     const act = activities.find((a) => a.id === r.activityId);
+    if (!act) continue;
+    const lower = act.scoringDirection === "LOWER_BETTER";
+    const existing = best.get(key);
+    if (existing && (lower ? existing.value <= r.resultValue : existing.value >= r.resultValue)) {
+      continue;
+    }
     best.set(key, {
       value: r.resultValue,
-      display: r.displayValue ?? (act ? formatActivityValue(r.resultValue, act.unit, act.slug) : String(r.resultValue)),
+      display: r.displayValue ?? formatActivityValue(r.resultValue, act.unit, act.slug),
     });
   }
 

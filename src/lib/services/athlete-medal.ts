@@ -32,10 +32,15 @@ function rankedSlugsFromBands(bands: KpiBand[]): KpiMetricSlug[] {
   );
 }
 
-function metricMetaForSlug(slug: string): {
+function metricMetaForSlug(
+  slug: string,
+  overrides?: Map<string, { name: string; direction: ScoringDirection }>
+): {
   name: string;
   direction: ScoringDirection;
 } {
+  const override = overrides?.get(slug);
+  if (override) return override;
   const meta = KPI_METRIC_META.find((m) => m.slug === slug);
   if (meta) return { name: meta.name, direction: meta.direction };
   return {
@@ -47,10 +52,11 @@ function metricMetaForSlug(slug: string): {
 function evaluateBandAllRequired(
   band: KpiBand,
   marksBySlug: Map<string, number>,
-  rankedSlugs: string[]
+  rankedSlugs: string[],
+  metricOverrides?: Map<string, { name: string; direction: ScoringDirection }>
 ): BandEvaluation {
   const rows = rankedSlugs.map((slug) => {
-    const meta = metricMetaForSlug(slug);
+    const meta = metricMetaForSlug(slug, metricOverrides);
     const athlete = marksBySlug.get(slug) ?? null;
     const target = band.targets[slug as KpiMetricSlug];
     const hit =
@@ -88,7 +94,8 @@ export function calculateAthleteMedal(
   marks: KpiMark[],
   gender?: string | null,
   customBands?: KpiBand[],
-  rankedSlugs?: string[]
+  rankedSlugs?: string[],
+  metricMetaBySlug?: Map<string, { name: string; direction: ScoringDirection }>
 ): AthleteMedalResult {
   const g: "F" | "M" = gender === "M" ? "M" : "F";
   const source = customBands?.length ? customBands : kpiBandsForGender(g);
@@ -99,7 +106,7 @@ export function calculateAthleteMedal(
 
   const marksBySlug = new Map(marks.map((m) => [m.slug, m.value]));
   const evaluations = source.map((band) =>
-    evaluateBandAllRequired(band, marksBySlug, slugs)
+    evaluateBandAllRequired(band, marksBySlug, slugs, metricMetaBySlug)
   );
 
   let earnedMedal: Medal | null = null;

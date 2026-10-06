@@ -223,8 +223,17 @@ export function evaluateSprintPotential(
   marks: KpiMark[],
   gender?: string | null,
   customBands?: KpiBand[],
-  rankedSlugs?: string[]
+  rankedSlugs?: string[],
+  metricMetaBySlug?: Map<
+    string,
+    { name: string; direction: "HIGHER_BETTER" | "LOWER_BETTER" }
+  >
 ): SprintPotential {
-  return calculateAthleteMedal(marks, gender, customBands, rankedSlugs as KpiMetricSlug[] | undefined)
-    .potential;
+  return calculateAthleteMedal(
+    marks,
+    gender,
+    customBands,
+    rankedSlugs as KpiMetricSlug[] | undefined,
+    metricMetaBySlug
+  ).potential;
 }

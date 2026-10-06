@@ -18,6 +18,12 @@ import {
   resolveKpiSetForClassScope,
   resolveKpiSetForStudentContext,
 } from "@/lib/services/kpi-sets";
+import {
+  buildRankedKpiMarks,
+  expandSlugsWithMarkAliases,
+  metricMetaMapForRanked,
+  type ActivityScoringRow,
+} from "@/lib/kpi-marks";
 
 const KPI_SLUGS = KPI_METRIC_META.map((m) => m.slug);
 
@@ -71,15 +77,22 @@ export async function getAthleteMedalState(
   // Strict: only the governing set's ranked KPIs (empty = none ranked).
   const rankedSlugs = kpiSetId ? await getRankedMetricSlugs(kpiSetId) : [...KPI_SLUGS];
 
+  const querySlugs = expandSlugsWithMarkAliases(rankedSlugs);
   const activities = await prisma.activity.findMany({
     where: {
       slug: {
-        in: rankedSlugs,
+        in: querySlugs,
       },
     },
-    select: { id: true, slug: true, scoringDirection: true },
+    select: { id: true, slug: true, name: true, scoringDirection: true },
   });
   const idToSlug = new Map(activities.map((a) => [a.id, a.slug]));
+  const activitiesBySlug = new Map<string, ActivityScoringRow>(
+    activities.map((a) => [
+      a.slug,
+      { slug: a.slug, name: a.name, scoringDirection: a.scoringDirection as ActivityScoringRow["scoringDirection"] },
+    ])
+  );
   const directionBySlug = new Map(activities.map((a) => [a.slug, a.scoringDirection]));
 
   const results = await prisma.performanceResult.findMany({
@@ -94,20 +107,18 @@ export async function getAthleteMedalState(
 
   // isBestAttempt marks the best attempt of each testing session — pick the
   // all-time best value per KPI, not the most recent session's best.
-  const bestBySlug = new Map<string, number>();
+  const rawBestBySlug = new Map<string, number>();
   for (const r of results) {
     const slug = idToSlug.get(r.activityId);
     if (!slug || r.resultValue == null) continue;
-    const current = bestBySlug.get(slug);
+    const current = rawBestBySlug.get(slug);
     const lower = directionBySlug.get(slug) === "LOWER_BETTER";
     if (current == null || (lower ? r.resultValue < current : r.resultValue > current)) {
-      bestBySlug.set(slug, r.resultValue);
+      rawBestBySlug.set(slug, r.resultValue);
     }
   }
-  const marks: KpiMark[] = [...bestBySlug].map(([slug, value]) => ({
-    slug: slug as KpiMetricSlug,
-    value,
-  }));
+  const metricMetaBySlug = metricMetaMapForRanked(rankedSlugs, activitiesBySlug);
+  const marks: KpiMark[] = buildRankedKpiMarks(rankedSlugs, rawBestBySlug, activitiesBySlug);
 
   const custom = await getSchoolKpiBands(
     student.schoolId,
@@ -120,7 +131,8 @@ export async function getAthleteMedalState(
     marks,
     student.gender,
     custom,
-    rankedSlugs as KpiMetricSlug[]
+    rankedSlugs as KpiMetricSlug[],
+    metricMetaBySlug
   );
 
   return {

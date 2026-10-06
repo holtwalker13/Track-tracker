@@ -10,6 +10,7 @@ import { parseCsv } from "../src/lib/csv";
 import { ADMIN_LOGIN, DEMO_PASSWORD, TENANTS } from "../src/lib/tenants";
 import { syntheticName } from "../src/lib/synthetic-names";
 import { ensureAccoladeDefinitions } from "../src/lib/gamification/seed-accolades";
+import { applyTrackFieldKpiFixtures } from "../scripts/lib/track-field-kpi-fixtures";
 
 const prisma = new PrismaClient();
 
@@ -812,8 +813,14 @@ async function main() {
         }
       }
 
+      await applyTrackFieldKpiFixtures(prisma, {
+        schoolId: school.id,
+        coachProfileId: coaches[0]!.id,
+        studentId: kendall.id,
+      });
+
       console.log(
-        `JHS ready (Kendall Leland + 4 weightlifting periods): ${tenant.coachEmail} / ${DEMO_PASSWORD}; student ${kendallUser.email} / ${DEMO_PASSWORD}`
+        `JHS ready (Kendall Leland + 4 weightlifting periods + Track and Field KPIs): ${tenant.coachEmail} / ${DEMO_PASSWORD}; student ${kendallUser.email} / ${DEMO_PASSWORD}`
       );
       continue;
     }
@@ -836,6 +843,18 @@ async function main() {
     );
 
     if (tenant.slug === "demo") {
+      const demoCoach = coaches[0]!;
+      const demoStudent = await prisma.studentProfile.findFirst({
+        where: { schoolId: school.id, user: { email: tenant.studentEmail! } },
+      });
+      if (demoStudent) {
+        await applyTrackFieldKpiFixtures(prisma, {
+          schoolId: school.id,
+          coachProfileId: demoCoach.id,
+          studentId: demoStudent.id,
+        });
+      }
+
       const { DEMO_CLASS_LOGIN } = await import("../src/lib/tenants");
       const demoSn = DEMO_CLASS_LOGIN.studentNumber;
       let demoProfile = await prisma.studentProfile.findFirst({

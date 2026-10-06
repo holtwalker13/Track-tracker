@@ -40,6 +40,7 @@ export default async function StudentProfilePage({
     rank?: string;
     scope?: string;
     classId?: string;
+    subgroupId?: string;
   }>;
 }) {
   const session = await requireSchoolSession();
@@ -79,6 +80,12 @@ export default async function StudentProfilePage({
     .filter((e) => !isGraduatingClassName(e.class.name))
     .map((e) => e.class);
 
+  const schoolClasses = await prisma.class.findMany({
+    where: { schoolId: session.schoolId },
+    orderBy: [{ period: "asc" }, { name: "asc" }],
+    select: { id: true, name: true, period: true },
+  });
+
   // Default the profile's class context to the enrolled class whose KPI set was
   // most recently configured — the same set the athlete-aware resolver shows —
   // so the medal standard matches the KPIs tab for that class.
@@ -91,16 +98,39 @@ export default async function StudentProfilePage({
       })
     : null;
 
+  // The picker lists the athlete's enrolled classes (or every school class
+  // when the athlete is not enrolled anywhere yet).
+  const pickerClasses = enrolledClasses.length > 0 ? enrolledClasses : schoolClasses;
   const profileClassId =
-    sp.classId && enrolledClasses.some((c) => c.id === sp.classId)
+    sp.classId && pickerClasses.some((c) => c.id === sp.classId)
       ? sp.classId
       : (latestSetRow?.classId ?? enrolledClasses[0]?.id ?? null);
 
-  // Rank chips use the same class-scoped set as the medal standard card.
+  // Subgroups for the class picker: coaches can view subgroup-level KPIs.
+  const pickerClassIds = pickerClasses.map((c) => c.id);
+  const subgroupRows = pickerClassIds.length
+    ? await prisma.classSubgroup.findMany({
+        where: { classId: { in: pickerClassIds } },
+        orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+        select: { id: true, name: true, classId: true },
+      })
+    : [];
+  const subgroupsByClassId: Record<string, { id: string; name: string }[]> = {};
+  for (const sg of subgroupRows) {
+    (subgroupsByClassId[sg.classId] ??= []).push({ id: sg.id, name: sg.name });
+  }
+  const profileSubgroupId =
+    sp.subgroupId &&
+    profileClassId &&
+    (subgroupsByClassId[profileClassId] ?? []).some((s) => s.id === sp.subgroupId)
+      ? sp.subgroupId
+      : null;
+
+  // Rank chips use the same class/subgroup-scoped set as the medal standard card.
   const rankedSlugs = await getRankedKpiSlugsForSchool(
     session.schoolId,
     profileClassId,
-    null
+    profileSubgroupId
   );
 
   const gamification = await getGamificationSummary(id);
@@ -110,7 +140,7 @@ export default async function StudentProfilePage({
       getCategoryRadar(id, grade),
       getLatestResultsGrouped(id, schoolYearId),
       getScholasticAttemptLog(id),
-      getStudentSprintPotential(id, { classId: profileClassId, subgroupId: null }),
+      getStudentSprintPotential(id, { classId: profileClassId, subgroupId: profileSubgroupId }),
       getStudentMarksWindow(id, sp.from, sp.to),
       getProgressByTestDate(id, activitySlug),
       getStudentActivityRanks(student.schoolId, id, rankedSlugs, {
@@ -130,12 +160,6 @@ export default async function StudentProfilePage({
     id: c.id,
     label: classSectionLabel(c),
   }));
-
-  const schoolClasses = await prisma.class.findMany({
-    where: { schoolId: session.schoolId },
-    orderBy: [{ period: "asc" }, { name: "asc" }],
-    select: { id: true, name: true, period: true },
-  });
 
   return (
     <AppShell title="Athlete" nav={COACH_NAV}>
@@ -174,8 +198,10 @@ export default async function StudentProfilePage({
 
       <Suspense fallback={null}>
         <AthleteProfileClassPicker
-          classes={enrolledClasses.length > 0 ? enrolledClasses : schoolClasses}
+          classes={pickerClasses}
           selectedClassId={profileClassId ?? null}
+          subgroupsByClassId={subgroupsByClassId}
+          selectedSubgroupId={profileSubgroupId}
         />
       </Suspense>
 

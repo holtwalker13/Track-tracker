@@ -6,7 +6,6 @@ import { prisma } from "@/lib/db";
 import { classSectionLabel } from "@/lib/periods";
 import { formatStudentName } from "@/lib/utils";
 import { TestingPageActions } from "@/components/testing/testing-page-actions";
-import { liftsForTestingSession, listSchoolLifts } from "@/lib/queries/lifts";
 import {
   SessionResultsAccordion,
   type SessionActivitySummary,
@@ -15,8 +14,11 @@ import { isWithinLiveWindow } from "@/lib/constants";
 import { resolveCoachClassScopeFromParams } from "@/lib/queries/coach-scope-params";
 import { testingSessionsForCoachView } from "@/lib/queries/coach-classes";
 import { TestingLogNavLink } from "@/components/testing/testing-log-table";
-import { KPI_METRIC_META } from "@/lib/kpi-targets";
-import { ensureCoachActiveKpiSet } from "@/lib/services/kpi-sets";
+import { listSchoolKpiLibrary } from "@/lib/queries/kpi-library";
+import {
+  ensureSchoolDefaultKpiSetId,
+  getKpiSetMetricOrderingForClassScope,
+} from "@/lib/services/kpi-sets";
 
 export default async function TestingSessionsPage({
   searchParams,
@@ -35,7 +37,7 @@ export default async function TestingSessionsPage({
   const dayStart = new Date(today.toISOString().slice(0, 10) + "T00:00:00");
   const dayEnd = new Date(today.toISOString().slice(0, 10) + "T23:59:59.999");
 
-  const [allSessions, sameDayCount, schoolLifts] = await Promise.all([
+  const [allSessions, sameDayCount, kpiLibrary] = await Promise.all([
     testingSessionsForCoachView(session),
     prisma.testingSession.count({
       where: {
@@ -43,7 +45,7 @@ export default async function TestingSessionsPage({
         testingDate: { gte: dayStart, lte: dayEnd },
       },
     }),
-    listSchoolLifts(session.schoolId),
+    listSchoolKpiLibrary(session.schoolId),
   ]);
 
   const sessions = activeClassId
@@ -51,46 +53,18 @@ export default async function TestingSessionsPage({
     : [];
   const classes = scope.classes;
 
-  const strengthActivities = liftsForTestingSession(schoolLifts).map((l) => ({
-    slug: l.slug,
-    name: l.name,
-  }));
-
-  let kpiActivities: { slug: string; name: string; ranked: boolean }[] = KPI_METRIC_META.map((m) => ({
-    slug: m.slug,
-    name: m.name,
-    ranked: true,
-  }));
-  try {
-    const ctx = await ensureCoachActiveKpiSet(session.userId, session.schoolId);
-    const rankedMap = new Map(
-      ctx.activeSet.metrics.map((m: { metricSlug: string; ranked: boolean }) => [m.metricSlug, m.ranked])
+  // Every class's KPI set drives the test builder: ranked KPIs first, then the
+  // set's unranked KPIs, then the rest of the school KPI library (testing
+  // metrics + workout lifts + customs). A school default set is guaranteed so
+  // classes without their own set still resolve the same library as the KPIs
+  // tab.
+  await ensureSchoolDefaultKpiSetId(session.schoolId);
+  const metricsByClassId: Record<string, { ranked: string[]; unranked: string[] }> = {};
+  for (const cls of classes) {
+    metricsByClassId[cls.id] = await getKpiSetMetricOrderingForClassScope(
+      session.schoolId,
+      cls.id
     );
-    const slugList = [
-      ...KPI_METRIC_META.map((m) => m.slug),
-      ...[...rankedMap.keys()].filter((s) => !KPI_METRIC_META.some((m) => m.slug === s)),
-    ];
-    const catalog = await prisma.activity.findMany({
-      where: {
-        OR: [{ schoolId: null }, { schoolId: session.schoolId }],
-        slug: { in: slugList },
-      },
-      select: { slug: true, name: true },
-    });
-    const nameBySlug = new Map(catalog.map((a) => [a.slug, a.name]));
-    const hidden = await prisma.schoolHiddenKpi.findMany({
-      where: { schoolId: session.schoolId },
-      select: { metricSlug: true },
-    });
-    const hiddenSet = new Set(hidden.map((h) => h.metricSlug));
-    const slugs = slugList.filter((s) => !hiddenSet.has(s));
-    kpiActivities = slugs.map((slug) => ({
-      slug,
-      name: nameBySlug.get(slug) ?? KPI_METRIC_META.find((m) => m.slug === slug)?.name ?? slug,
-      ranked: rankedMap.has(slug) ? Boolean(rankedMap.get(slug)) : false,
-    }));
-  } catch {
-    // Admin without coach profile — keep default catalog
   }
 
   return (
@@ -113,8 +87,8 @@ export default async function TestingSessionsPage({
         showCoachPicker={session.role === "ADMIN"}
         defaultClassId={activeClassId ?? classes[0]?.id}
         sameDayCount={sameDayCount}
-        strengthActivities={strengthActivities}
-        kpiActivities={kpiActivities}
+        kpiLibrary={kpiLibrary}
+        metricsByClassId={metricsByClassId}
       />
       {classes.length === 0 ? (
         <p className="mt-3 text-sm text-amber-300/90">

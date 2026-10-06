@@ -64,10 +64,6 @@ export function liftsForWorkoutPrograms(lifts: SchoolLiftRow[]) {
   return lifts.filter((l) => l.forWorkouts);
 }
 
-export function liftsForTestingSession(lifts: SchoolLiftRow[]) {
-  return lifts;
-}
-
 export type SchoolLiftEditDetails = {
   slug: string;
   name: string;

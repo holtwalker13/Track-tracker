@@ -375,8 +375,9 @@ export async function saveKpiSetTargets(
   }
 
   for (const [slug, state] of metricState) {
-    if (input.metrics?.some((m) => m.metricSlug === slug)) {
-      // Trust explicit ranked from client
+    const explicit = input.metrics?.find((m) => m.metricSlug === slug);
+    if (explicit) {
+      state.ranked = explicit.ranked;
       continue;
     }
     // Auto: has targets => ranked; no targets => unranked
@@ -398,7 +399,7 @@ export async function saveKpiSetTargets(
 
     const rows = validCells
       .filter((c) => c.target != null && Number.isFinite(c.target))
-      .filter((c) => metricState.get(c.metricSlug)?.ranked !== false)
+      .filter((c) => metricState.get(c.metricSlug)?.ranked === true)
       .map((c) => ({
         kpiSetId: setId,
         gender: c.gender,

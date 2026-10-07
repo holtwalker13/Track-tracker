@@ -100,6 +100,14 @@ describe("calculateAthleteMedal", () => {
     assert.equal(fly.target, bronze.targets["flying-10-yard"]);
   });
 
+  it("does not fall back to catalog KPIs when rankedSlugs is an empty list", () => {
+    const bands = kpiBandsForGender("F");
+    const result = calculateAthleteMedal([], "F", bands, []);
+    assert.equal(result.rankedKPIs.length, 0);
+    assert.equal(result.nextMedal, null);
+    assert.equal(result.potential.next, null);
+  });
+
   it("shows an empty evaluation when the governing set ranks nothing", () => {
     const bands = ["gold", "silver", "bronze"].map((medal) => ({
       id: `M-${medal}`,

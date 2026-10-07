@@ -12,11 +12,19 @@ function MedalScopeControlsInner({
   classes,
   defaultBracket,
   defaultClassId = null,
+  subgroupsByClassId = {},
+  defaultSubgroupId = null,
+  hideClassAndSubgroup = false,
 }: {
   classes: ClassTag[];
   defaultBracket: AgeBracketId;
   /** Server-resolved medal class when URL has no classId (matches medal card data). */
   defaultClassId?: string | null;
+  subgroupsByClassId?: Record<string, { id: string; name: string }[]>;
+  /** Athlete's subgroup in the selected class when URL has no subgroupId. */
+  defaultSubgroupId?: string | null;
+  /** Coach profile uses a separate class/subgroup picker — only age bracket + time here. */
+  hideClassAndSubgroup?: boolean;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -25,6 +33,15 @@ function MedalScopeControlsInner({
   const classIdParam = searchParams.get("classId");
   const classId =
     classIdParam !== null ? classIdParam : (defaultClassId ?? "");
+  const hasSubgroupParam = searchParams.has("subgroupId");
+  const subgroupIdParam = searchParams.get("subgroupId");
+  const subgroups = classId ? subgroupsByClassId[classId] ?? [] : [];
+  const subgroupId =
+    hasSubgroupParam
+      ? (subgroupIdParam ?? "")
+      : subgroups.some((s) => s.id === defaultSubgroupId)
+        ? (defaultSubgroupId ?? "")
+        : "";
   const bracketParam = searchParams.get("bracket");
   const bracket =
     AGE_BRACKETS.some((b) => b.id === bracketParam) ? (bracketParam as AgeBracketId) : defaultBracket;
@@ -42,20 +59,42 @@ function MedalScopeControlsInner({
 
   return (
     <div className="mb-3 space-y-2.5 sm:mb-4 sm:space-y-3">
-      {classes.length > 0 ? (
+      {!hideClassAndSubgroup && classes.length > 0 ? (
         <label className="block text-sm">
           <span className="text-xs font-semibold uppercase tracking-wider text-muted">
             Medal class
           </span>
           <select
             value={classId}
-            onChange={(e) => push({ classId: e.target.value || null })}
+            onChange={(e) =>
+              push({ classId: e.target.value || null, subgroupId: null })
+            }
             className="mt-1 w-full max-w-md rounded-xl border border-card-border bg-card px-3 py-2.5 text-sm"
           >
             <option value="">All my periods</option>
             {classes.map((c) => (
               <option key={c.id} value={c.id}>
                 {classSectionLabel(c)}
+              </option>
+            ))}
+          </select>
+        </label>
+      ) : null}
+
+      {!hideClassAndSubgroup && classId && subgroups.length > 0 ? (
+        <label className="block text-sm">
+          <span className="text-xs font-semibold uppercase tracking-wider text-muted">
+            KPI group
+          </span>
+          <select
+            value={subgroupId}
+            onChange={(e) => push({ subgroupId: e.target.value || null })}
+            className="mt-1 w-full max-w-md rounded-xl border border-card-border bg-card px-3 py-2.5 text-sm"
+          >
+            <option value="">My class (default)</option>
+            {subgroups.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
               </option>
             ))}
           </select>
@@ -126,6 +165,9 @@ export function MedalScopeControls(props: {
   classes: ClassTag[];
   defaultBracket: AgeBracketId;
   defaultClassId?: string | null;
+  subgroupsByClassId?: Record<string, { id: string; name: string }[]>;
+  defaultSubgroupId?: string | null;
+  hideClassAndSubgroup?: boolean;
 }) {
   return (
     <Suspense fallback={<div className="mb-4 h-24 animate-pulse rounded-xl bg-card/40" />}>

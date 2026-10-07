@@ -3,13 +3,15 @@ import { getLeaderboard } from "./coach";
 import { activityDisplayGroup, type ActivityDisplayGroup } from "@/lib/activity-groups";
 import { KPI_METRIC_META } from "@/lib/kpi-targets";
 import type { Activity, ActivityCategory } from "@prisma/client";
+import { DEFAULT_AGE_BRACKET } from "@/lib/age-brackets";
 import { DEFAULT_LEADERBOARD_PERIOD, type LeaderboardPeriod } from "@/lib/leaderboard-periods";
 
 export const LEADERBOARD_MAX_N = 500;
 
 export async function getLeaderboardActivities(
   schoolId: string,
-  kpiSetId?: string | null
+  kpiSetId?: string | null,
+  medalOpts?: { gender?: string; ageBracket?: string }
 ) {
   const featured = ["40-yard-dash", "vertical-jump"];
   const hidden = await prisma.schoolHiddenKpi.findMany({
@@ -32,7 +34,11 @@ export async function getLeaderboardActivities(
   // profile) do we fall back to the built-in catalog KPIs.
   const rankedSlugs = new Set(
     resolvedSetId
-      ? await getRankedMetricSlugs(resolvedSetId, schoolId)
+      ? await getRankedMetricSlugs(resolvedSetId, {
+          schoolId,
+          gender: medalOpts?.gender,
+          ageBracket: medalOpts?.ageBracket ?? DEFAULT_AGE_BRACKET,
+        })
       : KPI_METRIC_META.map((m) => m.slug as string)
   );
 
@@ -97,7 +103,10 @@ export async function getLeaderboardGrid(
   const { resolveKpiSetForCompeteScope } = await import("@/lib/services/kpi-sets");
   const setId =
     kpiSetId ?? (await resolveKpiSetForCompeteScope(schoolId, classId ?? null, subgroupId ?? null));
-  const activities = await getLeaderboardActivities(schoolId, setId);
+  const activities = await getLeaderboardActivities(schoolId, setId, {
+    gender,
+    ageBracket: DEFAULT_AGE_BRACKET,
+  });
   const grades = gradeLevels && gradeLevels.length > 0 ? gradeLevels : undefined;
 
   const boards: LeaderboardBoard[] = [];

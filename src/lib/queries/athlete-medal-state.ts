@@ -75,7 +75,11 @@ export async function getAthleteMedalState(
   }
   // Strict: only the governing set's ranked KPIs (empty = none ranked).
   const rankedSlugs = kpiSetId
-    ? await getRankedMetricSlugs(kpiSetId, student.schoolId)
+    ? await getRankedMetricSlugs(kpiSetId, {
+        schoolId: student.schoolId,
+        gender: student.gender,
+        ageBracket: bracket,
+      })
     : [];
 
   const querySlugs = expandSlugsWithMarkAliases(rankedSlugs);

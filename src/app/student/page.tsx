@@ -101,8 +101,21 @@ export default async function StudentDashboardPage({
   const radar = await getCategoryRadar(studentId, currentGrade);
   const classTags = await getStudentClassTags(studentId);
   const enrolledClassIds = classTags.map((c) => c.id);
+  const latestMedalClassRow =
+    enrolledClassIds.length > 0
+      ? await prisma.kpiSet.findFirst({
+          where: { schoolId, classId: { in: enrolledClassIds } },
+          orderBy: { updatedAt: "desc" },
+          select: { classId: true },
+        })
+      : null;
+  const hasClassIdParam = sp.classId !== undefined;
   const medalClassId =
-    urlClassId && enrolledClassIds.includes(urlClassId) ? urlClassId : null;
+    urlClassId && enrolledClassIds.includes(urlClassId)
+      ? urlClassId
+      : hasClassIdParam
+        ? null
+        : (latestMedalClassRow?.classId ?? enrolledClassIds[0] ?? null);
 
   const prs = await prisma.performanceResult.findMany({
     where: {
@@ -146,6 +159,8 @@ export default async function StudentDashboardPage({
   // Same ranked KPI list as the medal standard card (class scope when a medal class is selected).
   const rankedSlugs = await getRankedKpiSlugsForStudent(schoolId, studentId, {
     classId: medalClassId,
+    gender: student.gender,
+    ageBracket: bracket,
   });
   const kpiRanks = await getStudentActivityRanks(
     schoolId,
@@ -201,7 +216,11 @@ export default async function StudentDashboardPage({
       )}
 
       <div>
-        <MedalScopeControls classes={classTags} defaultBracket={defaultBracket} />
+        <MedalScopeControls
+          classes={classTags}
+          defaultBracket={defaultBracket}
+          defaultClassId={medalClassId}
+        />
         <SprintPotentialCard
           potential={sprint}
           ranks={kpiRanks}

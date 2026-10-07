@@ -7,7 +7,12 @@ import { activityDisplayGroup, DISPLAY_GROUP_ORDER, type ActivityDisplayGroup } 
 import type { ScoringDirection } from "@/lib/constants";
 import { getStudentContext } from "@/lib/queries/student";
 import { getAthleteMedalState } from "@/lib/queries/athlete-medal-state";
-import { markAliasSlugsFor, resolveRankedSlugToActivitySlugs } from "@/lib/kpi-marks";
+import {
+  expandRankedSlugsToQuerySlugs,
+  markAliasSlugsFor,
+  resolveRankedSlugToActivitySlugs,
+} from "@/lib/kpi-marks";
+import { DEFAULT_AGE_BRACKET } from "@/lib/age-brackets";
 import { MEDAL_LABELS } from "@/lib/kpi-targets";
 
 export type CompareEventRow = {
@@ -390,51 +395,105 @@ export async function getAthleteLineup(
     });
   }
 
-  // Restrict the lineup to the ranked KPIs of the selected class/subgroup KPI
-  // set when scoped (coach scope bar); otherwise the viewed athlete's own class
-  // KPI set. No set at all → legacy full list.
-  let rankedFilter: string[] | null = null;
+  // Same ranked KPI list + catalog resolution as Compete > Leaderboards.
   const { getRankedKpiSlugsForSchool } = await import("@/lib/services/kpi-sets");
-  if (opts?.classId) {
-    rankedFilter = await getRankedKpiSlugsForSchool(
-      schoolId,
-      opts.classId,
-      opts.subgroupId ?? null
-    );
-  } else {
-    // No class filter: same ranked KPIs as Compete > Leaderboards (school default set).
-    rankedFilter = await getRankedKpiSlugsForSchool(schoolId, null, null);
+  const rankedSlugList = await getRankedKpiSlugsForSchool(
+    schoolId,
+    opts?.classId ?? null,
+    opts?.subgroupId ?? null,
+    { ageBracket: DEFAULT_AGE_BRACKET }
+  );
+
+  type ActRow = Awaited<
+    ReturnType<
+      typeof prisma.activity.findMany<{ include: { category: true } }>
+    >
+  >[number];
+
+  const lineupActs: { rankedSlug: string; act: ActRow }[] = [];
+
+  if (rankedSlugList.length > 0) {
+    const querySlugs = await expandRankedSlugsToQuerySlugs(schoolId, rankedSlugList);
+    const fetched =
+      querySlugs.length > 0
+        ? await prisma.activity.findMany({
+            where: {
+              slug: { in: querySlugs, notIn: ["height", "weight"] },
+              OR: [{ schoolId: null }, { schoolId }],
+            },
+            include: { category: true },
+          })
+        : [];
+    const bySlug = new Map(fetched.map((a) => [a.slug, a]));
+    for (const ranked of rankedSlugList) {
+      const candidates = await resolveRankedSlugToActivitySlugs(schoolId, ranked);
+      const act = candidates.map((s) => bySlug.get(s)).find(Boolean);
+      if (act) lineupActs.push({ rankedSlug: ranked, act });
+    }
+  } else if (!opts?.classId && !opts?.subgroupId) {
+    const legacy = await prisma.activity.findMany({
+      where: {
+        OR: [{ schoolId: null }, { schoolId }],
+        slug: { notIn: ["height", "weight"] },
+      },
+      include: { category: true },
+      orderBy: { name: "asc" },
+    });
+    for (const act of legacy) {
+      lineupActs.push({ rankedSlug: act.slug, act });
+    }
   }
 
-  const activities = await prisma.activity.findMany({
-    where: {
-      OR: [{ schoolId: null }, { schoolId }],
-      ...(rankedFilter
-        ? { slug: { in: rankedFilter } }
-        : { slug: { notIn: ["height", "weight"] } }),
-    },
-    include: { category: true },
-    orderBy: { name: "asc" },
-  });
+  const activityIdsByRanked = new Map<string, string[]>();
+  for (const { rankedSlug, act } of lineupActs) {
+    const aliasSlugs = [
+      ...new Set([
+        ...markAliasSlugsFor(rankedSlug),
+        ...(await resolveRankedSlugToActivitySlugs(schoolId, rankedSlug)),
+      ]),
+    ];
+    const aliasActivities = await prisma.activity.findMany({
+      where: { slug: { in: aliasSlugs } },
+      select: { id: true },
+    });
+    activityIdsByRanked.set(
+      rankedSlug,
+      aliasActivities.length > 0 ? aliasActivities.map((a) => a.id) : [act.id]
+    );
+  }
 
-  const results = await prisma.performanceResult.findMany({
-    where: {
-      studentId: { in: athletes.map((a) => a.id) },
-      status: "COMPLETED",
-      isBestAttempt: true,
-      resultValue: { not: null },
-      ...(currentYear ? { schoolYearId: currentYear.id } : {}),
-    },
-    orderBy: { testingDate: "desc" },
-  });
+  const allActivityIds = [...new Set([...activityIdsByRanked.values()].flat())];
 
-  // Best result per athlete per KPI (isBestAttempt is per-session best).
+  const results =
+    allActivityIds.length > 0
+      ? await prisma.performanceResult.findMany({
+          where: {
+            studentId: { in: athletes.map((a) => a.id) },
+            activityId: { in: allActivityIds },
+            status: "COMPLETED",
+            isBestAttempt: true,
+            resultValue: { not: null },
+            ...(currentYear ? { schoolYearId: currentYear.id } : {}),
+          },
+          orderBy: { testingDate: "desc" },
+        })
+      : [];
+
+  const rankedSlugForActivityId = new Map<string, string>();
+  for (const [rankedSlug, ids] of activityIdsByRanked) {
+    for (const id of ids) rankedSlugForActivityId.set(id, rankedSlug);
+  }
+
+  // Best result per athlete per ranked KPI (aliases share one mark).
   const best = new Map<string, { value: number; display: string }>();
   for (const r of results) {
     if (r.resultValue == null) continue;
-    const key = `${r.studentId}:${r.activityId}`;
-    const act = activities.find((a) => a.id === r.activityId);
-    if (!act) continue;
+    const rankedSlug = rankedSlugForActivityId.get(r.activityId);
+    if (!rankedSlug) continue;
+    const row = lineupActs.find((l) => l.rankedSlug === rankedSlug);
+    if (!row) continue;
+    const { act } = row;
+    const key = `${r.studentId}:${rankedSlug}`;
     const lower = act.scoringDirection === "LOWER_BETTER";
     const existing = best.get(key);
     if (existing && (lower ? existing.value <= r.resultValue : existing.value >= r.resultValue)) {
@@ -442,14 +501,16 @@ export async function getAthleteLineup(
     }
     best.set(key, {
       value: r.resultValue,
-      display: r.displayValue ?? formatActivityValue(r.resultValue, act.unit, act.slug),
+      display:
+        r.displayValue ??
+        formatActivityValue(r.resultValue, act.unit, rankedSlug, act.name),
     });
   }
 
-  const events: LineupEvent[] = activities.map((act) => {
+  const events: LineupEvent[] = lineupActs.map(({ rankedSlug, act }) => {
     const marks: LineupEvent["marks"] = {};
     for (const a of athletes) {
-      const hit = best.get(`${a.id}:${act.id}`);
+      const hit = best.get(`${a.id}:${rankedSlug}`);
       marks[a.id] = hit
         ? { value: hit.value, display: hit.display }
         : { value: null, display: "—" };
@@ -457,7 +518,7 @@ export async function getAthleteLineup(
     return {
       activityId: act.id,
       activityName: act.name,
-      activitySlug: act.slug,
+      activitySlug: rankedSlug,
       categorySlug: act.category.slug,
       unit: act.unit,
       direction: act.scoringDirection as ScoringDirection,

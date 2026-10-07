@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { UserPlus } from "lucide-react";
 import { DEFAULT_CLASS_YEAR, GRADE_LEVELS } from "@/lib/grades";
 import { cn } from "@/lib/utils";
@@ -17,6 +17,29 @@ export function AddStudentForm({
   const [open, setOpen] = useState(false);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [classOptions, setClassOptions] = useState(classes);
+
+  useEffect(() => {
+    setClassOptions(classes);
+  }, [classes]);
+
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    void (async () => {
+      const res = await fetch("/api/classes");
+      if (!res.ok || cancelled) return;
+      const data = (await res.json()) as {
+        classes?: { id: string; name: string; period: string | null }[];
+      };
+      if (!cancelled && data.classes) {
+        setClassOptions(data.classes);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -139,7 +162,7 @@ export function AddStudentForm({
           Class hour
           <select name="classId" defaultValue="" className="mt-1 w-full rounded-lg border border-card-border bg-background px-3 py-2">
             <option value="">None</option>
-            {classes.map((c) => (
+            {classOptions.map((c) => (
               <option key={c.id} value={c.id}>
                 {[c.period, c.name].filter(Boolean).join(" · ")}
               </option>

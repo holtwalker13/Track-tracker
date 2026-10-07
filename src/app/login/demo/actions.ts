@@ -6,7 +6,7 @@ import {
   resolveDemoAdminUser,
   resolveDemoStudentUser,
 } from "@/lib/auth/demo-passcode-login";
-import { establishSessionFromUser } from "@/app/login/actions";
+import { establishSessionFromUser } from "@/app/login/session-from-user";
 
 export async function demoPasscodeLoginAction(formData: FormData) {
   const mode = String(formData.get("mode") ?? "");

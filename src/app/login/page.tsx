@@ -1,4 +1,3 @@
-import { Suspense } from "react";
 import { Card } from "@/components/ui/card";
 import { loginAction } from "./actions";
 import { LoginPageFooter } from "@/components/auth/login-page-footer";
@@ -63,13 +62,5 @@ export default async function LoginPage({
   searchParams: Promise<{ error?: string; next?: string }>;
 }) {
   const sp = await searchParams;
-  return (
-    <Suspense
-      fallback={
-        <div className="flex min-h-screen items-center justify-center text-muted">Loading…</div>
-      }
-    >
-      <LoginForm error={sp.error} next={sp.next} />
-    </Suspense>
-  );
+  return <LoginForm error={sp.error} next={sp.next} />;
 }

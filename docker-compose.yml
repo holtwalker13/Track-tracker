@@ -6,8 +6,8 @@ services:
       POSTGRES_PASSWORD: sap
       POSTGRES_DB: sap
     ports:
-      # Host port 5433 avoids clashing with other local Postgres on 5432
-      - "5433:5432"
+      # Host port 5434 avoids clashing with local Postgres (5432) and other stacks (5433)
+      - "5434:5432"
     volumes:
       - sap-pg:/var/lib/postgresql/data
     healthcheck:

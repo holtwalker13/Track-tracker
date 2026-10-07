@@ -11,15 +11,20 @@ type ClassTag = { id: string; name: string; period: string | null };
 function MedalScopeControlsInner({
   classes,
   defaultBracket,
+  defaultClassId = null,
 }: {
   classes: ClassTag[];
   defaultBracket: AgeBracketId;
+  /** Server-resolved medal class when URL has no classId (matches medal card data). */
+  defaultClassId?: string | null;
 }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  const classId = searchParams.get("classId") ?? "";
+  const classIdParam = searchParams.get("classId");
+  const classId =
+    classIdParam !== null ? classIdParam : (defaultClassId ?? "");
   const bracketParam = searchParams.get("bracket");
   const bracket =
     AGE_BRACKETS.some((b) => b.id === bracketParam) ? (bracketParam as AgeBracketId) : defaultBracket;
@@ -120,6 +125,7 @@ function MedalScopeControlsInner({
 export function MedalScopeControls(props: {
   classes: ClassTag[];
   defaultBracket: AgeBracketId;
+  defaultClassId?: string | null;
 }) {
   return (
     <Suspense fallback={<div className="mb-4 h-24 animate-pulse rounded-xl bg-card/40" />}>

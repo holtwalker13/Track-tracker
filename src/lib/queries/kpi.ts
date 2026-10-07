@@ -145,7 +145,11 @@ export async function getStudentSprintPotential(
   }
   // Strict: only the governing set's ranked KPIs count (empty set = none).
   const rankedSlugList = kpiSetId
-    ? await getRankedMetricSlugs(kpiSetId, student.schoolId)
+    ? await getRankedMetricSlugs(kpiSetId, {
+        schoolId: student.schoolId,
+        gender: student.gender,
+        ageBracket: bracket,
+      })
     : [];
   const querySlugs = expandSlugsWithMarkAliases(rankedSlugList);
 

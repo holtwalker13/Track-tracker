@@ -632,13 +632,28 @@ export async function getKpiSetBands(
  * demand so every view agrees). Only ranked KPIs are returned — exactly what
  * the KPI tab shows as ranked for that scope.
  */
+const CATALOG_KPI_SLUGS = new Set<string>(KPI_METRIC_META.map((m) => m.slug));
+
+export type RankedMetricSlugOpts = {
+  schoolId?: string | null;
+  gender?: string | null;
+  ageBracket?: string;
+};
+
 export async function getRankedKpiSlugsForSchool(
   schoolId: string,
   classId?: string | null,
-  subgroupId?: string | null
+  subgroupId?: string | null,
+  medalOpts?: Pick<RankedMetricSlugOpts, "gender" | "ageBracket">
 ): Promise<string[]> {
   const setId = await resolveKpiSetForCompeteScope(schoolId, classId, subgroupId);
-  if (setId) return getRankedMetricSlugs(setId, schoolId);
+  if (setId) {
+    return getRankedMetricSlugs(setId, {
+      schoolId,
+      gender: medalOpts?.gender,
+      ageBracket: medalOpts?.ageBracket,
+    });
+  }
 
   // Class/subgroup scope with no dedicated set → nothing ranked (matches KPI tab).
   if (classId || subgroupId) return [];
@@ -686,7 +701,12 @@ export async function resolveKpiSetForCompeteScope(
 export async function getRankedKpiSlugsForStudent(
   schoolId: string,
   studentId: string,
-  opts: { classId?: string | null; subgroupId?: string | null } = {}
+  opts: {
+    classId?: string | null;
+    subgroupId?: string | null;
+    gender?: string | null;
+    ageBracket?: string;
+  } = {}
 ): Promise<string[]> {
   // When a medal class is explicitly selected, use the same class/subgroup scope
   // as getStudentSprintPotential / getAthleteMedalState — not the athlete's
@@ -700,35 +720,76 @@ export async function getRankedKpiSlugsForStudent(
       return getRankedKpiSlugsForSchool(
         schoolId,
         opts.classId,
-        opts.subgroupId ?? null
+        opts.subgroupId ?? null,
+        { gender: opts.gender, ageBracket: opts.ageBracket }
       );
     }
   }
   const setId = await resolveKpiSetForStudentContext(schoolId, studentId, opts);
-  if (setId) return getRankedMetricSlugs(setId, schoolId);
-  return getRankedKpiSlugsForSchool(schoolId, null, null);
+  if (setId) {
+    return getRankedMetricSlugs(setId, {
+      schoolId,
+      gender: opts.gender,
+      ageBracket: opts.ageBracket,
+    });
+  }
+  return getRankedKpiSlugsForSchool(schoolId, null, null, {
+    gender: opts.gender,
+    ageBracket: opts.ageBracket,
+  });
 }
 
 /**
  * Ranked metric slugs for a set (leaderboards, medal standard, compare).
- * When schoolId is passed, only slugs the KPI tab can show are included
- * (same library as benchmarks page — hidden KPIs/lifts stay off medals).
+ * With schoolId, only KPI-tab-visible slugs count. With gender + ageBracket,
+ * built-in catalog KPIs (40-yard dash, 20 m start, …) require a coach-set
+ * target for that band — inherited ranked flags alone are not enough.
  */
 export async function getRankedMetricSlugs(
   kpiSetId: string,
-  schoolId?: string | null
+  opts?: RankedMetricSlugOpts | string | null
 ): Promise<string[]> {
+  const medalOpts: RankedMetricSlugOpts =
+    typeof opts === "string" || opts == null ? { schoolId: opts ?? undefined } : opts;
+
   const rows = await prisma.kpiSetMetric.findMany({
     where: { kpiSetId, ranked: true },
     orderBy: [{ sortOrder: "asc" }, { metricSlug: "asc" }],
     select: { metricSlug: true },
   });
-  let slugs = rows.map((r) => r.metricSlug);
+  const slugs = rows.map((r) => r.metricSlug);
+  const schoolId = medalOpts.schoolId;
   if (!schoolId) return slugs;
 
-  const library = await listSchoolKpiLibrary(schoolId);
+  const g: "F" | "M" = medalOpts.gender === "M" ? "M" : "F";
+  const ageBracket =
+    medalOpts.ageBracket && isAgeBracketId(medalOpts.ageBracket)
+      ? medalOpts.ageBracket
+      : DEFAULT_AGE_BRACKET;
+
+  const [library, targetsInBand] = await Promise.all([
+    listSchoolKpiLibrary(schoolId),
+    medalOpts.gender != null && medalOpts.ageBracket
+      ? prisma.kpiSetTarget.findMany({
+          where: { kpiSetId, gender: g, ageBracket },
+          select: { metricSlug: true, target: true },
+        })
+      : Promise.resolve([]),
+  ]);
+
   const visible = new Set(library.map((a) => a.slug));
-  return slugs.filter((slug) => visible.has(slug));
+  const customSlugs = new Set(library.filter((a) => a.custom).map((a) => a.slug));
+  const slugsWithTargetInBand = new Set(
+    targetsInBand.filter((t) => t.target != null).map((t) => t.metricSlug)
+  );
+  const applyCatalogTargetRule = medalOpts.gender != null && medalOpts.ageBracket != null;
+
+  return slugs.filter((slug) => {
+    if (!visible.has(slug)) return false;
+    if (!applyCatalogTargetRule) return true;
+    if (customSlugs.has(slug) || !CATALOG_KPI_SLUGS.has(slug)) return true;
+    return slugsWithTargetInBand.has(slug);
+  });
 }
 
 /**

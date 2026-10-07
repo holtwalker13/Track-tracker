@@ -60,13 +60,17 @@ export async function getAthleteMedalState(
   // set, else school default). Athlete profile / student dashboard: athlete context
   // unless an explicit class is selected.
   let kpiSetId: string | null;
-  if (competeScope || opts.classId) {
+  if (competeScope) {
     const { resolveKpiSetForCompeteScope } = await import("@/lib/services/kpi-sets");
     kpiSetId = await resolveKpiSetForCompeteScope(
       student.schoolId,
       opts.classId ?? null,
       opts.subgroupId ?? null
     );
+  } else if (opts.classId) {
+    const { resolveKpiSetForMedalScope } = await import("@/lib/services/kpi-sets");
+    kpiSetId = await resolveKpiSetForMedalScope(student.schoolId, studentId, opts);
+    if (!kpiSetId) kpiSetId = await ensureSchoolDefaultKpiSetId(student.schoolId);
   } else {
     kpiSetId = await resolveKpiSetForStudentContext(student.schoolId, studentId, {
       subgroupId: opts.subgroupId,

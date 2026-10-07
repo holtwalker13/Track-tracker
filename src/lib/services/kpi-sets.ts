@@ -632,7 +632,6 @@ export async function getKpiSetBands(
  * demand so every view agrees). Only ranked KPIs are returned — exactly what
  * the KPI tab shows as ranked for that scope.
  */
-const CATALOG_KPI_SLUGS = new Set<string>(KPI_METRIC_META.map((m) => m.slug));
 
 export type RankedMetricSlugOpts = {
   schoolId?: string | null;
@@ -660,6 +659,45 @@ export async function getRankedKpiSlugsForSchool(
 
   // School-wide with no default set yet — legacy catalog fallback.
   return KPI_METRIC_META.map((m) => m.slug);
+}
+
+export type MedalScopeResolveOpts = {
+  classId?: string | null;
+  /** Omit to use the athlete's subgroup in that class; null = whole-class set; string = that subgroup. */
+  subgroupId?: string | null;
+};
+
+/**
+ * KPI set for medal standard / student dashboard / athlete profile.
+ * Compete views pass competeMode so class+null subgroup is whole-class only.
+ * Athlete views: class selected without `subgroupId` in opts → enrolled subgroup's set (training subclass).
+ */
+export async function resolveKpiSetForMedalScope(
+  schoolId: string,
+  studentId: string | null,
+  opts: MedalScopeResolveOpts,
+  competeMode = false
+): Promise<string | null> {
+  if (competeMode || !studentId) {
+    return resolveKpiSetForCompeteScope(
+      schoolId,
+      opts.classId ?? null,
+      opts.subgroupId ?? null
+    );
+  }
+  if (!opts.classId) {
+    return resolveKpiSetForStudentContext(schoolId, studentId, {
+      subgroupId: opts.subgroupId,
+    });
+  }
+  if ("subgroupId" in opts) {
+    return resolveKpiSetForCompeteScope(
+      schoolId,
+      opts.classId,
+      opts.subgroupId ?? null
+    );
+  }
+  return resolveKpiSetForStudentContext(schoolId, studentId, { classId: opts.classId });
 }
 
 /**
@@ -717,12 +755,15 @@ export async function getRankedKpiSlugsForStudent(
       select: { classId: true },
     });
     if (enrolled) {
-      return getRankedKpiSlugsForSchool(
-        schoolId,
-        opts.classId,
-        opts.subgroupId ?? null,
-        { gender: opts.gender, ageBracket: opts.ageBracket }
-      );
+      const setId = await resolveKpiSetForMedalScope(schoolId, studentId, opts);
+      if (setId) {
+        return getRankedMetricSlugs(setId, {
+          schoolId,
+          gender: opts.gender,
+          ageBracket: opts.ageBracket,
+        });
+      }
+      return [];
     }
   }
   const setId = await resolveKpiSetForStudentContext(schoolId, studentId, opts);
@@ -741,9 +782,7 @@ export async function getRankedKpiSlugsForStudent(
 
 /**
  * Ranked metric slugs for a set (leaderboards, medal standard, compare).
- * With schoolId, only KPI-tab-visible slugs count. With gender + ageBracket,
- * built-in catalog KPIs (40-yard dash, 20 m start, …) require a coach-set
- * target for that band — inherited ranked flags alone are not enough.
+ * Matches the coach KPI tab: metrics with ranked=true in the set, minus hidden library KPIs.
  */
 export async function getRankedMetricSlugs(
   kpiSetId: string,
@@ -761,35 +800,9 @@ export async function getRankedMetricSlugs(
   const schoolId = medalOpts.schoolId;
   if (!schoolId) return slugs;
 
-  const g: "F" | "M" = medalOpts.gender === "M" ? "M" : "F";
-  const ageBracket =
-    medalOpts.ageBracket && isAgeBracketId(medalOpts.ageBracket)
-      ? medalOpts.ageBracket
-      : DEFAULT_AGE_BRACKET;
-
-  const [library, targetsInBand] = await Promise.all([
-    listSchoolKpiLibrary(schoolId),
-    medalOpts.gender != null && medalOpts.ageBracket
-      ? prisma.kpiSetTarget.findMany({
-          where: { kpiSetId, gender: g, ageBracket },
-          select: { metricSlug: true, target: true },
-        })
-      : Promise.resolve([]),
-  ]);
-
+  const library = await listSchoolKpiLibrary(schoolId);
   const visible = new Set(library.map((a) => a.slug));
-  const customSlugs = new Set(library.filter((a) => a.custom).map((a) => a.slug));
-  const slugsWithTargetInBand = new Set(
-    targetsInBand.filter((t) => t.target != null).map((t) => t.metricSlug)
-  );
-  const applyCatalogTargetRule = medalOpts.gender != null && medalOpts.ageBracket != null;
-
-  return slugs.filter((slug) => {
-    if (!visible.has(slug)) return false;
-    if (!applyCatalogTargetRule) return true;
-    if (customSlugs.has(slug) || !CATALOG_KPI_SLUGS.has(slug)) return true;
-    return slugsWithTargetInBand.has(slug);
-  });
+  return slugs.filter((slug) => visible.has(slug));
 }
 
 /**

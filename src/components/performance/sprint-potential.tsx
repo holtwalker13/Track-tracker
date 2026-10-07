@@ -38,12 +38,19 @@ function KpiScoreMeter({
           {tested}
         </p>
       </div>
-      <div className="flex items-center gap-1.5" aria-hidden>
+      <div
+        className={cn(
+          "flex flex-wrap items-center gap-1",
+          total > 8 ? "gap-0.5" : "gap-1.5"
+        )}
+        aria-hidden
+      >
         {Array.from({ length: total }, (_, i) => (
           <span
             key={i}
             className={cn(
-              "h-2.5 w-2.5 rounded-full ring-1 ring-white/10",
+              "rounded-full ring-1 ring-white/10",
+              total > 8 ? "h-2 w-2" : "h-2.5 w-2.5",
               i < filled ? fillClass : "bg-background"
             )}
           />
@@ -129,7 +136,7 @@ export function SprintPotentialCard({
       )}
 
       {target && (
-        <div className="mt-4 grid grid-cols-2 gap-2 sm:mt-5 sm:gap-3">
+        <div className="mt-4 grid grid-cols-2 gap-2 sm:mt-5 sm:grid-cols-3 sm:gap-3 lg:grid-cols-4">
           {target.rows.map((row) => {
             const meta = KPI_METRIC_META.find((m) => m.slug === row.slug);
             const unit = meta?.unit ?? "";

@@ -129,17 +129,11 @@ export async function getStudentSprintPotential(
   const window: MedalTimeWindow = opts.window === "week" ? "week" : "all";
 
   const {
-    resolveKpiSetForCompeteScope,
-    resolveKpiSetForStudentContext,
+    resolveKpiSetForMedalScope,
     getRankedMetricSlugs,
     ensureSchoolDefaultKpiSetId,
   } = await import("@/lib/services/kpi-sets");
-  // Explicit class scope uses only that class/subgroup KPI set (no school default).
-  let kpiSetId = opts.classId
-    ? await resolveKpiSetForCompeteScope(student.schoolId, opts.classId, opts.subgroupId)
-    : await resolveKpiSetForStudentContext(student.schoolId, studentId, {
-        subgroupId: opts.subgroupId,
-      });
+  let kpiSetId = await resolveKpiSetForMedalScope(student.schoolId, studentId, opts);
   if (!kpiSetId && !opts.classId) {
     kpiSetId = await ensureSchoolDefaultKpiSetId(student.schoolId);
   }

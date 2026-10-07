@@ -47,6 +47,7 @@ export default async function StudentDashboardPage({
     rank?: string;
     scope?: string;
     classId?: string;
+    subgroupId?: string;
     bracket?: string;
     window?: string;
   }>;
@@ -117,6 +118,40 @@ export default async function StudentDashboardPage({
         ? null
         : (latestMedalClassRow?.classId ?? enrolledClassIds[0] ?? null);
 
+  const subgroupRows =
+    enrolledClassIds.length > 0
+      ? await prisma.classSubgroup.findMany({
+          where: { classId: { in: enrolledClassIds } },
+          orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+          select: { id: true, name: true, classId: true },
+        })
+      : [];
+  const subgroupsByClassId: Record<string, { id: string; name: string }[]> = {};
+  for (const sg of subgroupRows) {
+    (subgroupsByClassId[sg.classId] ??= []).push({ id: sg.id, name: sg.name });
+  }
+  const urlSubgroupId = sp.subgroupId?.trim() || null;
+  const hasSubgroupParam = sp.subgroupId !== undefined;
+  const membershipInMedalClass = medalClassId
+    ? await prisma.classSubgroupMember.findFirst({
+        where: { studentId, subgroup: { classId: medalClassId } },
+        select: { subgroupId: true },
+      })
+    : null;
+  const defaultSubgroupId = membershipInMedalClass?.subgroupId ?? null;
+  const medalSubgroupScope = !medalClassId
+    ? {}
+    : hasSubgroupParam
+      ? {
+          classId: medalClassId,
+          subgroupId:
+            urlSubgroupId &&
+            (subgroupsByClassId[medalClassId] ?? []).some((s) => s.id === urlSubgroupId)
+              ? urlSubgroupId
+              : null,
+        }
+      : { classId: medalClassId };
+
   const prs = await prisma.performanceResult.findMany({
     where: {
       studentId,
@@ -149,7 +184,7 @@ export default async function StudentDashboardPage({
   const sprint = await getStudentSprintPotential(studentId, {
     ageBracket: bracket,
     window,
-    classId: medalClassId,
+    ...medalSubgroupScope,
   });
   const peerLeaders = await getStudentPeerLeaders(studentId, {
     ageBracket: bracket,
@@ -158,7 +193,7 @@ export default async function StudentDashboardPage({
   });
   // Same ranked KPI list as the medal standard card (class scope when a medal class is selected).
   const rankedSlugs = await getRankedKpiSlugsForStudent(schoolId, studentId, {
-    classId: medalClassId,
+    ...medalSubgroupScope,
     gender: student.gender,
     ageBracket: bracket,
   });
@@ -220,6 +255,8 @@ export default async function StudentDashboardPage({
           classes={classTags}
           defaultBracket={defaultBracket}
           defaultClassId={medalClassId}
+          subgroupsByClassId={subgroupsByClassId}
+          defaultSubgroupId={defaultSubgroupId}
         />
         <SprintPotentialCard
           potential={sprint}

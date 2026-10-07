@@ -14,6 +14,7 @@ function MedalScopeControlsInner({
   defaultClassId = null,
   subgroupsByClassId = {},
   defaultSubgroupId = null,
+  hideClassAndSubgroup = false,
 }: {
   classes: ClassTag[];
   defaultBracket: AgeBracketId;
@@ -22,6 +23,8 @@ function MedalScopeControlsInner({
   subgroupsByClassId?: Record<string, { id: string; name: string }[]>;
   /** Athlete's subgroup in the selected class when URL has no subgroupId. */
   defaultSubgroupId?: string | null;
+  /** Coach profile uses a separate class/subgroup picker — only age bracket + time here. */
+  hideClassAndSubgroup?: boolean;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -56,7 +59,7 @@ function MedalScopeControlsInner({
 
   return (
     <div className="mb-3 space-y-2.5 sm:mb-4 sm:space-y-3">
-      {classes.length > 0 ? (
+      {!hideClassAndSubgroup && classes.length > 0 ? (
         <label className="block text-sm">
           <span className="text-xs font-semibold uppercase tracking-wider text-muted">
             Medal class
@@ -78,7 +81,7 @@ function MedalScopeControlsInner({
         </label>
       ) : null}
 
-      {classId && subgroups.length > 0 ? (
+      {!hideClassAndSubgroup && classId && subgroups.length > 0 ? (
         <label className="block text-sm">
           <span className="text-xs font-semibold uppercase tracking-wider text-muted">
             KPI group
@@ -164,6 +167,7 @@ export function MedalScopeControls(props: {
   defaultClassId?: string | null;
   subgroupsByClassId?: Record<string, { id: string; name: string }[]>;
   defaultSubgroupId?: string | null;
+  hideClassAndSubgroup?: boolean;
 }) {
   return (
     <Suspense fallback={<div className="mb-4 h-24 animate-pulse rounded-xl bg-card/40" />}>

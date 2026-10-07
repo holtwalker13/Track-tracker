@@ -6,20 +6,41 @@ import { Card, CardTitle } from "@/components/ui/card";
 import { COACH_NAV } from "@/lib/navigation";
 import { requireSchoolSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
-import { getCategoryRadar } from "@/lib/queries/student";
+import {
+  getCategoryRadar,
+  getStudentScorecard,
+  getProgressByTestDate,
+} from "@/lib/queries/student";
 import { getLatestResultsGrouped, getScholasticAttemptLog } from "@/lib/queries/attempt-log";
-import { getStudentSprintPotential } from "@/lib/queries/kpi";
+import {
+  getStudentClassTags,
+  getStudentPeerLeaders,
+  getStudentSprintPotential,
+} from "@/lib/queries/kpi";
 import { getStudentMarksWindow } from "@/lib/queries/marks-window";
-import { getProgressByTestDate } from "@/lib/queries/student";
 import { getStudentActivityRanks } from "@/lib/queries/coach";
 import { RadarProfile } from "@/components/charts/radar-profile";
 import { AthleteProgressSection } from "@/components/performance/athlete-progress-section";
 import { AthleteResultsHistory } from "@/components/performance/athlete-results-history";
 import { SprintPotentialCard } from "@/components/performance/sprint-potential";
+import { MedalScopeControls } from "@/components/performance/medal-scope-controls";
+import { PeerLeadersCard } from "@/components/performance/peer-leaders-card";
+import {
+  ClassYearRankingCard,
+  LatestPersonalRecordsCard,
+  PeriodLeadersCard,
+  ScorecardGrid,
+} from "@/components/performance/athlete-dashboard-cards";
 import { GamificationSummaryCard } from "@/components/gamification/gamification-summary-card";
-import { getGamificationSummary } from "@/lib/gamification/dynamic-accolades";
-import { getRankedKpiSlugsForSchool } from "@/lib/services/kpi-sets";
-import { ageBracketForClassYear } from "@/lib/age-brackets";
+import {
+  getGamificationSummary,
+  getStudentDynamicAccolades,
+  recomputeSchoolDynamicAccolades,
+} from "@/lib/gamification/dynamic-accolades";
+import { getAccoladeProgressForStudent } from "@/lib/gamification/engine";
+import { ensureAccoladeDefinitions } from "@/lib/gamification/seed-accolades";
+import { getRankedKpiSlugsForStudent } from "@/lib/services/kpi-sets";
+import { ageBracketForClassYear, isAgeBracketId } from "@/lib/age-brackets";
 import { classYearLabel, DEFAULT_CLASS_YEAR } from "@/lib/grades";
 import { classSectionLabel, isGraduatingClassName } from "@/lib/periods";
 import { AthleteProfileCard } from "@/components/athletes/athlete-profile-card";
@@ -27,6 +48,7 @@ import { genderFullLabel } from "@/lib/gender";
 import { leaderboardHighlightFromSearch } from "@/lib/leaderboard-link";
 import { StudentLoginLinkButton } from "@/components/athletes/student-login-link-button";
 import { studentLoginStatusFromRow } from "@/lib/services/student-login-invite";
+import { getStudentLeaderboard } from "@/lib/queries/leaderboard-student";
 
 export default async function StudentProfilePage({
   params,
@@ -42,6 +64,8 @@ export default async function StudentProfilePage({
     scope?: string;
     classId?: string;
     subgroupId?: string;
+    bracket?: string;
+    window?: string;
   }>;
 }) {
   const session = await requireSchoolSession();
@@ -66,6 +90,7 @@ export default async function StudentProfilePage({
   const schoolYearId = enrollment?.schoolYearId;
 
   const highlight = leaderboardHighlightFromSearch(sp);
+  const window = sp.window === "week" ? "week" : "all";
   const catalog = await prisma.activity.findMany({
     where: { slug: { notIn: ["height", "weight"] } },
     orderBy: { name: "asc" },
@@ -87,9 +112,6 @@ export default async function StudentProfilePage({
     select: { id: true, name: true, period: true },
   });
 
-  // Default the profile's class context to the enrolled class whose KPI set was
-  // most recently configured — the same set the athlete-aware resolver shows —
-  // so the medal standard matches the KPIs tab for that class.
   const enrolledClassIds = enrolledClasses.map((c) => c.id);
   const latestSetRow = enrolledClassIds.length
     ? await prisma.kpiSet.findFirst({
@@ -99,15 +121,12 @@ export default async function StudentProfilePage({
       })
     : null;
 
-  // The picker lists the athlete's enrolled classes (or every school class
-  // when the athlete is not enrolled anywhere yet).
   const pickerClasses = enrolledClasses.length > 0 ? enrolledClasses : schoolClasses;
   const profileClassId =
     sp.classId && pickerClasses.some((c) => c.id === sp.classId)
       ? sp.classId
       : (latestSetRow?.classId ?? enrolledClasses[0]?.id ?? null);
 
-  // Subgroups for the class picker: coaches can view subgroup-level KPIs.
   const pickerClassIds = pickerClasses.map((c) => c.id);
   const subgroupRows = pickerClassIds.length
     ? await prisma.classSubgroup.findMany({
@@ -120,39 +139,133 @@ export default async function StudentProfilePage({
   for (const sg of subgroupRows) {
     (subgroupsByClassId[sg.classId] ??= []).push({ id: sg.id, name: sg.name });
   }
+
+  const urlSubgroupId = sp.subgroupId?.trim() || null;
+  const hasSubgroupParam = sp.subgroupId !== undefined;
   const profileSubgroupId =
-    sp.subgroupId &&
+    hasSubgroupParam &&
     profileClassId &&
-    (subgroupsByClassId[profileClassId] ?? []).some((s) => s.id === sp.subgroupId)
-      ? sp.subgroupId
+    urlSubgroupId &&
+    (subgroupsByClassId[profileClassId] ?? []).some((s) => s.id === urlSubgroupId)
+      ? urlSubgroupId
       : null;
 
-  // Rank chips use the same class/subgroup-scoped set as the medal standard card.
+  const membershipInMedalClass = profileClassId
+    ? await prisma.classSubgroupMember.findFirst({
+        where: { studentId: id, subgroup: { classId: profileClassId } },
+        select: { subgroupId: true },
+      })
+    : null;
+  const defaultSubgroupId = membershipInMedalClass?.subgroupId ?? null;
+
+  const medalSubgroupScope = !profileClassId
+    ? {}
+    : hasSubgroupParam
+      ? {
+          classId: profileClassId,
+          subgroupId:
+            urlSubgroupId &&
+            (subgroupsByClassId[profileClassId] ?? []).some((s) => s.id === urlSubgroupId)
+              ? urlSubgroupId
+              : null,
+        }
+      : { classId: profileClassId };
+
   const schoolYearEnd =
     enrollment?.schoolYear?.endDate?.getFullYear() ?? new Date().getFullYear();
-  const profileAgeBracket = ageBracketForClassYear(grade, schoolYearEnd);
-  const rankedSlugs = await getRankedKpiSlugsForSchool(
-    session.schoolId,
-    profileClassId,
-    profileSubgroupId,
-    { gender: student.gender, ageBracket: profileAgeBracket }
-  );
+  const defaultBracket = ageBracketForClassYear(grade, schoolYearEnd);
+  const bracket =
+    sp.bracket && isAgeBracketId(sp.bracket) ? sp.bracket : defaultBracket;
+
+  await ensureAccoladeDefinitions();
+  await recomputeSchoolDynamicAccolades(session.schoolId, "SEMESTER").catch(() => undefined);
 
   const gamification = await getGamificationSummary(id);
+  const accoladeProgress = await getAccoladeProgressForStudent(id);
+  const almostThere = accoladeProgress
+    .filter(
+      (a) =>
+        !a.earned &&
+        a.progressTarget != null &&
+        a.progressCurrent != null &&
+        a.progressTarget > a.progressCurrent &&
+        a.progressCurrent / a.progressTarget >= 0.5
+    )
+    .slice(0, 3)
+    .map((a) => ({
+      slug: a.slug,
+      name: a.name,
+      category: a.category,
+      progressCurrent: a.progressCurrent!,
+      progressTarget: a.progressTarget!,
+      progressLabel: a.progressLabel ?? "",
+    }));
 
-  const [radar, latestGrouped, attemptLog, sprint, marksWindow, progress, activityRanks] =
-    await Promise.all([
-      getCategoryRadar(id, grade),
-      getLatestResultsGrouped(id, schoolYearId),
-      getScholasticAttemptLog(id),
-      getStudentSprintPotential(id, { classId: profileClassId, subgroupId: profileSubgroupId }),
-      getStudentMarksWindow(id, sp.from, sp.to),
-      getProgressByTestDate(id, activitySlug),
-      getStudentActivityRanks(student.schoolId, id, rankedSlugs, {
-        gender: student.gender ?? undefined,
-        scope: "school",
-      }),
-    ]);
+  const dynamicAccolades = await getStudentDynamicAccolades(id, session.schoolId);
+  const classTags = await getStudentClassTags(id);
+  const scorecard = await getStudentScorecard(id, grade);
+
+  const rankedSlugs = await getRankedKpiSlugsForStudent(session.schoolId, id, {
+    ...medalSubgroupScope,
+    gender: student.gender,
+    ageBracket: bracket,
+  });
+
+  const prs = await prisma.performanceResult.findMany({
+    where: {
+      studentId: id,
+      isPersonalRecord: true,
+      status: "COMPLETED",
+      isBestAttempt: true,
+    },
+    include: { activity: true },
+    orderBy: { testingDate: "desc" },
+    take: 4,
+  });
+
+  const classYearRanks = await Promise.all(
+    ["vertical-jump", "standing-broad-jump", "40-yard-dash"].map(async (slug) => {
+      const lb = await getStudentLeaderboard(session.schoolId, slug, id, grade);
+      const me = lb.entries.find((e) => e.studentId === id);
+      return {
+        activity: lb.activity.name,
+        rank: me?.rank,
+        total: lb.entries.length,
+      };
+    })
+  );
+
+  const [
+    radar,
+    latestGrouped,
+    attemptLog,
+    sprint,
+    marksWindow,
+    progress,
+    activityRanks,
+    peerLeaders,
+  ] = await Promise.all([
+    getCategoryRadar(id, grade),
+    getLatestResultsGrouped(id, schoolYearId),
+    getScholasticAttemptLog(id),
+    getStudentSprintPotential(id, {
+      ageBracket: bracket,
+      window,
+      ...medalSubgroupScope,
+    }),
+    getStudentMarksWindow(id, sp.from, sp.to),
+    getProgressByTestDate(id, activitySlug),
+    getStudentActivityRanks(session.schoolId, id, rankedSlugs, {
+      gender: student.gender ?? undefined,
+      scope: "school",
+      classId: profileClassId ?? undefined,
+    }),
+    getStudentPeerLeaders(id, {
+      ageBracket: bracket,
+      window,
+      classId: profileClassId,
+    }),
+  ]);
   const ranks = { ...activityRanks };
 
   const fullName = `${student.firstName} ${student.lastName}`;
@@ -207,6 +320,7 @@ export default async function StudentProfilePage({
           selectedClassId={profileClassId ?? null}
           subgroupsByClassId={subgroupsByClassId}
           selectedSubgroupId={profileSubgroupId}
+          defaultSubgroupId={defaultSubgroupId}
         />
       </Suspense>
 
@@ -219,20 +333,46 @@ export default async function StudentProfilePage({
         prCount={gamification.prCount}
         improvementPct={gamification.improvementPct}
         recentAccolades={gamification.recentAccolades}
-        almostThere={[]}
+        almostThere={almostThere}
       />
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <PeriodLeadersCard
+        items={dynamicAccolades.filter(Boolean).map((d) => ({
+          slug: d!.slug,
+          name: d!.name,
+          category: d!.category,
+          periodType: d!.periodType,
+        }))}
+      />
+
+      <div>
+        <MedalScopeControls
+          classes={classTags}
+          defaultBracket={defaultBracket}
+          defaultClassId={profileClassId}
+          subgroupsByClassId={subgroupsByClassId}
+          defaultSubgroupId={defaultSubgroupId}
+          hideClassAndSubgroup
+        />
         <SprintPotentialCard
           potential={sprint}
           ranks={ranks}
           highlightSlug={highlight?.slug}
         />
-        <Card>
-          <CardTitle>Athletic profile</CardTitle>
-          <RadarProfile data={radar} />
-        </Card>
+        <PeerLeadersCard
+          leaders={peerLeaders}
+          windowLabel={window === "week" ? "This week" : "All-time"}
+        />
       </div>
+
+      <Card className="mt-6">
+        <CardTitle>Category strengths</CardTitle>
+        <RadarProfile data={radar} />
+      </Card>
+
+      <ScorecardGrid scorecard={scorecard} />
+      <LatestPersonalRecordsCard prs={prs} />
+      <ClassYearRankingCard gradeLabel={classYearLabel(grade)} ranks={classYearRanks} />
 
       <AthleteProgressSection
         marksWindow={marksWindow}

@@ -27,10 +27,12 @@ import { getRankedKpiSlugsForStudent } from "@/lib/services/kpi-sets";
 import { leaderboardHighlightFromSearch } from "@/lib/leaderboard-link";
 import { ageBracketForClassYear, isAgeBracketId } from "@/lib/age-brackets";
 import { GamificationSummaryCard } from "@/components/gamification/gamification-summary-card";
-import { AccoladeIcon } from "@/components/gamification/accolade-icon";
-import type { AccoladeCategory } from "@/lib/gamification/accolade-definitions";
-import { themeForAccoladeCategory } from "@/lib/gamification/accolade-theme";
-import { cn } from "@/lib/utils";
+import {
+  ClassYearRankingCard,
+  LatestPersonalRecordsCard,
+  PeriodLeadersCard,
+  ScorecardGrid,
+} from "@/components/performance/athlete-dashboard-cards";
 import { getAccoladeProgressForStudent } from "@/lib/gamification/engine";
 import {
   getGamificationSummary,
@@ -228,27 +230,14 @@ export default async function StudentDashboardPage({
         almostThere={almostThere}
       />
 
-      {dynamicAccolades.length > 0 && (
-        <Card className="mt-6 border-sport-gold/30 bg-sport-gold/5">
-          <CardTitle className="text-sport-gold">Period leaders</CardTitle>
-          <ul className="mt-4 space-y-3 text-sm">
-            {dynamicAccolades.map((d) => {
-              if (!d) return null;
-              const cat = d.category as AccoladeCategory;
-              const theme = themeForAccoladeCategory(cat);
-              return (
-                <li key={d.slug} className="flex items-center justify-between gap-3">
-                  <span className="flex items-center gap-2">
-                    <AccoladeIcon slug={d.slug} category={cat} earned size="sm" />
-                    <span className={cn("font-semibold", theme.sectionAccent)}>{d.name}</span>
-                  </span>
-                  <span className="text-muted">{d.periodType.toLowerCase()}</span>
-                </li>
-              );
-            })}
-          </ul>
-        </Card>
-      )}
+      <PeriodLeadersCard
+        items={dynamicAccolades.filter(Boolean).map((d) => ({
+          slug: d!.slug,
+          name: d!.name,
+          category: d!.category,
+          periodType: d!.periodType,
+        }))}
+      />
 
       <div>
         <MedalScopeControls
@@ -274,44 +263,9 @@ export default async function StudentDashboardPage({
         <RadarProfile data={radar} />
       </Card>
 
-      <div className="mt-6 grid gap-4 md:grid-cols-2">
-        {scorecard.map((c) => (
-          <Card key={c.activity.id}>
-            <CardTitle>{c.activity.name}</CardTitle>
-            <p className="mt-2 text-4xl font-bold">{c.display}</p>
-            {c.percentile != null && (
-              <p className="text-accent">{c.percentile}th percentile</p>
-            )}
-            {c.yoy && <p className="text-sm text-muted">{c.yoy}</p>}
-          </Card>
-        ))}
-      </div>
-
-      <Card className="mt-6">
-        <CardTitle>Latest personal records</CardTitle>
-        <ul className="mt-4 space-y-2">
-          {prs.map((p) => (
-            <li key={p.id} className="flex justify-between">
-              <span>{p.activity.name}</span>
-              <span className="font-bold text-success">{p.displayValue}</span>
-            </li>
-          ))}
-        </ul>
-      </Card>
-
-      <Card className="mt-6">
-        <CardTitle>{classYearLabel(currentGrade)} ranking</CardTitle>
-        <ul className="mt-4 space-y-2">
-          {ranks.map((r) => (
-            <li key={r.activity} className="flex justify-between text-sm">
-              <span>{r.activity}</span>
-              <span>
-                {r.rank != null ? `#${r.rank} of ${r.total}` : "—"}
-              </span>
-            </li>
-          ))}
-        </ul>
-      </Card>
+      <ScorecardGrid scorecard={scorecard} />
+      <LatestPersonalRecordsCard prs={prs} />
+      <ClassYearRankingCard gradeLabel={classYearLabel(currentGrade)} ranks={ranks} />
     </AppShell>
   );
 }

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { LoginThemePicker } from "@/components/auth/login-theme-picker";
 
 /** Muted hints and demo passcode entry at the bottom of the login screen. */
 export function LoginPageFooter({ next }: { next?: string }) {
@@ -12,6 +13,7 @@ export function LoginPageFooter({ next }: { next?: string }) {
           here with your email and password.
         </p>
       </div>
+      <LoginThemePicker />
       <div className="mx-auto mt-4 flex max-w-md flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[10px] text-muted/55">
         <Link
           href={`/login/demo/admin${demoQuery}`}

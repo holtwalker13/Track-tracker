@@ -1,4 +1,5 @@
 import { Podium } from "lucide-react";
+import { ThemePicker } from "@/components/theme/theme-picker";
 import { TopNav } from "@/components/layout/top-nav";
 import { SchoolSwitcher } from "@/components/admin/school-switcher";
 import type { NavItem } from "@/lib/navigation";
@@ -101,7 +102,13 @@ export async function AppShell({
                 </div>
               ) : null}
             </div>
-            <TopNav items={items} compact={navCompact || compact} />
+            <div className="flex min-w-0 items-center gap-2 md:gap-3">
+              <ThemePicker className="hidden shrink-0 sm:block" variant="header" />
+              <TopNav items={items} compact={navCompact || compact} />
+            </div>
+          </div>
+          <div className="mt-2 border-t border-card-border/60 pt-2 sm:hidden">
+            <ThemePicker variant="header" />
           </div>
           {showSchoolSwitcher ? (
             <div className="mt-2 border-t border-card-border/60 pt-2 sm:hidden">

@@ -99,10 +99,10 @@ export function calculateAthleteMedal(
 ): AthleteMedalResult {
   const g: "F" | "M" = gender === "M" ? "M" : "F";
   const source = customBands?.length ? customBands : kpiBandsForGender(g);
+  // When callers pass rankedSlugs (including []), never infer from catalog bands —
+  // class-scoped medal views must not resurrect school-default KPIs like 40-yard dash.
   const slugs =
-    rankedSlugs && rankedSlugs.length > 0
-      ? [...rankedSlugs]
-      : rankedSlugsFromBands(source);
+    rankedSlugs != null ? [...rankedSlugs] : rankedSlugsFromBands(source);
 
   const marksBySlug = new Map(marks.map((m) => [m.slug, m.value]));
   const evaluations = source.map((band) =>

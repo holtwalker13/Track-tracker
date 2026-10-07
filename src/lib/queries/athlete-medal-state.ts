@@ -74,7 +74,9 @@ export async function getAthleteMedalState(
     if (!kpiSetId) kpiSetId = await ensureSchoolDefaultKpiSetId(student.schoolId);
   }
   // Strict: only the governing set's ranked KPIs (empty = none ranked).
-  const rankedSlugs = kpiSetId ? await getRankedMetricSlugs(kpiSetId) : [];
+  const rankedSlugs = kpiSetId
+    ? await getRankedMetricSlugs(kpiSetId, student.schoolId)
+    : [];
 
   const querySlugs = expandSlugsWithMarkAliases(rankedSlugs);
   const activities = await prisma.activity.findMany({
@@ -119,12 +121,12 @@ export async function getAthleteMedalState(
   const metricMetaBySlug = metricMetaMapForRanked(rankedSlugs, activitiesBySlug);
   const marks: KpiMark[] = buildRankedKpiMarks(rankedSlugs, rawBestBySlug, activitiesBySlug);
 
-  const custom = await getSchoolKpiBands(
-    student.schoolId,
-    student.gender,
-    bracket,
-    kpiSetId
-  );
+  const classScoped = Boolean(competeScope || opts.classId);
+  const custom = kpiSetId
+    ? await getSchoolKpiBands(student.schoolId, student.gender, bracket, kpiSetId)
+    : classScoped
+      ? []
+      : await getSchoolKpiBands(student.schoolId, student.gender, bracket, null);
 
   const medal = calculateAthleteMedal(
     marks,

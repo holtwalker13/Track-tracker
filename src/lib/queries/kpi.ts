@@ -144,7 +144,9 @@ export async function getStudentSprintPotential(
     kpiSetId = await ensureSchoolDefaultKpiSetId(student.schoolId);
   }
   // Strict: only the governing set's ranked KPIs count (empty set = none).
-  const rankedSlugList = kpiSetId ? await getRankedMetricSlugs(kpiSetId) : [];
+  const rankedSlugList = kpiSetId
+    ? await getRankedMetricSlugs(kpiSetId, student.schoolId)
+    : [];
   const querySlugs = expandSlugsWithMarkAliases(rankedSlugList);
 
   const activities = await prisma.activity.findMany({
@@ -187,12 +189,11 @@ export async function getStudentSprintPotential(
   const metricMetaBySlug = metricMetaMapForRanked(rankedSlugList, activitiesBySlug);
   const marks: KpiMark[] = buildRankedKpiMarks(rankedSlugList, rawBestBySlug, activitiesBySlug);
 
-  const custom = await getSchoolKpiBands(
-    student.schoolId,
-    student.gender,
-    bracket,
-    kpiSetId
-  );
+  const custom = kpiSetId
+    ? await getSchoolKpiBands(student.schoolId, student.gender, bracket, kpiSetId)
+    : opts.classId
+      ? []
+      : await getSchoolKpiBands(student.schoolId, student.gender, bracket, null);
   return {
     ...evaluateSprintPotential(marks, student.gender, custom, rankedSlugList, metricMetaBySlug),
     ageBracket: bracket,

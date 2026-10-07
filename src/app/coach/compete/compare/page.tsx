@@ -1,18 +1,16 @@
 import { Card } from "@/components/ui/card";
 import { requireSchoolSession } from "@/lib/auth/session";
-import { getAthleteCompare, getAthleteLineup } from "@/lib/queries/compare";
-import { AthleteDuel } from "@/components/compare/athlete-duel";
-import { AthletePicker } from "@/components/compare/athlete-picker";
+import { getAthleteLineup } from "@/lib/queries/compare";
 import { AthleteMultiPicker } from "@/components/compare/athlete-multi-picker";
 import { AthleteLineup } from "@/components/compare/athlete-lineup";
-import { CompareModeToggle, type CompareMode } from "@/components/compare/compare-mode-toggle";
 import { GradePills } from "@/components/ui/filter-pills";
 import { GenderToggle } from "@/components/ui/gender-toggle";
-import { classYearLabel, gradesFromSearch } from "@/lib/grades";
-import { parseGenderParam, genderFullLabel } from "@/lib/gender";
+import { gradesFromSearch } from "@/lib/grades";
+import { parseGenderParam } from "@/lib/gender";
 import { listStudents } from "@/lib/queries/coach";
 import { CoachClassScopeBar } from "@/components/coach/coach-class-scope-bar";
 import { resolveCoachClassScopeFromParams } from "@/lib/queries/coach-scope-params";
+import { kpiScopeOptsFromClassBar } from "@/lib/services/kpi-sets";
 
 export default async function CompeteComparePage({
   searchParams,
@@ -21,7 +19,6 @@ export default async function CompeteComparePage({
     student?: string;
     b?: string;
     ids?: string;
-    vs?: string;
     q?: string;
     grade?: string;
     grades?: string;
@@ -38,10 +35,9 @@ export default async function CompeteComparePage({
     classId: sp.classId,
     subgroupId: sp.subgroupId,
   });
+  const kpiScope = kpiScopeOptsFromClassBar(scopeCtx.classId, scopeCtx.subgroupId);
   const grades = gradesFromSearch(sp);
   const gender = parseGenderParam(sp.gender);
-  const mode: CompareMode =
-    sp.vs === "peer" || sp.vs === "athlete" ? sp.vs : "benchmark";
 
   const rawStudents = await listStudents(session.schoolId, {
     grades,
@@ -68,54 +64,26 @@ export default async function CompeteComparePage({
     .map((id) => id.trim())
     .filter((id) => students.some((s) => s.id === id));
 
-  const lineupIds =
+  const seedIds =
     fromIds.length >= 2
       ? fromIds.slice(0, 5)
       : [sp.student, sp.b].filter(
           (id): id is string => Boolean(id) && students.some((s) => s.id === id)
         );
 
-  const selectedId =
-    mode === "athlete"
-      ? lineupIds[0] ?? students[0]?.id
-      : sp.student && students.some((s) => s.id === sp.student)
-        ? sp.student
-        : students[0]?.id;
+  const selectedId = seedIds[0] ?? students[0]?.id;
 
   const filledLineup =
-    lineupIds.length >= 2
-      ? lineupIds
+    seedIds.length >= 2
+      ? seedIds
       : [selectedId, students.find((s) => s.id !== selectedId)?.id].filter(
           (id): id is string => Boolean(id)
         );
 
-  const compare =
-    mode !== "athlete" && selectedId
-      ? await getAthleteCompare(selectedId, session.schoolId, undefined, {
-          classId: scopeCtx.classId,
-          subgroupId: scopeCtx.subgroupId,
-        })
-      : null;
   const lineup =
-    mode === "athlete" && filledLineup.length >= 2
-      ? await getAthleteLineup(filledLineup, session.schoolId, {
-          classId: scopeCtx.classId,
-          subgroupId: scopeCtx.subgroupId,
-        })
+    filledLineup.length >= 2
+      ? await getAthleteLineup(filledLineup, session.schoolId, kpiScope)
       : null;
-
-  const right =
-    mode === "peer"
-      ? {
-          name: compare?.peerLabel ?? "Class avg",
-          meta: "Same class & gender",
-          isBenchmark: true,
-        }
-      : {
-          name: "Medal target",
-          meta: compare?.medalTargetLabel ?? "Active medal standard",
-          isBenchmark: true,
-        };
 
   return (
     <>
@@ -135,40 +103,21 @@ export default async function CompeteComparePage({
       <div className="mb-6 space-y-4">
         <GradePills />
         <GenderToggle />
-        <CompareModeToggle allowAthlete />
       </div>
 
-      {mode === "athlete" ? (
-        <div className="mb-6">
-          <AthleteMultiPicker athletes={pickerAthletes} selectedIds={filledLineup} />
-        </div>
-      ) : (
-        <div className="mb-6">
-          <AthletePicker
-            label="Athlete"
-            athletes={pickerAthletes}
-            selectedId={selectedId}
-            param="student"
-            accent="sky"
-          />
-        </div>
-      )}
+      <div className="mb-6">
+        <AthleteMultiPicker athletes={pickerAthletes} selectedIds={filledLineup} />
+      </div>
 
-      {mode === "athlete" && lineup ? (
+      {lineup ? (
         <AthleteLineup view={lineup} />
-      ) : compare && selectedId ? (
-        <AthleteDuel
-          left={{
-            name: compare.student.name,
-            meta: `${classYearLabel(compare.student.grade)} · ${genderFullLabel(compare.student.gender)}`,
-          }}
-          right={right}
-          events={compare.events}
-          rightSource={mode === "peer" ? "peer" : "benchmark"}
-        />
       ) : (
         <Card>
-          <p className="text-sm text-muted">No athletes in this filter.</p>
+          <p className="text-sm text-muted">
+            {students.length < 2
+              ? "Need at least two athletes in this filter to compare side by side."
+              : "Select two or more athletes above to compare season bests."}
+          </p>
         </Card>
       )}
     </>

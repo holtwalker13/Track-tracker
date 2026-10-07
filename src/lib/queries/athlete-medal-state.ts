@@ -24,6 +24,7 @@ import {
   metricMetaMapForRanked,
   type ActivityScoringRow,
 } from "@/lib/kpi-marks";
+import { omitArchivedSessionResults } from "@/lib/services/results";
 
 const KPI_SLUGS = KPI_METRIC_META.map((m) => m.slug);
 
@@ -62,12 +63,15 @@ export async function getAthleteMedalState(
   // unless an explicit class is selected.
   let kpiSetId: string | null;
   if (competeScope) {
-    const { resolveKpiSetForCompeteScope } = await import("@/lib/services/kpi-sets");
-    kpiSetId = await resolveKpiSetForCompeteScope(
-      student.schoolId,
-      opts.classId ?? null,
-      opts.subgroupId ?? null
-    );
+    const {
+      kpiScopeOptsFromClassBar,
+      resolveKpiSetForCompeteScope,
+      resolveKpiSetForMedalScope,
+    } = await import("@/lib/services/kpi-sets");
+    const scopeOpts = kpiScopeOptsFromClassBar(opts.classId, opts.subgroupId);
+    kpiSetId = scopeOpts.classId
+      ? await resolveKpiSetForMedalScope(student.schoolId, studentId, scopeOpts)
+      : await resolveKpiSetForCompeteScope(student.schoolId, null, null);
   } else if (opts.classId) {
     const { resolveKpiSetForMedalScope } = await import("@/lib/services/kpi-sets");
     kpiSetId = await resolveKpiSetForMedalScope(student.schoolId, studentId, opts);
@@ -121,6 +125,7 @@ export async function getAthleteMedalState(
       status: "COMPLETED",
       isBestAttempt: true,
       resultValue: { not: null },
+      ...omitArchivedSessionResults,
     },
   });
 

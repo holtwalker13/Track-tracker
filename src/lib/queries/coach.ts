@@ -7,6 +7,7 @@ import {
   periodDateRange,
   type LeaderboardPeriod,
 } from "@/lib/leaderboard-periods";
+import { omitArchivedSessionResults } from "@/lib/services/results";
 
 export async function getCoachDashboard(schoolId: string) {
   const currentYear = await prisma.schoolYear.findFirst({
@@ -255,6 +256,7 @@ export async function getLeaderboard(
       status: "COMPLETED",
       isBestAttempt: true,
       resultValue: { not: null },
+      ...omitArchivedSessionResults,
       ...(period === "semester"
         ? {}
         : { testingDate: { gte: range.start, lte: range.end } }),

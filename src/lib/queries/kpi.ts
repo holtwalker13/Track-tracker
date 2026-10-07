@@ -17,6 +17,7 @@ import {
   type AgeBracketId,
 } from "@/lib/age-brackets";
 import { getStudentContext } from "@/lib/queries/student";
+import { omitArchivedSessionResults } from "@/lib/services/results";
 import type { ScoringDirection } from "@/lib/constants";
 import { rankResults } from "@/lib/services/leaderboard";
 import { GRADE_LEVELS } from "@/lib/grades";
@@ -177,6 +178,7 @@ export async function getStudentSprintPotential(
       status: "COMPLETED",
       isBestAttempt: true,
       resultValue: { not: null },
+      ...omitArchivedSessionResults,
       ...(window === "week" ? { testingDate: { gte: weekStart() } } : {}),
     },
   });

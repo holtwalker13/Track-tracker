@@ -3,6 +3,16 @@ import { requireSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { isClassYear } from "@/lib/grades";
 import { parseCoachIds, setClassCoaches } from "@/lib/services/class-coaches";
+import { listSchoolClasses, schoolClassHourOptions } from "@/lib/queries/roster";
+
+export async function GET() {
+  const session = await requireSession(["COACH", "ADMIN"]);
+  if (!session?.schoolId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  const classes = await listSchoolClasses(session.schoolId);
+  return NextResponse.json({ classes: schoolClassHourOptions(classes) });
+}
 
 export async function POST(request: Request) {
   const session = await requireSession(["COACH", "ADMIN"]);

@@ -44,12 +44,24 @@ export type RosterAthlete = {
   marks: Record<string, RosterMark>;
 };
 
-export async function listSchoolClasses(schoolId: string) {
+export type SchoolClassOption = {
+  id: string;
+  name: string;
+  period: string | null;
+  gradeLevel: number | null;
+};
+
+export async function listSchoolClasses(schoolId: string): Promise<SchoolClassOption[]> {
   return prisma.class.findMany({
     where: { schoolId },
     orderBy: [{ period: "asc" }, { name: "asc" }],
     select: { id: true, name: true, period: true, gradeLevel: true },
   });
+}
+
+/** Hour / section pickers — every real class, not auto “Class of YYYY” roster buckets. */
+export function schoolClassHourOptions(classes: Pick<SchoolClassOption, "id" | "name" | "period">[]) {
+  return classes.filter((c) => !c.name.startsWith("Class of"));
 }
 
 export async function getClassRoster(

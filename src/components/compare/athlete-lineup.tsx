@@ -54,7 +54,6 @@ export function AthleteLineup({ view }: { view: AthleteLineupView }) {
                   : row.direction === "HIGHER_BETTER"
                     ? Math.max(...values)
                     : Math.min(...values);
-              if (values.length === 0) return null;
               return (
                 <div key={row.activityId} className="border-b border-card-border/40 py-2">
                   <div className="mb-1 flex items-center justify-center gap-1.5 text-[11px] text-muted">

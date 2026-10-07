@@ -374,10 +374,20 @@ export async function saveKpiSetTargets(
     }
   }
 
+  const payloadSlugs =
+    input.metrics?.length != null && input.metrics.length > 0
+      ? new Set(input.metrics.map((m) => m.metricSlug))
+      : null;
+
   for (const [slug, state] of metricState) {
     const explicit = input.metrics?.find((m) => m.metricSlug === slug);
     if (explicit) {
       state.ranked = explicit.ranked;
+      continue;
+    }
+    // Metrics not on the KPI tab payload (e.g. hidden) stay unranked.
+    if (payloadSlugs && !payloadSlugs.has(slug)) {
+      state.ranked = false;
       continue;
     }
     // Auto: has targets => ranked; no targets => unranked
@@ -628,7 +638,7 @@ export async function getRankedKpiSlugsForSchool(
   subgroupId?: string | null
 ): Promise<string[]> {
   const setId = await resolveKpiSetForCompeteScope(schoolId, classId, subgroupId);
-  if (setId) return getRankedMetricSlugs(setId);
+  if (setId) return getRankedMetricSlugs(setId, schoolId);
 
   // Class/subgroup scope with no dedicated set → nothing ranked (matches KPI tab).
   if (classId || subgroupId) return [];
@@ -695,18 +705,30 @@ export async function getRankedKpiSlugsForStudent(
     }
   }
   const setId = await resolveKpiSetForStudentContext(schoolId, studentId, opts);
-  if (setId) return getRankedMetricSlugs(setId);
+  if (setId) return getRankedMetricSlugs(setId, schoolId);
   return getRankedKpiSlugsForSchool(schoolId, null, null);
 }
 
-/** Ranked metric slugs for a set (leaderboards / session builder ordering). */
-export async function getRankedMetricSlugs(kpiSetId: string): Promise<string[]> {
+/**
+ * Ranked metric slugs for a set (leaderboards, medal standard, compare).
+ * When schoolId is passed, only slugs the KPI tab can show are included
+ * (same library as benchmarks page — hidden KPIs/lifts stay off medals).
+ */
+export async function getRankedMetricSlugs(
+  kpiSetId: string,
+  schoolId?: string | null
+): Promise<string[]> {
   const rows = await prisma.kpiSetMetric.findMany({
     where: { kpiSetId, ranked: true },
     orderBy: [{ sortOrder: "asc" }, { metricSlug: "asc" }],
     select: { metricSlug: true },
   });
-  return rows.map((r) => r.metricSlug);
+  let slugs = rows.map((r) => r.metricSlug);
+  if (!schoolId) return slugs;
+
+  const library = await listSchoolKpiLibrary(schoolId);
+  const visible = new Set(library.map((a) => a.slug));
+  return slugs.filter((slug) => visible.has(slug));
 }
 
 /**

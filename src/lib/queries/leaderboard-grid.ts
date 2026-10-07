@@ -26,12 +26,13 @@ export async function getLeaderboardActivities(
     ensureSchoolDefaultKpiSetId,
   } = await import("@/lib/services/kpi-sets");
   const resolvedSetId =
-    kpiSetId ??
-    (await resolveKpiSetForClassContext(schoolId, null, null)) ??
-    (await ensureSchoolDefaultKpiSetId(schoolId));
+    kpiSetId !== undefined
+      ? kpiSetId
+      : (await resolveKpiSetForClassContext(schoolId, null, null)) ??
+        (await ensureSchoolDefaultKpiSetId(schoolId));
   // Leaderboards show exactly the governing set's ranked KPIs (the same list
-  // the KPIs tab configures). Only when no set can exist at all (no coach
-  // profile) do we fall back to the built-in catalog KPIs.
+  // the KPIs tab configures). Explicit null = class/subgroup scope with no set.
+  // Only when no set can exist at all (no coach profile) do we fall back to catalog.
   const rankedSlugs = new Set(
     resolvedSetId
       ? await getRankedMetricSlugs(resolvedSetId, {
@@ -39,25 +40,39 @@ export async function getLeaderboardActivities(
           gender: medalOpts?.gender,
           ageBracket: medalOpts?.ageBracket ?? DEFAULT_AGE_BRACKET,
         })
-      : KPI_METRIC_META.map((m) => m.slug as string)
+      : kpiSetId === null
+        ? []
+        : KPI_METRIC_META.map((m) => m.slug as string)
   );
 
   const slugFilter = [...rankedSlugs].filter((s) => !hiddenSlugs.includes(s));
+  const { expandRankedSlugsToQuerySlugs } = await import("@/lib/kpi-marks");
+  const querySlugs =
+    slugFilter.length > 0
+      ? await expandRankedSlugsToQuerySlugs(schoolId, slugFilter)
+      : [];
 
-  const activities = slugFilter.length
-    ? await prisma.activity.findMany({
-        where: {
-          slug: { in: slugFilter },
-          OR: [{ schoolId: null }, { schoolId }],
-        },
-        include: { category: true },
-        orderBy: { name: "asc" },
-      })
-    : [];
+  const fetched =
+    querySlugs.length > 0
+      ? await prisma.activity.findMany({
+          where: {
+            slug: { in: querySlugs },
+            OR: [{ schoolId: null }, { schoolId }],
+          },
+          include: { category: true },
+        })
+      : [];
 
-  const filtered = activities;
+  const bySlug = new Map(fetched.map((a) => [a.slug, a]));
+  const { resolveRankedSlugToActivitySlugs } = await import("@/lib/kpi-marks");
+  const ordered: typeof fetched = [];
+  for (const ranked of slugFilter) {
+    const candidates = await resolveRankedSlugToActivitySlugs(schoolId, ranked);
+    const act = candidates.map((s) => bySlug.get(s)).find(Boolean);
+    if (act) ordered.push(act);
+  }
 
-  return [...filtered].sort((a, b) => {
+  return [...ordered].sort((a, b) => {
     const ai = featured.indexOf(a.slug);
     const bi = featured.indexOf(b.slug);
     if (ai !== -1 || bi !== -1) {
@@ -65,8 +80,7 @@ export async function getLeaderboardActivities(
       if (bi === -1) return -1;
       return ai - bi;
     }
-    // Ranked order preference: featured already handled; keep name sort
-    return a.name.localeCompare(b.name);
+    return 0;
   });
 }
 

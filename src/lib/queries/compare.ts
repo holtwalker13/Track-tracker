@@ -7,7 +7,7 @@ import { activityDisplayGroup, DISPLAY_GROUP_ORDER, type ActivityDisplayGroup } 
 import type { ScoringDirection } from "@/lib/constants";
 import { getStudentContext } from "@/lib/queries/student";
 import { getAthleteMedalState } from "@/lib/queries/athlete-medal-state";
-import { markAliasSlugsFor } from "@/lib/kpi-marks";
+import { markAliasSlugsFor, resolveRankedSlugToActivitySlugs } from "@/lib/kpi-marks";
 import { MEDAL_LABELS } from "@/lib/kpi-targets";
 
 export type CompareEventRow = {
@@ -111,7 +111,14 @@ export async function getAthleteCompare(
     subgroupId: opts?.subgroupId,
     kpiScope: "compete",
   });
-  const rankedSlugs = new Set(medalState.rankedSlugs);
+  const { getRankedKpiSlugsForSchool } = await import("@/lib/services/kpi-sets");
+  const rankedSlugList = await getRankedKpiSlugsForSchool(
+    schoolId,
+    opts?.classId ?? null,
+    opts?.subgroupId ?? null,
+    { gender: gender ?? undefined, ageBracket: medalState.ageBracket }
+  );
+  const rankedSlugs = new Set(rankedSlugList);
   // Medal targets come from the resolved KPI set's band for the active medal, so
   // custom ranked KPIs (not just catalog metrics) carry their KPI-tab targets.
   const activeMedal = medalState.nextMedal ?? medalState.earnedMedal ?? "bronze";
@@ -128,18 +135,28 @@ export async function getAthleteCompare(
       ? `${MEDAL_LABELS[medalState.earnedMedal]} earned`
       : "Medal target";
 
-  const rankedSlugList = [...rankedSlugs];
-  const activities =
-    rankedSlugList.length === 0
-      ? []
-      : await prisma.activity.findMany({
+  const { expandRankedSlugsToQuerySlugs } = await import("@/lib/kpi-marks");
+  const querySlugs =
+    rankedSlugList.length > 0
+      ? await expandRankedSlugsToQuerySlugs(schoolId, rankedSlugList)
+      : [];
+  const fetched =
+    querySlugs.length > 0
+      ? await prisma.activity.findMany({
           where: {
-            slug: { in: rankedSlugList, notIn: ["height", "weight"] },
+            slug: { in: querySlugs, notIn: ["height", "weight"] },
             OR: [{ schoolId: null }, { schoolId }],
           },
           include: { category: true },
-          orderBy: { name: "asc" },
-        });
+        })
+      : [];
+  const bySlug = new Map(fetched.map((a) => [a.slug, a]));
+  const compareActs: { rankedSlug: string; act: (typeof fetched)[0] }[] = [];
+  for (const ranked of rankedSlugList) {
+    const candidates = await resolveRankedSlugToActivitySlugs(schoolId, ranked);
+    const act = candidates.map((s) => bySlug.get(s)).find(Boolean);
+    if (act) compareActs.push({ rankedSlug: ranked, act });
+  }
 
   const events: CompareEventRow[] = [];
 
@@ -150,9 +167,14 @@ export async function getAthleteCompare(
     throw new Error("Opponent is not in this school");
   }
 
-  for (const act of activities) {
+  for (const { rankedSlug, act } of compareActs) {
     const direction = act.scoringDirection as ScoringDirection;
-    const aliasSlugs = markAliasSlugsFor(act.slug);
+    const aliasSlugs = [
+      ...new Set([
+        ...markAliasSlugsFor(rankedSlug),
+        ...(await resolveRankedSlugToActivitySlugs(schoolId, rankedSlug)),
+      ]),
+    ];
     const aliasActivities = await prisma.activity.findMany({
       where: { slug: { in: aliasSlugs } },
       select: { id: true },
@@ -207,7 +229,7 @@ export async function getAthleteCompare(
         : null;
 
     const bench = await getKpiBenchmark(act.id, gender, schoolId);
-    const medalTarget = targetBySlug.get(act.slug) ?? null;
+    const medalTarget = targetBySlug.get(rankedSlug) ?? null;
 
     const athleteValue = best?.resultValue ?? null;
     const peerAvg = peerBestAvg;
@@ -235,7 +257,7 @@ export async function getAthleteCompare(
     events.push({
       activityId: act.id,
       activityName: act.name,
-      activitySlug: act.slug,
+      activitySlug: rankedSlug,
       categorySlug: act.category.slug,
       unit: act.unit,
       direction,
@@ -243,17 +265,20 @@ export async function getAthleteCompare(
       athleteValue,
       athleteDisplay:
         athleteValue != null
-          ? (best?.displayValue ?? formatActivityValue(athleteValue, act.unit, act.slug))
+          ? (best?.displayValue ??
+              formatActivityValue(athleteValue, act.unit, rankedSlug, act.name))
           : "—",
       peerAvg,
       peerDisplay:
-        peerAvg != null ? formatActivityValue(peerAvg, act.unit, act.slug) : "—",
+        peerAvg != null
+          ? formatActivityValue(peerAvg, act.unit, rankedSlug, act.name)
+          : "—",
       benchmarkP50: medalTarget ?? bench?.p50 ?? null,
       benchmarkDisplay:
         medalTarget != null
-          ? formatActivityValue(medalTarget, act.unit, act.slug)
+          ? formatActivityValue(medalTarget, act.unit, rankedSlug, act.name)
           : bench?.p50 != null
-            ? formatActivityValue(bench.p50, act.unit, act.slug)
+            ? formatActivityValue(bench.p50, act.unit, rankedSlug, act.name)
             : "—",
       percentile,
       vsPeerAbsolute: delta.abs,
@@ -262,7 +287,8 @@ export async function getAthleteCompare(
       opponentValue,
       opponentDisplay:
         opponentValue != null
-          ? (oppBest?.displayValue ?? formatActivityValue(opponentValue, act.unit, act.slug))
+          ? (oppBest?.displayValue ??
+              formatActivityValue(opponentValue, act.unit, rankedSlug, act.name))
           : "—",
     });
   }

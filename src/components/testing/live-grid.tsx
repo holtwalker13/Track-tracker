@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Check } from "lucide-react";
 import { formatActivityValue } from "@/lib/format";
+import { parseAttemptInput } from "@/lib/time-input";
 import { formatStudentName } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 
@@ -65,7 +66,7 @@ export function LiveTestingGrid({
       if (saveActivityId !== activityIdRef.current) return;
 
       const attempts = row.attempts.map((a) =>
-        a === "" || a === null ? null : Number(a)
+        parseAttemptInput(a, activityUnit, activitySlug, activityName)
       );
       const hasValue = attempts.some((a) => a != null && !Number.isNaN(a));
       const nonComplete = row.status !== "COMPLETED";

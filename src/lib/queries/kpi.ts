@@ -22,7 +22,8 @@ import { rankResults } from "@/lib/services/leaderboard";
 import { GRADE_LEVELS } from "@/lib/grades";
 import {
   buildRankedKpiMarks,
-  expandSlugsWithMarkAliases,
+  expandRankedSlugsToQuerySlugs,
+  resolveRankedSlugToActivitySlugs,
   metricMetaMapForRanked,
   type ActivityScoringRow,
 } from "@/lib/kpi-marks";
@@ -145,7 +146,16 @@ export async function getStudentSprintPotential(
         ageBracket: bracket,
       })
     : [];
-  const querySlugs = expandSlugsWithMarkAliases(rankedSlugList);
+  const querySlugs = await expandRankedSlugsToQuerySlugs(student.schoolId, rankedSlugList);
+  const querySlugToRanked = new Map<string, string>();
+  for (const ranked of rankedSlugList) {
+    for (const activitySlug of await resolveRankedSlugToActivitySlugs(
+      student.schoolId,
+      ranked
+    )) {
+      querySlugToRanked.set(activitySlug, ranked);
+    }
+  }
 
   const activities = await prisma.activity.findMany({
     where: { slug: { in: querySlugs } },
@@ -185,7 +195,12 @@ export async function getStudentSprintPotential(
     }
   }
   const metricMetaBySlug = metricMetaMapForRanked(rankedSlugList, activitiesBySlug);
-  const marks: KpiMark[] = buildRankedKpiMarks(rankedSlugList, rawBestBySlug, activitiesBySlug);
+  const marks: KpiMark[] = buildRankedKpiMarks(
+    rankedSlugList,
+    rawBestBySlug,
+    activitiesBySlug,
+    querySlugToRanked
+  );
 
   const custom = kpiSetId
     ? await getSchoolKpiBands(student.schoolId, student.gender, bracket, kpiSetId)

@@ -19,7 +19,8 @@ import {
 } from "@/lib/services/kpi-sets";
 import {
   buildRankedKpiMarks,
-  expandSlugsWithMarkAliases,
+  expandRankedSlugsToQuerySlugs,
+  resolveRankedSlugToActivitySlugs,
   metricMetaMapForRanked,
   type ActivityScoringRow,
 } from "@/lib/kpi-marks";
@@ -86,7 +87,16 @@ export async function getAthleteMedalState(
       })
     : [];
 
-  const querySlugs = expandSlugsWithMarkAliases(rankedSlugs);
+  const querySlugs = await expandRankedSlugsToQuerySlugs(student.schoolId, rankedSlugs);
+  const querySlugToRanked = new Map<string, string>();
+  for (const ranked of rankedSlugs) {
+    for (const activitySlug of await resolveRankedSlugToActivitySlugs(
+      student.schoolId,
+      ranked
+    )) {
+      querySlugToRanked.set(activitySlug, ranked);
+    }
+  }
   const activities = await prisma.activity.findMany({
     where: {
       slug: {
@@ -127,7 +137,12 @@ export async function getAthleteMedalState(
     }
   }
   const metricMetaBySlug = metricMetaMapForRanked(rankedSlugs, activitiesBySlug);
-  const marks: KpiMark[] = buildRankedKpiMarks(rankedSlugs, rawBestBySlug, activitiesBySlug);
+  const marks: KpiMark[] = buildRankedKpiMarks(
+    rankedSlugs,
+    rawBestBySlug,
+    activitiesBySlug,
+    querySlugToRanked
+  );
 
   const classScoped = Boolean(competeScope || opts.classId);
   const custom = kpiSetId

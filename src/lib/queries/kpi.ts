@@ -187,12 +187,11 @@ export async function getStudentSprintPotential(
   const metricMetaBySlug = metricMetaMapForRanked(rankedSlugList, activitiesBySlug);
   const marks: KpiMark[] = buildRankedKpiMarks(rankedSlugList, rawBestBySlug, activitiesBySlug);
 
-  const custom = await getSchoolKpiBands(
-    student.schoolId,
-    student.gender,
-    bracket,
-    kpiSetId
-  );
+  const custom = kpiSetId
+    ? await getSchoolKpiBands(student.schoolId, student.gender, bracket, kpiSetId)
+    : opts.classId
+      ? []
+      : await getSchoolKpiBands(student.schoolId, student.gender, bracket, null);
   return {
     ...evaluateSprintPotential(marks, student.gender, custom, rankedSlugList, metricMetaBySlug),
     ageBracket: bracket,

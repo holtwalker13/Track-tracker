@@ -119,12 +119,12 @@ export async function getAthleteMedalState(
   const metricMetaBySlug = metricMetaMapForRanked(rankedSlugs, activitiesBySlug);
   const marks: KpiMark[] = buildRankedKpiMarks(rankedSlugs, rawBestBySlug, activitiesBySlug);
 
-  const custom = await getSchoolKpiBands(
-    student.schoolId,
-    student.gender,
-    bracket,
-    kpiSetId
-  );
+  const classScoped = Boolean(competeScope || opts.classId);
+  const custom = kpiSetId
+    ? await getSchoolKpiBands(student.schoolId, student.gender, bracket, kpiSetId)
+    : classScoped
+      ? []
+      : await getSchoolKpiBands(student.schoolId, student.gender, bracket, null);
 
   const medal = calculateAthleteMedal(
     marks,

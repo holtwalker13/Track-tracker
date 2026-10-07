@@ -14,6 +14,7 @@ import {
 } from "@/lib/kpi-marks";
 import { DEFAULT_AGE_BRACKET } from "@/lib/age-brackets";
 import { MEDAL_LABELS } from "@/lib/kpi-targets";
+import { omitArchivedSessionResults } from "@/lib/services/results";
 
 export type CompareEventRow = {
   activityId: string;
@@ -111,19 +112,13 @@ export async function getAthleteCompare(
     }
   }
 
+  const { kpiScopeOptsFromClassBar } = await import("@/lib/services/kpi-sets");
+  const medalScope = kpiScopeOptsFromClassBar(opts?.classId, opts?.subgroupId);
   const medalState = await getAthleteMedalState(studentId, {
-    classId: opts?.classId,
-    subgroupId: opts?.subgroupId,
+    ...medalScope,
     kpiScope: "compete",
   });
-  const { getRankedKpiSlugsForSchool } = await import("@/lib/services/kpi-sets");
-  const rankedSlugList = await getRankedKpiSlugsForSchool(
-    schoolId,
-    opts?.classId ?? null,
-    opts?.subgroupId ?? null,
-    { gender: gender ?? undefined, ageBracket: medalState.ageBracket }
-  );
-  const rankedSlugs = new Set(rankedSlugList);
+  const rankedSlugList = medalState.rankedSlugs;
   // Medal targets come from the resolved KPI set's band for the active medal, so
   // custom ranked KPIs (not just catalog metrics) carry their KPI-tab targets.
   const activeMedal = medalState.nextMedal ?? medalState.earnedMedal ?? "bronze";
@@ -194,6 +189,7 @@ export async function getAthleteCompare(
         status: "COMPLETED",
         isBestAttempt: true,
         resultValue: { not: null },
+        ...omitArchivedSessionResults,
         ...(currentYear ? { schoolYearId: currentYear.id } : {}),
       },
       orderBy: { resultValue: direction === "LOWER_BETTER" ? "asc" : "desc" },
@@ -206,6 +202,7 @@ export async function getAthleteCompare(
       status: "COMPLETED" as const,
       isBestAttempt: true,
       resultValue: { not: null },
+      ...omitArchivedSessionResults,
       studentId: {
         not: studentId,
         ...(peerStudentIds ? { in: peerStudentIds } : {}),
@@ -252,6 +249,7 @@ export async function getAthleteCompare(
             status: "COMPLETED",
             isBestAttempt: true,
             resultValue: { not: null },
+            ...omitArchivedSessionResults,
             ...(currentYear ? { schoolYearId: currentYear.id } : {}),
           },
           orderBy: { resultValue: direction === "LOWER_BETTER" ? "asc" : "desc" },
@@ -395,14 +393,25 @@ export async function getAthleteLineup(
     });
   }
 
-  // Same ranked KPI list + catalog resolution as Compete > Leaderboards.
-  const { getRankedKpiSlugsForSchool } = await import("@/lib/services/kpi-sets");
-  const rankedSlugList = await getRankedKpiSlugsForSchool(
-    schoolId,
-    opts?.classId ?? null,
-    opts?.subgroupId ?? null,
-    { ageBracket: DEFAULT_AGE_BRACKET }
-  );
+  const {
+    getRankedKpiSlugsForSchool,
+    getRankedKpiSlugsForStudent,
+    kpiScopeOptsFromClassBar,
+  } = await import("@/lib/services/kpi-sets");
+  const scopeOpts = kpiScopeOptsFromClassBar(opts?.classId, opts?.subgroupId);
+  const anchorId = athletes[0]?.id;
+  const rankedSlugList =
+    scopeOpts.classId && anchorId
+      ? await getRankedKpiSlugsForStudent(schoolId, anchorId, {
+          ...scopeOpts,
+          ageBracket: DEFAULT_AGE_BRACKET,
+        })
+      : await getRankedKpiSlugsForSchool(
+          schoolId,
+          opts?.classId ?? null,
+          opts?.subgroupId ?? null,
+          { ageBracket: DEFAULT_AGE_BRACKET }
+        );
 
   type ActRow = Awaited<
     ReturnType<
@@ -473,6 +482,7 @@ export async function getAthleteLineup(
             status: "COMPLETED",
             isBestAttempt: true,
             resultValue: { not: null },
+            ...omitArchivedSessionResults,
             ...(currentYear ? { schoolYearId: currentYear.id } : {}),
           },
           orderBy: { testingDate: "desc" },

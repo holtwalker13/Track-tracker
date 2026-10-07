@@ -13,6 +13,7 @@ import { parseGenderParam, genderFullLabel } from "@/lib/gender";
 import { listStudents } from "@/lib/queries/coach";
 import { CoachClassScopeBar } from "@/components/coach/coach-class-scope-bar";
 import { resolveCoachClassScopeFromParams } from "@/lib/queries/coach-scope-params";
+import { kpiScopeOptsFromClassBar } from "@/lib/services/kpi-sets";
 
 export default async function CompeteComparePage({
   searchParams,
@@ -38,6 +39,7 @@ export default async function CompeteComparePage({
     classId: sp.classId,
     subgroupId: sp.subgroupId,
   });
+  const kpiScope = kpiScopeOptsFromClassBar(scopeCtx.classId, scopeCtx.subgroupId);
   const grades = gradesFromSearch(sp);
   const gender = parseGenderParam(sp.gender);
   const mode: CompareMode =
@@ -91,17 +93,11 @@ export default async function CompeteComparePage({
 
   const compare =
     mode !== "athlete" && selectedId
-      ? await getAthleteCompare(selectedId, session.schoolId, undefined, {
-          classId: scopeCtx.classId,
-          subgroupId: scopeCtx.subgroupId,
-        })
+      ? await getAthleteCompare(selectedId, session.schoolId, undefined, kpiScope)
       : null;
   const lineup =
     mode === "athlete" && filledLineup.length >= 2
-      ? await getAthleteLineup(filledLineup, session.schoolId, {
-          classId: scopeCtx.classId,
-          subgroupId: scopeCtx.subgroupId,
-        })
+      ? await getAthleteLineup(filledLineup, session.schoolId, kpiScope)
       : null;
 
   const right =

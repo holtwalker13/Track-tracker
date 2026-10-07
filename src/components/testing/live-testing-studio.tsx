@@ -12,6 +12,7 @@ import {
 import { ActivityIcon } from "@/lib/activity-icons";
 import { fireConfetti } from "@/lib/confetti";
 import { formatActivityValue } from "@/lib/format";
+import { parseAttemptInput, usesMinuteSecondDisplay } from "@/lib/time-input";
 import {
   BroadJumpFeetInput,
   broadJumpToFeetInches,
@@ -111,7 +112,7 @@ export function LiveTestingStudio({
     async (target: StudioRow) => {
       if (readOnly) return null;
       const attempts = target.attempts.map((a) =>
-        a === "" || a === null ? null : Number(a)
+        parseAttemptInput(a, activityUnit, activitySlug, activityName)
       );
       const hasValue = attempts.some((a) => a != null && !Number.isNaN(a));
       if (!hasValue && target.status === "COMPLETED") return null;
@@ -256,6 +257,13 @@ export function LiveTestingStudio({
   }
 
   const isBroadJump = activitySlug === "standing-broad-jump";
+  const isMinuteSecond = usesMinuteSecondDisplay(
+    activityUnit,
+    activitySlug,
+    activityName
+  );
+  const parseVal = (raw: string | number | null) =>
+    parseAttemptInput(raw, activityUnit, activitySlug, activityName);
 
   if (!row) {
     return (
@@ -434,7 +442,12 @@ export function LiveTestingStudio({
             </p>
             <p className="mt-0.5 text-lg font-bold tabular-nums">
               {row.previousBest != null
-                ? formatActivityValue(row.previousBest, activityUnit, activitySlug)
+                ? formatActivityValue(
+                    row.previousBest,
+                    activityUnit,
+                    activitySlug,
+                    activityName
+                  )
                 : "—"}
             </p>
           </div>
@@ -450,7 +463,7 @@ export function LiveTestingStudio({
           >
             {(() => {
               const nums = row.attempts
-                .map((a) => (a === "" || a == null ? null : Number(a)))
+                .map((a) => parseVal(a))
                 .filter((n): n is number => n != null && !Number.isNaN(n));
               const sessionBest = pickBestAttempt(
                 nums,
@@ -459,16 +472,16 @@ export function LiveTestingStudio({
               const recordAttemptIdx =
                 row.pr && sessionBest != null
                   ? row.attempts.findIndex((a) => {
-                      const n = a === "" || a == null ? null : Number(a);
-                      return n != null && !Number.isNaN(n) && n === sessionBest;
+                      const n = parseVal(a);
+                      return n != null && n === sessionBest;
                     })
                   : -1;
 
               return Array.from({ length: attemptCount }, (_, i) => i).map((i) => {
                 const val = row.attempts[i] ?? "";
-                const num = val === "" ? null : Number(val);
+                const num = parseVal(val);
                 const isRecord = recordAttemptIdx === i;
-                const filled = val !== "" && !Number.isNaN(Number(val));
+                const filled = val !== "" && num != null;
                 const bj =
                   isBroadJump && num != null && !Number.isNaN(num)
                     ? broadJumpToFeetInches(num)
@@ -509,8 +522,11 @@ export function LiveTestingStudio({
                           else inputRefs.current.delete(i);
                         }}
                         type="text"
-                        inputMode="decimal"
-                        pattern="[0-9]*[.]?[0-9]*"
+                        inputMode={isMinuteSecond ? "text" : "decimal"}
+                        pattern={
+                          isMinuteSecond ? "[0-9]*:?[0-9]*" : "[0-9]*[.]?[0-9]*"
+                        }
+                        placeholder={isMinuteSecond ? "m:ss" : undefined}
                         enterKeyHint={i < attemptCount - 1 ? "next" : "done"}
                         autoComplete="off"
                         disabled={readOnly}

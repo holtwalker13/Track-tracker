@@ -198,8 +198,15 @@ export async function getLeaderboard(
     };
   } = {}
 ) {
-  const { markAliasSlugsFor } = await import("@/lib/kpi-marks");
-  const slugGroup = markAliasSlugsFor(activitySlug);
+  const { markAliasSlugsFor, resolveRankedSlugToActivitySlugs } = await import(
+    "@/lib/kpi-marks"
+  );
+  const slugGroup = [
+    ...new Set([
+      ...markAliasSlugsFor(activitySlug),
+      ...(await resolveRankedSlugToActivitySlugs(schoolId, activitySlug)),
+    ]),
+  ];
   const activityRows = await prisma.activity.findMany({
     where: { slug: { in: slugGroup } },
   });

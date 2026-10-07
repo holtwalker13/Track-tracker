@@ -158,4 +158,6 @@ if [ "${APP_MODE}" = "production" ]; then
 fi
 
 export NODE_ENV=development
+# Avoid stale Server Action IDs after image rebuild / hot reload in Docker.
+rm -rf /app/.next
 exec npx next dev -H 0.0.0.0 -p "$PORT"

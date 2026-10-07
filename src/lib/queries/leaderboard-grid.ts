@@ -32,7 +32,7 @@ export async function getLeaderboardActivities(
   // profile) do we fall back to the built-in catalog KPIs.
   const rankedSlugs = new Set(
     resolvedSetId
-      ? await getRankedMetricSlugs(resolvedSetId)
+      ? await getRankedMetricSlugs(resolvedSetId, schoolId)
       : KPI_METRIC_META.map((m) => m.slug as string)
   );
 

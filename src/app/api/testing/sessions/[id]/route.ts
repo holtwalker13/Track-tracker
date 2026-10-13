@@ -5,6 +5,7 @@ import { isWithinLiveWindow } from "@/lib/constants";
 import { coachCanAdministerTestingSession } from "@/lib/auth/coach-scope";
 import { calendarDateAtNoonUtc } from "@/lib/calendar-date";
 import { deleteTestingSessionAndMarks } from "@/lib/services/results";
+import { recordPerformanceAudits } from "@/lib/services/performance-audit";
 
 export async function PATCH(
   request: Request,

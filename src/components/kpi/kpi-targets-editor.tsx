@@ -15,6 +15,7 @@ import {
 } from "@/lib/age-brackets";
 import { COACHING_SPORTS, sportLabel } from "@/lib/sports";
 import { cn } from "@/lib/utils";
+import { KpiTargetsMobile } from "@/components/kpi/kpi-targets-mobile";
 
 type MetricInfo = {
   slug: string;
@@ -332,6 +333,38 @@ export function KpiTargetsEditor({
 
   return (
     <div>
+      <div className="lg:hidden">
+        <KpiTargetsMobile
+          visibleMetrics={visibleMetrics}
+          rankedBySlug={rankedBySlug}
+          value={value}
+          setValue={setValue}
+          toggleRanked={toggleRanked}
+          gender={gender}
+          setGender={setGender}
+          bracket={bracket}
+          setBracket={setBracket}
+          activeSet={activeSet}
+          classScopeMode={classScopeMode}
+          classScopeLabel={classScopeLabel}
+          ownSets={ownSets}
+          activateSet={activateSet}
+          rankedCount={rankedCount}
+          onBuildKpi={() => {
+            setKpiBuilderDefaults(undefined);
+            setBuilderOpen(true);
+          }}
+          onBuildLift={() => setLiftBuilderOpen(true)}
+          onUseTemplate={() => setCreateOpen(true)}
+          onDuplicateSet={() => activeSet && setDuplicateSource(activeSet)}
+          onBrowseSets={() => setBrowsePublic(true)}
+          onTogglePublic={togglePublic}
+          onSave={save}
+          saveStatus={status}
+        />
+      </div>
+
+      <div className="hidden lg:block">
       <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <p className="max-w-2xl text-sm text-muted">
           {classScopeMode ? (
@@ -357,7 +390,7 @@ export function KpiTargetsEditor({
               setKpiBuilderDefaults(undefined);
               setBuilderOpen(true);
             }}
-            className="inline-flex items-center justify-center gap-2 rounded-lg bg-sky-400/20 px-4 py-2.5 text-sm font-semibold text-sky-300 ring-1 ring-sky-400/40"
+            className="inline-flex items-center justify-center gap-2 rounded-lg bg-accent/15 px-4 py-2.5 text-sm font-semibold text-accent ring-1 ring-accent/40"
           >
             <Plus className="h-4 w-4" />
             Build KPI
@@ -365,7 +398,7 @@ export function KpiTargetsEditor({
           <button
             type="button"
             onClick={() => setLiftBuilderOpen(true)}
-            className="inline-flex items-center justify-center gap-2 rounded-lg bg-sky-400/20 px-4 py-2.5 text-sm font-semibold text-sky-300 ring-1 ring-sky-400/40"
+            className="inline-flex items-center justify-center gap-2 rounded-lg bg-accent/15 px-4 py-2.5 text-sm font-semibold text-accent ring-1 ring-accent/40"
           >
             <Dumbbell className="h-4 w-4" />
             Build lift
@@ -408,7 +441,7 @@ export function KpiTargetsEditor({
               <button
                 type="button"
                 onClick={() => setCreateOpen(true)}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-card-border px-3 py-2 text-sm font-medium hover:bg-sky-400/10"
+                className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-card-border px-3 py-2 text-sm font-medium hover:bg-accent/10"
               >
                 <Plus className="h-4 w-4" />
                 New set
@@ -417,7 +450,7 @@ export function KpiTargetsEditor({
             <button
               type="button"
               onClick={() => setBrowsePublic((v) => !v)}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-card-border px-3 py-2 text-sm font-medium hover:bg-sky-400/10"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-card-border px-3 py-2 text-sm font-medium hover:bg-accent/10"
             >
               <Globe className="h-4 w-4" />
               {browsePublic ? "Hide public sets" : "Browse public sets"}
@@ -426,7 +459,7 @@ export function KpiTargetsEditor({
               <button
                 type="button"
                 onClick={togglePublic}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-card-border px-3 py-2 text-sm font-medium hover:bg-sky-400/10"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-card-border px-3 py-2 text-sm font-medium hover:bg-accent/10"
                 title={
                   activeSet.isPublic
                     ? "Make private"
@@ -435,7 +468,7 @@ export function KpiTargetsEditor({
               >
                 {activeSet.isPublic ? (
                   <>
-                    <Globe className="h-4 w-4 text-sky-300" />
+                    <Globe className="h-4 w-4 text-accent" />
                     Public
                   </>
                 ) : (
@@ -483,7 +516,7 @@ export function KpiTargetsEditor({
                   <button
                     type="button"
                     onClick={() => setDuplicateSource(s)}
-                    className="inline-flex items-center gap-1.5 rounded-lg bg-sky-400/20 px-3 py-2 text-sm font-semibold text-sky-300 ring-1 ring-sky-400/40"
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-accent/15 px-3 py-2 text-sm font-semibold text-accent ring-1 ring-accent/40"
                   >
                     <Copy className="h-4 w-4" />
                     Duplicate
@@ -506,8 +539,8 @@ export function KpiTargetsEditor({
               className={cn(
                 "rounded-full px-3 py-1.5 text-sm font-medium transition",
                 bracket === b.id
-                  ? "bg-sky-400/20 text-sky-300 ring-1 ring-sky-400/55"
-                  : "border border-card-border text-muted hover:text-sky-200"
+                  ? "bg-accent/15 text-accent ring-1 ring-accent/45"
+                  : "border border-card-border text-muted hover:text-foreground"
               )}
             >
               {b.shortLabel}
@@ -527,7 +560,7 @@ export function KpiTargetsEditor({
               onClick={() => setGender(g.id)}
               className={cn(
                 "rounded-md px-3 py-2 text-sm font-semibold",
-                gender === g.id ? "bg-sky-500 text-white" : "text-muted"
+                gender === g.id ? "btn-primary" : "text-muted"
               )}
             >
               {g.label}
@@ -577,7 +610,7 @@ export function KpiTargetsEditor({
                   ) : null}
                   {index === 0 && ranked ? (
                     <tr className="border-b border-card-border/40">
-                      <td colSpan={6} className="py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-sky-300/80">
+                      <td colSpan={6} className="py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-accent/90">
                         Ranked — medal targets
                       </td>
                     </tr>
@@ -597,7 +630,7 @@ export function KpiTargetsEditor({
                         className={cn(
                           "rounded-md px-2 py-1 text-xs font-semibold ring-1",
                           ranked
-                            ? "bg-sky-400/15 text-sky-300 ring-sky-400/40"
+                            ? "bg-accent/15 text-accent ring-accent/40"
                             : "bg-background text-muted ring-card-border"
                         )}
                       >
@@ -622,7 +655,7 @@ export function KpiTargetsEditor({
                         <button
                           type="button"
                           onClick={() => setEditing(meta)}
-                          className="rounded-md p-1.5 text-muted hover:bg-sky-400/10 hover:text-sky-300"
+                          className="rounded-md p-1.5 text-muted hover:bg-accent/10 hover:text-accent"
                           aria-label={`Edit ${meta.name}`}
                         >
                           <Pencil className="h-4 w-4" />
@@ -649,16 +682,16 @@ export function KpiTargetsEditor({
         <div className="pointer-events-none fixed inset-x-0 top-4 z-50 flex justify-center px-4">
           <div
             role="status"
-            className="pointer-events-auto flex items-center gap-3 rounded-2xl border border-emerald-300/60 bg-emerald-500 px-5 py-3.5 text-sm text-white shadow-2xl shadow-emerald-950/60 ring-4 ring-emerald-500/25"
+            className="pointer-events-auto flex items-center gap-3 rounded-2xl border border-success/40 bg-success px-5 py-3.5 text-sm text-accent-foreground shadow-2xl ring-4 ring-success/25"
           >
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/25 text-lg font-bold">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent-foreground/15 text-lg font-bold">
               ✓
             </span>
             <div className="min-w-0">
               <p className="font-bold">
                 KPI medal standards saved{classScopeLabel ? ` for ${classScopeLabel}` : ""}
               </p>
-              <p className="mt-0.5 text-xs font-normal text-emerald-50">
+              <p className="mt-0.5 text-xs font-normal opacity-90">
                 {classScopeLabel
                   ? `Only ${classScopeLabel} was updated — overall class and subgroup KPIs stay separate.`
                   : "Your medal targets and ranked KPIs were updated."}
@@ -681,7 +714,7 @@ export function KpiTargetsEditor({
           type="button"
           onClick={save}
           disabled={status === "saving" || !activeSet || activeSet.id !== activeSetId}
-          className="rounded-lg bg-accent px-4 py-2 font-medium text-background disabled:opacity-60"
+          className="btn-primary rounded-lg px-4 py-2 font-semibold disabled:opacity-60"
         >
           {status === "saving" ? "Saving…" : "Save KPI set"}
         </button>
@@ -692,6 +725,7 @@ export function KpiTargetsEditor({
             Workout programs
           </Link>
         </p>
+      </div>
       </div>
 
       {builderOpen && (

@@ -454,7 +454,7 @@ type StudentActivityPair = { studentId: string; activityId: string };
 /** Ignore marks tied to archived/deleted testing sessions (legacy soft-archive rows). */
 export const omitArchivedSessionResults = {
   OR: [{ testingSessionId: null }, { testingSession: { archivedAt: null } }],
-} as const;
+};
 
 /** Recompute session bests and career PR flags after rows are removed or superseded. */
 export async function reconcileStudentActivityPerformanceFlags(

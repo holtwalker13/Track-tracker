@@ -1,6 +1,7 @@
 import { Podium } from "lucide-react";
 import { TopNav } from "@/components/layout/top-nav";
 import { SchoolSwitcher } from "@/components/admin/school-switcher";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 import type { NavItem } from "@/lib/navigation";
 import { getSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
@@ -101,8 +102,12 @@ export async function AppShell({
                 </div>
               ) : null}
             </div>
-            <TopNav items={items} compact={navCompact || compact} />
+            <div className="flex min-w-0 items-center gap-2">
+              <ThemeToggle className="hidden sm:inline-flex" />
+              <TopNav items={items} compact={navCompact || compact} />
+            </div>
           </div>
+          <ThemeToggle className="sm:hidden" />
           {showSchoolSwitcher ? (
             <div className="mt-2 border-t border-card-border/60 pt-2 sm:hidden">
               <SchoolSwitcher

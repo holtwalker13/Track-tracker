@@ -57,7 +57,7 @@ export function TopNav({
   const labelClassName = cn(
     "text-center font-medium uppercase tracking-wide",
     compact
-      ? "hidden text-[8px] leading-tight md:block md:text-[9px]"
+      ? "text-[7px] leading-tight sm:text-[8px]"
       : "text-[8px] leading-tight md:text-[9px] md:leading-snug"
   );
 
@@ -82,7 +82,10 @@ export function TopNav({
             title={item.label}
             className={cn(
               linkClassName,
-              active && "bg-accent/15 text-accent ring-1 ring-accent/40"
+              active &&
+                (compact
+                  ? "bg-accent text-accent-foreground shadow-[0_0_12px_rgba(198,245,74,0.35)]"
+                  : "bg-accent/15 text-accent ring-1 ring-accent/40")
             )}
           >
             <Icon className={cn("shrink-0", compact ? "h-3.5 w-3.5 md:h-4 md:w-4" : "h-4 w-4")} aria-hidden />

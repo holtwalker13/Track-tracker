@@ -21,6 +21,7 @@ import {
 import { pickBestAttempt } from "@/lib/services/performance";
 import { formatStudentName, cn } from "@/lib/utils";
 import type { ScoringDirection } from "@/lib/constants";
+import { AddSessionActivityButton } from "@/components/testing/add-session-activity-button";
 
 export type StudioActivity = {
   id: string;
@@ -60,10 +61,13 @@ export function LiveTestingStudio({
   readOnly = false,
   selectedStudentId: initialStudentId,
   attemptCount = 1,
+  kpiOptionsForAdd,
 }: {
   sessionId: string;
   sessionPath: string;
   activities: StudioActivity[];
+  /** School KPI library options for “Add test” (live sessions only). */
+  kpiOptionsForAdd?: { slug: string; name: string }[];
   activitySlug: string;
   activityId: string;
   activityName: string;
@@ -393,6 +397,13 @@ export function LiveTestingStudio({
             </Link>
           );
         })}
+        {!readOnly && kpiOptionsForAdd && kpiOptionsForAdd.length > 0 ? (
+          <AddSessionActivityButton
+            sessionId={sessionId}
+            existingSlugs={activities.map((a) => a.slug)}
+            kpiOptions={kpiOptionsForAdd}
+          />
+        ) : null}
       </div>
 
       {/* Focused dark entry panel */}

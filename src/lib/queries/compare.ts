@@ -9,7 +9,6 @@ import { getStudentContext } from "@/lib/queries/student";
 import { getAthleteMedalState } from "@/lib/queries/athlete-medal-state";
 import {
   expandRankedSlugsToQuerySlugs,
-  markAliasSlugsFor,
   resolveRankedSlugToActivitySlugs,
 } from "@/lib/kpi-marks";
 import { DEFAULT_AGE_BRACKET } from "@/lib/age-brackets";
@@ -170,10 +169,7 @@ export async function getAthleteCompare(
   for (const { rankedSlug, act } of compareActs) {
     const direction = act.scoringDirection as ScoringDirection;
     const aliasSlugs = [
-      ...new Set([
-        ...markAliasSlugsFor(rankedSlug),
-        ...(await resolveRankedSlugToActivitySlugs(schoolId, rankedSlug)),
-      ]),
+      ...new Set(await resolveRankedSlugToActivitySlugs(schoolId, rankedSlug)),
     ];
     const aliasActivities = await prisma.activity.findMany({
       where: { slug: { in: aliasSlugs } },
@@ -456,10 +452,7 @@ export async function getAthleteLineup(
   const activityIdsByRanked = new Map<string, string[]>();
   for (const { rankedSlug, act } of lineupActs) {
     const aliasSlugs = [
-      ...new Set([
-        ...markAliasSlugsFor(rankedSlug),
-        ...(await resolveRankedSlugToActivitySlugs(schoolId, rankedSlug)),
-      ]),
+      ...new Set(await resolveRankedSlugToActivitySlugs(schoolId, rankedSlug)),
     ];
     const aliasActivities = await prisma.activity.findMany({
       where: { slug: { in: aliasSlugs } },

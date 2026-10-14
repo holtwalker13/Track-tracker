@@ -2,10 +2,8 @@ import type { ScoringDirection } from "@/lib/constants";
 import { prisma } from "@/lib/db";
 import { KPI_METRIC_META, type KpiMark } from "@/lib/kpi-targets";
 
-/** Same test recorded under different catalog slugs — share one best mark for medals. */
-export const KPI_MARK_ALIAS_GROUPS: readonly string[][] = [
-  ["flying-10-meter", "flying-10-yard"],
-];
+/** Optional slug aliases (same test, different catalog slugs). Keep empty for strict KPI matching. */
+export const KPI_MARK_ALIAS_GROUPS: readonly string[][] = [];
 
 const aliasGroupBySlug = new Map<string, string[]>();
 for (const group of KPI_MARK_ALIAS_GROUPS) {

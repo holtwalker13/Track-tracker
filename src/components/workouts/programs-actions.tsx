@@ -15,7 +15,11 @@ import {
 } from "@/components/workouts/programs-set-builder-grid";
 import { CoachModal } from "@/components/ui/coach-modal";
 import { classSectionLabel } from "@/lib/periods";
-import { cn } from "@/lib/utils";
+import {
+  WorkoutLiftPicker,
+  orderedEnabledLifts,
+  type WorkoutLiftDraft,
+} from "@/components/workouts/workout-lift-picker";
 
 type TemplateRow = {
   id: string;
@@ -66,11 +70,13 @@ export function ProgramsActions({
   const [programName, setProgramName] = useState("");
   const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
 
-  const defaultLiftState = () =>
+  const defaultLiftState = (): WorkoutLiftDraft[] =>
     workoutLifts.map((l) => ({
       slug: l.slug,
       name: l.name,
-      enabled: true,
+      bodyGroup: l.bodyGroup,
+      enabled: false,
+      order: null,
       sets: 3,
       reps: 5,
     }));
@@ -123,16 +129,20 @@ export function ProgramsActions({
     setEditingTemplateId(template.id);
     setProgramName(template.name);
     const bySlug = new Map(template.exercises.map((ex) => [ex.activity.slug, ex]));
+    let order = 0;
     setLifts(
       workoutLifts.map((l) => {
         const ex = bySlug.get(l.slug);
         const sets = ex
           ? normalizeSetPrescriptions(ex.setPrescriptions, ex.defaultSets, ex.defaultReps)
           : null;
+        const enabled = Boolean(ex);
         return {
           slug: l.slug,
           name: l.name,
-          enabled: Boolean(ex),
+          bodyGroup: l.bodyGroup,
+          enabled,
+          order: enabled ? ++order : null,
           sets: sets?.length ?? 3,
           reps: sets?.[0]?.reps ?? ex?.defaultReps ?? 5,
         };
@@ -226,9 +236,7 @@ export function ProgramsActions({
     setPending(true);
     setError(null);
     setMsg(null);
-    const exercises = lifts
-      .filter((l) => l.enabled)
-      .map((l) => {
+    const exercises = orderedEnabledLifts(lifts).map((l) => {
         const existing = templates
           .find((t) => t.id === editingTemplateId)
           ?.exercises.find((ex) => ex.activity.slug === l.slug);
@@ -516,62 +524,7 @@ export function ProgramsActions({
                 className="mt-1 w-full rounded-lg border border-card-border bg-background px-3 py-2"
               />
             </label>
-            <div className="grid gap-2 sm:grid-cols-2">
-              {lifts.map((l, i) => (
-                <label
-                  key={l.slug}
-                  className={cn(
-                    "flex cursor-pointer items-center gap-3 rounded-xl border px-3 py-2.5 text-sm",
-                    l.enabled
-                      ? "border-sky-400/40 bg-sky-500/10"
-                      : "border-card-border bg-background/30 opacity-80"
-                  )}
-                >
-                  <input
-                    type="checkbox"
-                    checked={l.enabled}
-                    onChange={(e) => {
-                      const next = [...lifts];
-                      next[i] = { ...l, enabled: e.target.checked };
-                      setLifts(next);
-                    }}
-                    className="shrink-0"
-                  />
-                  <span className="min-w-0 flex-1 truncate font-medium">{l.name}</span>
-                  <span className="flex shrink-0 items-center gap-1 text-xs text-muted">
-                    <input
-                      type="number"
-                      min={1}
-                      max={20}
-                      disabled={!l.enabled}
-                      value={l.sets}
-                      onChange={(e) => {
-                        const next = [...lifts];
-                        next[i] = { ...l, sets: Number(e.target.value) };
-                        setLifts(next);
-                      }}
-                      className="w-12 rounded border border-card-border bg-background px-1 py-0.5 text-center"
-                      aria-label={`Sets for ${l.name}`}
-                    />
-                    ×
-                    <input
-                      type="number"
-                      min={1}
-                      max={50}
-                      disabled={!l.enabled}
-                      value={l.reps}
-                      onChange={(e) => {
-                        const next = [...lifts];
-                        next[i] = { ...l, reps: Number(e.target.value) };
-                        setLifts(next);
-                      }}
-                      className="w-12 rounded border border-card-border bg-background px-1 py-0.5 text-center"
-                      aria-label={`Reps for ${l.name}`}
-                    />
-                  </span>
-                </label>
-              ))}
-            </div>
+            <WorkoutLiftPicker lifts={lifts} onChange={setLifts} />
             <div className="flex flex-wrap gap-2">
               <button
                 type="submit"

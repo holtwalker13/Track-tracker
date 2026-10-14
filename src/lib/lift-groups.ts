@@ -27,6 +27,7 @@ export function descriptionForLiftGroup(group: LiftBodyGroup): string {
 }
 
 const SLUG_GROUP: Record<string, LiftBodyGroup> = {
+  "box-squat": "legs",
   squat: "legs",
   "squat-relative": "legs",
   "hang-clean": "legs",

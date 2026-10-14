@@ -16,8 +16,10 @@ export type ResolvedCoachClassScope = {
 /** Resolve coach/class/subgroup from URL for feature-scoped selectors (not global header). */
 export async function resolveCoachClassScopeFromParams(
   session: SessionPayload & { schoolId: string },
-  params: { coachId?: string; classId?: string; subgroupId?: string }
+  params: { coachId?: string; classId?: string; subgroupId?: string },
+  opts?: { defaultClassId?: boolean }
 ): Promise<ResolvedCoachClassScope> {
+  const defaultClassId = opts?.defaultClassId !== false;
   const coaches = await listSchoolCoaches(session.schoolId);
   const myProfile = await coachProfileForSession(session);
 
@@ -39,7 +41,9 @@ export async function resolveCoachClassScopeFromParams(
   const classId =
     params.classId && classes.some((c) => c.id === params.classId)
       ? params.classId
-      : classes[0]?.id ?? "";
+      : defaultClassId
+        ? classes[0]?.id ?? ""
+        : "";
 
   const subgroupsRaw = classId ? await listClassSubgroups(classId) : [];
   const subgroups = subgroupsRaw.map((s) => ({ id: s.id, name: s.name }));

@@ -31,9 +31,11 @@ function participationLabel(value: string | null) {
 export function RosterTable({
   athletes,
   showClass,
+  columns = ROSTER_COLUMNS,
 }: {
   athletes: RosterAthlete[];
   showClass: boolean;
+  columns?: { slug: string; label: string }[];
 }) {
   const router = useRouter();
   const [sortKey, setSortKey] = useState<SortKey>("name");
@@ -66,7 +68,7 @@ export function RosterTable({
         const order = { none: 0, invite: 1, active: 2 };
         return (order[a.loginStatus] - order[b.loginStatus]) * dir;
       }
-      const markSlug = ROSTER_COLUMNS.find((c) => c.slug === sortKey)?.slug;
+      const markSlug = columns.find((c) => c.slug === sortKey)?.slug;
       if (markSlug) {
         const av = a.marks[markSlug]?.value;
         const bv = b.marks[markSlug]?.value;
@@ -264,7 +266,7 @@ export function RosterTable({
             <Header label="Hour / Class" sortId="classPeriod" />
             <Header label="Type" sortId="participationType" />
             <Header label="Sports" sortId="sports" />
-            {ROSTER_COLUMNS.map((col) => (
+            {columns.map((col) => (
               <Header key={col.slug} label={col.label} sortId={col.slug} align="right" />
             ))}
           </tr>
@@ -353,7 +355,7 @@ export function RosterTable({
                 <td className="max-w-[10rem] truncate px-3 py-2 text-muted" title={a.sports ?? undefined}>
                   {a.sports ?? "—"}
                 </td>
-                {ROSTER_COLUMNS.map((col) => (
+                {columns.map((col) => (
                   <td key={col.slug} className="whitespace-nowrap px-3 py-2 text-right font-mono tabular-nums">
                     {a.marks[col.slug]?.display ?? "—"}
                   </td>

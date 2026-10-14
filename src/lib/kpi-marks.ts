@@ -1,4 +1,5 @@
 import type { ScoringDirection } from "@/lib/constants";
+import { prisma } from "@/lib/db";
 import { KPI_METRIC_META, type KpiMark } from "@/lib/kpi-targets";
 
 /** Same test recorded under different catalog slugs — share one best mark for medals. */
@@ -21,6 +22,50 @@ export function expandSlugsWithMarkAliases(slugs: string[]): string[] {
   const out = new Set<string>();
   for (const slug of slugs) {
     for (const s of markAliasSlugsFor(slug)) out.add(s);
+  }
+  return [...out];
+}
+
+/**
+ * Map a ranked KPI slug from the KPI set to catalog slugs that may hold marks
+ * (handles school-specific activity slugs that differ from the set metric slug).
+ */
+export async function resolveRankedSlugToActivitySlugs(
+  schoolId: string,
+  rankedSlug: string
+): Promise<string[]> {
+  const candidates = new Set(markAliasSlugsFor(rankedSlug));
+  const direct = await prisma.activity.findMany({
+    where: {
+      slug: { in: [...candidates] },
+      OR: [{ schoolId: null }, { schoolId }],
+    },
+    select: { slug: true },
+  });
+  if (direct.length > 0) return direct.map((a) => a.slug);
+
+  const label = metricDisplayName(rankedSlug);
+  const byName = await prisma.activity.findMany({
+    where: {
+      OR: [{ schoolId: null }, { schoolId }],
+      name: { equals: label, mode: "insensitive" },
+    },
+    select: { slug: true },
+  });
+  if (byName.length > 0) return byName.map((a) => a.slug);
+
+  return [rankedSlug];
+}
+
+export async function expandRankedSlugsToQuerySlugs(
+  schoolId: string,
+  rankedSlugs: string[]
+): Promise<string[]> {
+  const out = new Set<string>();
+  for (const slug of rankedSlugs) {
+    for (const s of await resolveRankedSlugToActivitySlugs(schoolId, slug)) {
+      out.add(s);
+    }
   }
   return [...out];
 }
@@ -60,18 +105,25 @@ export function metricDisplayName(
 export function buildRankedKpiMarks(
   rankedSlugs: string[],
   rawBestBySlug: Map<string, number>,
-  activitiesBySlug: Map<string, ActivityScoringRow>
+  activitiesBySlug: Map<string, ActivityScoringRow>,
+  querySlugToRanked?: Map<string, string>
 ): KpiMark[] {
   const marks: KpiMark[] = [];
   for (const rankedSlug of rankedSlugs) {
-    const aliases = markAliasSlugsFor(rankedSlug);
+    const slugKeys = new Set(markAliasSlugsFor(rankedSlug));
+    if (querySlugToRanked) {
+      for (const [activitySlug, parent] of querySlugToRanked) {
+        if (parent === rankedSlug) slugKeys.add(activitySlug);
+      }
+    }
     const direction = scoringDirectionForSlug(
       rankedSlug,
-      activitiesBySlug.get(rankedSlug) ?? activitiesBySlug.get(aliases.find((s) => activitiesBySlug.has(s)) ?? "")
+      activitiesBySlug.get(rankedSlug) ??
+        [...slugKeys].map((s) => activitiesBySlug.get(s)).find(Boolean)
     );
     const lower = direction === "LOWER_BETTER";
     let best: number | null = null;
-    for (const slug of aliases) {
+    for (const slug of slugKeys) {
       const value = rawBestBySlug.get(slug);
       if (value == null) continue;
       if (best == null || (lower ? value < best : value > best)) best = value;

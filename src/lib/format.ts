@@ -1,9 +1,11 @@
 import type { ScoringDirection } from "@/lib/constants";
+import { formatMinuteSecond, usesMinuteSecondDisplay } from "@/lib/time-input";
 
 export function formatActivityValue(
   value: number,
   unit: string,
-  activitySlug?: string
+  activitySlug?: string,
+  activityName?: string
 ): string {
   if (unit === "inches" && (activitySlug === "standing-broad-jump" || activitySlug === "vertical-jump")) {
     if (activitySlug === "vertical-jump") {
@@ -16,6 +18,9 @@ export function formatActivityValue(
   }
   if (unit === "x BW") return `${value.toFixed(2)}×`;
   if (unit === "seconds") {
+    if (usesMinuteSecondDisplay(unit, activitySlug, activityName)) {
+      return formatMinuteSecond(value);
+    }
     const digits =
       activitySlug?.startsWith("flying-10") || (value > 0 && value < 2) ? 3 : 2;
     return `${value.toFixed(digits)} s`;

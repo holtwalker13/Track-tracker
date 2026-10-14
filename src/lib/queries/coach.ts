@@ -7,6 +7,7 @@ import {
   periodDateRange,
   type LeaderboardPeriod,
 } from "@/lib/leaderboard-periods";
+import { omitArchivedSessionResults } from "@/lib/services/results";
 
 export async function getCoachDashboard(schoolId: string) {
   const currentYear = await prisma.schoolYear.findFirst({
@@ -198,8 +199,15 @@ export async function getLeaderboard(
     };
   } = {}
 ) {
-  const { markAliasSlugsFor } = await import("@/lib/kpi-marks");
-  const slugGroup = markAliasSlugsFor(activitySlug);
+  const { markAliasSlugsFor, resolveRankedSlugToActivitySlugs } = await import(
+    "@/lib/kpi-marks"
+  );
+  const slugGroup = [
+    ...new Set([
+      ...markAliasSlugsFor(activitySlug),
+      ...(await resolveRankedSlugToActivitySlugs(schoolId, activitySlug)),
+    ]),
+  ];
   const activityRows = await prisma.activity.findMany({
     where: { slug: { in: slugGroup } },
   });
@@ -248,6 +256,7 @@ export async function getLeaderboard(
       status: "COMPLETED",
       isBestAttempt: true,
       resultValue: { not: null },
+      ...omitArchivedSessionResults,
       ...(period === "semester"
         ? {}
         : { testingDate: { gte: range.start, lte: range.end } }),

@@ -701,9 +701,8 @@ export async function resolveKpiSetForMedalScope(
 }
 
 /**
- * KPI set for Compete leaderboards, compare, and profile medal class.
- * With a class/subgroup selected, only that scope's set applies — never the
- * school default (so unranked school KPIs do not bleed into a class view).
+ * KPI set for Compete leaderboards and explicit class/subgroup scope.
+ * Same resolution chain as Coach → KPIs (subclass → class → school default).
  */
 export async function resolveKpiSetForCompeteScope(
   schoolId: string,
@@ -711,28 +710,23 @@ export async function resolveKpiSetForCompeteScope(
   subgroupId?: string | null
 ): Promise<string | null> {
   if (classId || subgroupId) {
-    if (subgroupId && classId) {
-      const bySubgroup = await prisma.kpiSet.findFirst({
-        where: { schoolId, classId, subgroupId },
-        orderBy: { updatedAt: "desc" },
-        select: { id: true },
-      });
-      if (bySubgroup) return bySubgroup.id;
-    }
-    if (classId) {
-      const byClass = await prisma.kpiSet.findFirst({
-        where: { schoolId, classId, subgroupId: null },
-        orderBy: { updatedAt: "desc" },
-        select: { id: true },
-      });
-      if (byClass) return byClass.id;
-    }
-    return null;
+    return resolveKpiSetForClassScope(schoolId, classId, subgroupId);
   }
   return (
     (await ensureSchoolDefaultKpiSetId(schoolId)) ??
     (await resolveSchoolKpiSetId(schoolId))
   );
+}
+
+/** Scope opts for medal/compare: omit subgroupId unless a subclass is selected. */
+export function kpiScopeOptsFromClassBar(
+  classId?: string | null,
+  subgroupId?: string | null
+): MedalScopeResolveOpts {
+  if (!classId) return {};
+  return subgroupId
+    ? { classId, subgroupId }
+    : { classId };
 }
 
 /** Ranked KPI slugs governing a specific athlete (their class/subgroup set context). */

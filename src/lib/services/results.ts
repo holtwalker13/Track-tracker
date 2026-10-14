@@ -448,3 +448,118 @@ export async function correctResult(
     return created;
   });
 }
+
+type StudentActivityPair = { studentId: string; activityId: string };
+
+/** Ignore marks tied to archived/deleted testing sessions (legacy soft-archive rows). */
+export const omitArchivedSessionResults = {
+  OR: [{ testingSessionId: null }, { testingSession: { archivedAt: null } }],
+} as const;
+
+/** Recompute session bests and career PR flags after rows are removed or superseded. */
+export async function reconcileStudentActivityPerformanceFlags(
+  studentId: string,
+  activityId: string,
+  tx: Pick<typeof prisma, "performanceResult" | "activity"> = prisma
+) {
+  const activity = await tx.activity.findUnique({
+    where: { id: activityId },
+    select: { scoringDirection: true },
+  });
+  if (!activity) return;
+  const direction = activity.scoringDirection as ScoringDirection;
+
+  const rows = await tx.performanceResult.findMany({
+    where: {
+      studentId,
+      activityId,
+      status: "COMPLETED",
+      resultValue: { not: null },
+    },
+  });
+
+  if (rows.length === 0) return;
+
+  const bySession = new Map<string, typeof rows>();
+  for (const row of rows) {
+    const key = row.testingSessionId ?? `legacy:${row.id}`;
+    const bag = bySession.get(key) ?? [];
+    bag.push(row);
+    bySession.set(key, bag);
+  }
+
+  const sessionBestByRowId = new Map<string, boolean>();
+  const sessionBestValues: number[] = [];
+
+  for (const group of bySession.values()) {
+    const values = group
+      .map((r) => r.resultValue)
+      .filter((v): v is number => v != null && Number.isFinite(v));
+    const bestVal = pickBestAttempt(values, direction);
+    for (const row of group) {
+      const isBest = bestVal != null && row.resultValue === bestVal;
+      sessionBestByRowId.set(row.id, isBest);
+      if (isBest && bestVal != null) sessionBestValues.push(bestVal);
+    }
+  }
+
+  const careerBest = pickBestAttempt(sessionBestValues, direction);
+
+  for (const row of rows) {
+    const isBest = sessionBestByRowId.get(row.id) ?? false;
+    const isPr = isBest && careerBest != null && row.resultValue === careerBest;
+    if (row.isBestAttempt !== isBest || row.isPersonalRecord !== isPr) {
+      await tx.performanceResult.update({
+        where: { id: row.id },
+        data: {
+          isBestAttempt: isBest,
+          isPersonalRecord: isPr,
+          ...(isBest ? {} : { relativeStrength: null }),
+        },
+      });
+    }
+  }
+}
+
+/** Remove all marks from a testing session and drop the session record. */
+export async function deleteTestingSessionAndMarks(
+  sessionId: string,
+  actorUserId: string
+): Promise<{ deletedResults: number; pairs: StudentActivityPair[] }> {
+  const results = await prisma.performanceResult.findMany({
+    where: { testingSessionId: sessionId, status: { not: "SUPERSEDED" } },
+    select: { id: true, studentId: true, activityId: true, schoolId: true },
+  });
+
+  const pairKey = (p: StudentActivityPair) => `${p.studentId}:${p.activityId}`;
+  const pairs = [
+    ...new Map(
+      results.map((r) => [pairKey(r), { studentId: r.studentId, activityId: r.activityId }])
+    ).values(),
+  ];
+
+  await prisma.$transaction(async (tx) => {
+    if (results.length > 0) {
+      await recordPerformanceAudits(
+        results.map((r) => ({
+          eventType: "ARCHIVED_SESSION" as const,
+          resultId: r.id,
+          studentId: r.studentId,
+          activityId: r.activityId,
+          schoolId: r.schoolId,
+          actorUserId,
+          payload: { sessionId, deleted: true },
+        })),
+        tx
+      );
+      await tx.performanceResult.deleteMany({ where: { testingSessionId: sessionId } });
+    }
+    await tx.testingSession.delete({ where: { id: sessionId } });
+  });
+
+  for (const pair of pairs) {
+    await reconcileStudentActivityPerformanceFlags(pair.studentId, pair.activityId);
+  }
+
+  return { deletedResults: results.length, pairs };
+}

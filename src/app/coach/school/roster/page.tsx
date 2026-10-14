@@ -1,7 +1,11 @@
 import { requireSchoolSession } from "@/lib/auth/session";
 import { gradesFromSearch, isAllGrades } from "@/lib/grades";
 import { parseGenderParam } from "@/lib/gender";
-import { getClassRoster, listSchoolClasses } from "@/lib/queries/roster";
+import {
+  getClassRoster,
+  listSchoolClasses,
+  schoolClassHourOptions,
+} from "@/lib/queries/roster";
 import { RosterTable } from "@/components/athletes/roster-table";
 import { AddStudentForm } from "@/components/athletes/add-student-form";
 import {
@@ -30,7 +34,7 @@ export default async function SchoolRosterPage({
   const participationType =
     sp.type === "PE" || sp.type === "ATHLETE" ? sp.type : undefined;
   const classes = await listSchoolClasses(session.schoolId);
-  const hourClasses = classes.filter((c) => c.period && !c.name.startsWith("Class of"));
+  const classOptions = schoolClassHourOptions(classes);
   const roster = await getClassRoster(session.schoolId, grades, gender, {
     classId: sp.classId,
     participationType,
@@ -61,8 +65,6 @@ export default async function SchoolRosterPage({
     className: a.className,
     classYear: a.classYear,
   }));
-
-  const classOptions = hourClasses.length ? hourClasses : classes;
 
   return (
     <>

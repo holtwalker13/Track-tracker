@@ -4,7 +4,7 @@ import { prisma } from "@/lib/db";
 import { isWithinLiveWindow } from "@/lib/constants";
 import { coachCanAdministerTestingSession } from "@/lib/auth/coach-scope";
 import { calendarDateAtNoonUtc } from "@/lib/calendar-date";
-import { recordPerformanceAudits } from "@/lib/services/performance-audit";
+import { deleteTestingSessionAndMarks } from "@/lib/services/results";
 
 export async function PATCH(
   request: Request,
@@ -164,54 +164,12 @@ export async function DELETE(
     return NextResponse.json({ error: "Not allowed for this session" }, { status: 403 });
   }
 
-  const resultCount = await prisma.performanceResult.count({
-    where: { testingSessionId: id, status: { not: "SUPERSEDED" } },
-  });
-
-  // Sessions with marks are soft-archived so athlete history is never wiped by
-  // an accidental delete or an app update. Empty sessions may be hard-deleted.
-  if (resultCount > 0) {
-    const results = await prisma.performanceResult.findMany({
-      where: { testingSessionId: id, status: { not: "SUPERSEDED" } },
-      select: { id: true, studentId: true, activityId: true, schoolId: true },
-    });
-
-    await prisma.testingSession.update({
-      where: { id },
-      data: {
-        archivedAt: new Date(),
-        status: "CLOSED",
-        recordingUnlocked: false,
-      },
-    });
-
-    await recordPerformanceAudits(
-      results.map((r) => ({
-        eventType: "ARCHIVED_SESSION" as const,
-        resultId: r.id,
-        studentId: r.studentId,
-        activityId: r.activityId,
-        schoolId: r.schoolId,
-        actorUserId: session.userId,
-        payload: { sessionId: id, sessionName: rec.name },
-      }))
-    );
-
-    return NextResponse.json({
-      ok: true,
-      archived: true,
-      deletedResults: 0,
-      preservedResults: resultCount,
-      students: rec._count.students,
-    });
-  }
-
-  await prisma.testingSession.delete({ where: { id } });
+  const { deletedResults } = await deleteTestingSessionAndMarks(id, session.userId);
 
   return NextResponse.json({
     ok: true,
     archived: false,
-    deletedResults: 0,
+    deletedResults,
     students: rec._count.students,
   });
 }

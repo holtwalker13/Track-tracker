@@ -34,6 +34,7 @@ const ACTIVITIES: {
   { slug: "standing-broad-jump", name: "Standing Broad Jump", cat: "power", unit: "inches", dir: "HIGHER_BETTER", min: 40, max: 140 },
   { slug: "vertical-jump", name: "Vertical Jump (CMJ)", cat: "power", unit: "inches", dir: "HIGHER_BETTER", min: 8, max: 42 },
   { slug: "squat", name: "Back Squat 1RM", cat: "strength", unit: "lb", dir: "HIGHER_BETTER", min: 45, max: 550, bw: true },
+  { slug: "box-squat", name: "Box Squat", cat: "strength", unit: "lb", dir: "HIGHER_BETTER", min: 45, max: 550, bw: true },
   { slug: "squat-relative", name: "Back Squat 1RM / BW", cat: "strength", unit: "x BW", dir: "HIGHER_BETTER", min: 0.4, max: 3.2, bw: true },
   { slug: "hang-clean", name: "Hang Clean 1RM", cat: "strength", unit: "lb", dir: "HIGHER_BETTER", min: 45, max: 400, bw: true },
   { slug: "hang-clean-relative", name: "Hang Clean 1RM / BW", cat: "strength", unit: "x BW", dir: "HIGHER_BETTER", min: 0.3, max: 2.2, bw: true },

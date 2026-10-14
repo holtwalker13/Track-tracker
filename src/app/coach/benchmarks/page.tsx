@@ -143,8 +143,8 @@ export default async function BenchmarksPage({
     : null;
 
   return (
-    <AppShell title="KPI targets" nav={COACH_NAV}>
-      <div className="mb-4">
+    <AppShell title="KPI Targets" nav={COACH_NAV} navCompact>
+      <div className="mb-4 lg:mb-4">
         <CoachClassScopeBar
           coaches={scope.coaches}
           classes={scope.classes}
@@ -157,13 +157,13 @@ export default async function BenchmarksPage({
         />
       </div>
       {scopeLabel ? (
-        <p className="mb-4 text-sm text-muted">
+        <p className="mb-4 hidden text-sm text-muted lg:block">
           Medal targets and ranked KPIs for{" "}
           <span className="font-medium text-foreground">{scopeLabel}</span>. Change class or
           subgroup above to edit a different group.
         </p>
       ) : (
-        <p className="mb-4 text-sm text-muted">Select a class to configure KPI targets.</p>
+        <p className="mb-4 hidden text-sm text-muted lg:block">Select a class to configure KPI targets.</p>
       )}
       <KpiTargetsEditor
         key={`${scope.classId ?? "none"}-${scope.subgroupId ?? "class"}`}

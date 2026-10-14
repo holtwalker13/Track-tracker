@@ -5,6 +5,7 @@ import { ChevronDown } from "lucide-react";
 import { ActivityIcon } from "@/lib/activity-icons";
 import { cn } from "@/lib/utils";
 import { DeleteSessionButton } from "@/components/testing/delete-session-button";
+import { SessionNameEditor } from "@/components/testing/session-name-editor";
 
 export type SessionResultRow = {
   studentId: string;
@@ -137,6 +138,7 @@ export function SessionResultsAccordion({
       </summary>
 
       <div className="space-y-4 border-t border-card-border px-4 py-4 sm:px-5">
+        <SessionNameEditor sessionId={sessionId} name={sessionName} compact />
         {activities.length === 0 ? (
           <p className="text-sm text-muted">No activities on this session.</p>
         ) : (

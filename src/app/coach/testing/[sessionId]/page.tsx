@@ -9,6 +9,9 @@ import { LiveSessionControls } from "@/components/testing/live-session-controls"
 import { isLiveRecordingOpen, isWithinLiveWindow } from "@/lib/constants";
 import { classSectionLabel } from "@/lib/periods";
 import { SessionDateEditor } from "@/components/testing/session-date-editor";
+import { SessionNameEditor } from "@/components/testing/session-name-editor";
+import { AddSessionStudentsPanel } from "@/components/testing/add-session-students-panel";
+import { listSchoolKpiLibrary } from "@/lib/queries/kpi-library";
 import { coachCanAdministerTestingSession } from "@/lib/auth/coach-scope";
 import { ClassSubgroupFilter } from "@/components/classes/class-subgroup-filter";
 import { listClassSubgroups, studentIdsInSubgroup } from "@/lib/queries/class-subgroups";
@@ -85,6 +88,25 @@ export default async function LiveTestingPage({
     rosterStudents = testingSession.students.filter((ss) => allowed.has(ss.studentId));
   }
 
+  const kpiLibrary = await listSchoolKpiLibrary(session.schoolId);
+  const kpiOptionsForAdd = kpiLibrary.map((k) => ({ slug: k.slug, name: k.name }));
+
+  let addStudentCandidates: { id: string; name: string }[] = [];
+  if (classId) {
+    const onSession = new Set(testingSession.students.map((s) => s.studentId));
+    const enrollments = await prisma.classEnrollment.findMany({
+      where: { classId },
+      include: { student: { select: { id: true, firstName: true, lastName: true } } },
+      orderBy: [{ student: { lastName: "asc" } }, { student: { firstName: "asc" } }],
+    });
+    addStudentCandidates = enrollments
+      .filter((e) => !onSession.has(e.studentId))
+      .map((e) => ({
+        id: e.student.id,
+        name: `${e.student.firstName} ${e.student.lastName}`,
+      }));
+  }
+
   const rows = await Promise.all(
     rosterStudents.map(async (ss) => {
       const prev = await getPreviousBest(ss.studentId, activity.id, testingSession.testingDate);
@@ -156,10 +178,15 @@ export default async function LiveTestingPage({
         <summary className="cursor-pointer text-xs font-medium text-muted hover:text-foreground">
           Test date & session options
         </summary>
-        <div className="mt-2">
+        <div className="mt-2 space-y-3">
+          <SessionNameEditor sessionId={sessionId} name={testingSession.name} compact />
           <SessionDateEditor sessionId={sessionId} testingDate={testDay} />
         </div>
       </details>
+
+      {coachCanEdit && addStudentCandidates.length > 0 ? (
+        <AddSessionStudentsPanel sessionId={sessionId} candidates={addStudentCandidates} />
+      ) : null}
 
       <LiveTestingStudio
         key={`${activity.id}-${sp.student ?? "first"}`}
@@ -175,6 +202,7 @@ export default async function LiveTestingPage({
         readOnly={!coachCanEdit}
         selectedStudentId={sp.student}
         attemptCount={Math.max(1, testingSession.attemptSlots ?? 1)}
+        kpiOptionsForAdd={coachCanEdit ? kpiOptionsForAdd : undefined}
       />
     </AppShell>
   );

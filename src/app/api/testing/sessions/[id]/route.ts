@@ -5,6 +5,7 @@ import { isWithinLiveWindow } from "@/lib/constants";
 import { coachCanAdministerTestingSession } from "@/lib/auth/coach-scope";
 import { calendarDateAtNoonUtc } from "@/lib/calendar-date";
 import { deleteTestingSessionAndMarks } from "@/lib/services/results";
+import { recordPerformanceAudits } from "@/lib/services/performance-audit";
 
 export async function PATCH(
   request: Request,
@@ -99,7 +100,78 @@ export async function PATCH(
     return NextResponse.json({ ok: true, attemptSlots: n });
   }
 
+  if (body.name != null) {
+    const name = String(body.name).trim();
+    if (!name) {
+      return NextResponse.json({ error: "Session name cannot be empty" }, { status: 400 });
+    }
+    await prisma.testingSession.update({ where: { id }, data: { name } });
+    return NextResponse.json({ ok: true, name });
+  }
+
+  if (Array.isArray(body.activitySlugs) && body.activitySlugs.length > 0) {
+    const slugs = Array.from(
+      new Set<string>(
+        body.activitySlugs.map((s: unknown) => String(s).trim()).filter(Boolean)
+      )
+    );
+    const activities = await prisma.activity.findMany({
+      where: {
+        slug: { in: slugs },
+        OR: [{ schoolId: null }, { schoolId: session.schoolId }],
+      },
+    });
+    const existing = await prisma.testingSessionActivity.findMany({
+      where: { sessionId: id },
+      select: { activityId: true, sortOrder: true },
+    });
+    const existingIds = new Set(existing.map((e) => e.activityId));
+    const maxOrder = existing.reduce((m, e) => Math.max(m, e.sortOrder), -1);
+    const toAdd = activities.filter((a) => !existingIds.has(a.id));
+    if (toAdd.length > 0) {
+      await prisma.testingSessionActivity.createMany({
+        data: toAdd.map((a, i) => ({
+          sessionId: id,
+          activityId: a.id,
+          sortOrder: maxOrder + 1 + i,
+        })),
+      });
+    }
+    return NextResponse.json({
+      ok: true,
+      added: toAdd.map((a) => a.slug),
+    });
+  }
+
+  if (Array.isArray(body.studentIds) && body.studentIds.length > 0) {
+    const ids = Array.from(
+      new Set<string>(
+        body.studentIds.map((s: unknown) => String(s).trim()).filter(Boolean)
+      )
+    );
+    const enrolled = rec.classId
+      ? await prisma.classEnrollment.findMany({
+          where: { classId: rec.classId, studentId: { in: ids } },
+          select: { studentId: true },
+        })
+      : [];
+    const allowed = new Set(
+      rec.classId ? enrolled.map((e) => e.studentId) : ids
+    );
+    const toAdd = ids.filter((sid) => allowed.has(sid));
+    if (toAdd.length > 0) {
+      await prisma.testingSessionStudent.createMany({
+        data: toAdd.map((studentId) => ({ sessionId: id, studentId })),
+        skipDuplicates: true,
+      });
+    }
+    return NextResponse.json({ ok: true, addedStudents: toAdd.length });
+  }
+
   const dateStr = String(body.testingDate ?? "").trim();
+  if (!dateStr) {
+    return NextResponse.json({ error: "No updates provided" }, { status: 400 });
+  }
   const testingDate = calendarDateAtNoonUtc(dateStr);
   if (!testingDate) {
     return NextResponse.json({ error: "Test date is required (YYYY-MM-DD)" }, { status: 400 });

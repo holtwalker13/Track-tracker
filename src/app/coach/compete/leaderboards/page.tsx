@@ -28,11 +28,15 @@ export default async function CompeteLeaderboardsPage({
 }) {
   const session = await requireSchoolSession();
   const sp = await searchParams;
-  const scopeCtx = await resolveCoachClassScopeFromParams(session, {
-    coachId: sp.coachId,
-    classId: sp.classId,
-    subgroupId: sp.subgroupId,
-  });
+  const scopeCtx = await resolveCoachClassScopeFromParams(
+    session,
+    {
+      coachId: sp.coachId,
+      classId: sp.classId,
+      subgroupId: sp.subgroupId,
+    },
+    { defaultClassId: false }
+  );
   const grades = gradesFromSearch(sp);
   const gender = parseGenderParam(sp.gender);
   const scope = sp.scope === "global" ? "global" : "school";

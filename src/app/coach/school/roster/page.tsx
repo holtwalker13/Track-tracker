@@ -4,6 +4,7 @@ import { parseGenderParam } from "@/lib/gender";
 import {
   getClassRoster,
   listSchoolClasses,
+  resolveRosterColumns,
   schoolClassHourOptions,
 } from "@/lib/queries/roster";
 import { RosterTable } from "@/components/athletes/roster-table";
@@ -35,9 +36,11 @@ export default async function SchoolRosterPage({
     sp.type === "PE" || sp.type === "ATHLETE" ? sp.type : undefined;
   const classes = await listSchoolClasses(session.schoolId);
   const classOptions = schoolClassHourOptions(classes);
+  const rosterColumns = await resolveRosterColumns(session.schoolId, sp.classId);
   const roster = await getClassRoster(session.schoolId, grades, gender, {
     classId: sp.classId,
     participationType,
+    columns: rosterColumns,
   });
   const school = await prisma.school.findUnique({
     where: { id: session.schoolId },
@@ -90,7 +93,11 @@ export default async function SchoolRosterPage({
         gender={gender}
       />
 
-      <RosterTable athletes={athletes} showClass={!isAllGrades(grades) ? grades.length > 1 : true} />
+      <RosterTable
+        athletes={athletes}
+        showClass={!isAllGrades(grades) ? grades.length > 1 : true}
+        columns={rosterColumns}
+      />
       {emptyRoster && (
         <div className="mt-6 max-w-2xl">
           <p className="mb-3 text-sm text-muted">

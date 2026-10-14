@@ -17,13 +17,16 @@ import {
 export default async function StudentWorkoutPage({
   searchParams,
 }: {
-  searchParams: Promise<{ classId?: string }>;
+  searchParams: Promise<{ classId?: string; date?: string }>;
 }) {
   const session = await requireSession(["STUDENT"]);
   if (!session?.studentId) redirect("/login");
 
   const sp = await searchParams;
-  const dateStr = todayDateString();
+  const today = todayDateString();
+  const dateStr = /^\d{4}-\d{2}-\d{2}$/.test(sp.date?.trim() ?? "")
+    ? sp.date!.trim()
+    : today;
   const allAssignments = await listStudentAssignmentsForDate(session.studentId, dateStr);
   const classOptions = allAssignments
     .filter((a) => a.class)
@@ -131,6 +134,7 @@ export default async function StudentWorkoutPage({
         <StudentWorkoutClassPicker
           options={classOptions}
           classId={classId ?? ""}
+          date={dateStr}
         />
       </Suspense>
       <WorkoutLogClient initial={payload} />

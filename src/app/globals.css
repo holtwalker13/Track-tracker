@@ -1,21 +1,49 @@
 @import "tailwindcss";
 
-:root {
-  --background: #0c0f14;
-  --foreground: #f1f5f9;
-  --card: #141a22;
-  --card-border: #243041;
-  --accent: #22d3ee;
-  --accent-dim: #0891b2;
-  --success: #34d399;
-  --warning: #fbbf24;
-  --muted: #94a3b8;
-  --sport-gold: #facc15;
-  --sport-yellow: #fde047;
-  --sport-green: #4ade80;
-  --sport-red: #f87171;
-  --sport-bronze: #fb923c;
-  --sport-silver: #cbd5e1;
+/* Dark-first tokens (default) */
+:root,
+[data-theme="dark"] {
+  color-scheme: dark;
+  --background: #101214;
+  --foreground: #f5f7f8;
+  --card: #1e2226;
+  --card-border: #2a2f34;
+  --elevated: #2a2f34;
+  --accent: #c6f54a;
+  --accent-dim: #a8d63a;
+  --accent-foreground: #101214;
+  --success: #35d49a;
+  --warning: #f5bd4f;
+  --danger: #ff6868;
+  --muted: #a3abb3;
+  --sport-gold: #f5bd4f;
+  --sport-yellow: #fde68a;
+  --sport-green: #35d49a;
+  --sport-red: #ff6868;
+  --sport-bronze: #d4a574;
+  --sport-silver: #c5cdd6;
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+  --background: #f0f2f4;
+  --foreground: #101214;
+  --card: #ffffff;
+  --card-border: #d8dde3;
+  --elevated: #e8ecef;
+  --accent: #9bc026;
+  --accent-dim: #7fa01f;
+  --accent-foreground: #101214;
+  --success: #0d9f6e;
+  --warning: #c48f1a;
+  --danger: #d64545;
+  --muted: #5c6570;
+  --sport-gold: #b8860b;
+  --sport-yellow: #ca8a04;
+  --sport-green: #0d9f6e;
+  --sport-red: #d64545;
+  --sport-bronze: #a16207;
+  --sport-silver: #64748b;
 }
 
 @theme inline {
@@ -23,10 +51,13 @@
   --color-foreground: var(--foreground);
   --color-card: var(--card);
   --color-card-border: var(--card-border);
+  --color-elevated: var(--elevated);
   --color-accent: var(--accent);
   --color-accent-dim: var(--accent-dim);
+  --color-accent-foreground: var(--accent-foreground);
   --color-success: var(--success);
   --color-warning: var(--warning);
+  --color-danger: var(--danger);
   --color-muted: var(--muted);
   --color-sport-gold: var(--sport-gold);
   --color-sport-yellow: var(--sport-yellow);
@@ -35,6 +66,7 @@
   --color-sport-bronze: var(--sport-bronze);
   --color-sport-silver: var(--sport-silver);
   --font-sans: var(--font-inter);
+  --font-display: var(--font-barlow);
   --font-mono: var(--font-inter);
 }
 
@@ -45,7 +77,7 @@ html {
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-sans), sans-serif;
+  font-family: var(--font-sans), system-ui, sans-serif;
   line-height: 1.45;
 }
 
@@ -63,10 +95,12 @@ button,
 input,
 select,
 textarea {
-  font-family: var(--font-sans), sans-serif;
+  font-family: var(--font-sans), system-ui, sans-serif;
 }
 
-input, select, textarea {
+input,
+select,
+textarea {
   font-size: 16px;
 }
 
@@ -110,4 +144,34 @@ textarea {
   padding-right: max(0.75rem, env(safe-area-inset-right, 0px));
   padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
   padding-left: max(0.75rem, env(safe-area-inset-left, 0px));
+}
+
+.font-display {
+  font-family: var(--font-display), var(--font-sans), system-ui, sans-serif;
+}
+
+.text-hero-metric {
+  font-family: var(--font-display), var(--font-sans), system-ui, sans-serif;
+  font-size: clamp(2.75rem, 10vw, 4.5rem);
+  font-weight: 800;
+  line-height: 0.95;
+  letter-spacing: -0.02em;
+}
+
+.text-card-kpi {
+  font-family: var(--font-display), var(--font-sans), system-ui, sans-serif;
+  font-size: clamp(1.25rem, 4vw, 1.75rem);
+  font-weight: 700;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: var(--accent-foreground);
+  font-weight: 600;
+}
+
+.btn-primary:disabled {
+  opacity: 0.55;
 }

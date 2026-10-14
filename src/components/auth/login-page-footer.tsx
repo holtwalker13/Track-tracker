@@ -15,7 +15,7 @@ export function LoginPageFooter({ next }: { next?: string }) {
       <div className="mx-auto mt-4 flex max-w-md flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[10px] text-muted/55">
         <Link
           href={`/login/demo/admin${demoQuery}`}
-          className="underline decoration-muted/30 underline-offset-2 transition-colors hover:text-muted/80"
+          className="inline-flex min-h-[44px] items-center underline decoration-muted/30 underline-offset-2 transition-colors hover:text-muted/80"
         >
           Login as admin
         </Link>
@@ -24,7 +24,7 @@ export function LoginPageFooter({ next }: { next?: string }) {
         </span>
         <Link
           href={`/login/demo/student${demoQuery}`}
-          className="underline decoration-muted/30 underline-offset-2 transition-colors hover:text-muted/80"
+          className="inline-flex min-h-[44px] items-center underline decoration-muted/30 underline-offset-2 transition-colors hover:text-muted/80"
         >
           Login as demo student
         </Link>

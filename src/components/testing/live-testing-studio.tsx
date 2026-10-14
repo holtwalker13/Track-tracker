@@ -10,6 +10,7 @@ import {
   Trophy,
 } from "lucide-react";
 import { ActivityIcon } from "@/lib/activity-icons";
+import { createSaveQueue, requestJson, wasSaved } from "@/lib/client-save";
 import { fireConfetti } from "@/lib/confetti";
 import { formatActivityValue } from "@/lib/format";
 import {
@@ -80,6 +81,7 @@ export function LiveTestingStudio({
   const [rows, setRows] = useState(initialRows);
   const [saving, setSaving] = useState(false);
   const [banner, setBanner] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const activityIdRef = useRef(activityId);
   const generationRef = useRef(0);
   const skipBlurRef = useRef(false);
@@ -107,59 +109,71 @@ export function LiveTestingStudio({
     lastCelebratedKeyRef.current = null;
   }, [activityId, initialRows]);
 
-  const saveRow = useCallback(
-    async (target: StudioRow) => {
-      if (readOnly) return null;
-      const attempts = target.attempts.map((a) =>
-        a === "" || a === null ? null : Number(a)
-      );
-      const hasValue = attempts.some((a) => a != null && !Number.isNaN(a));
-      if (!hasValue && target.status === "COMPLETED") return null;
+  const runSaveRef = useRef<(target: StudioRow) => Promise<void>>(async () => undefined);
+  runSaveRef.current = async (target) => {
+    if (readOnly) return;
+    const attempts = target.attempts.map((a) =>
+      a === "" || a === null ? null : Number(a)
+    );
+    const hasValue = attempts.some((a) => a != null && !Number.isNaN(a));
+    if (!hasValue && target.status === "COMPLETED") return;
 
-      const gen = generationRef.current;
-      const aid = activityIdRef.current;
-      setSaving(true);
-      const res = await fetch("/api/testing/save", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          studentId: target.studentId,
-          activityId: aid,
-          testingSessionId: sessionId,
-          attempts,
-          status: target.status === "COMPLETED" ? undefined : target.status,
-        }),
-      });
-      const data = await res.json().catch(() => ({}));
-      setSaving(false);
-      if (gen !== generationRef.current || aid !== activityIdRef.current) return null;
+    const gen = generationRef.current;
+    const aid = activityIdRef.current;
+    setSaving(true);
+    setSaveError(null);
+    const result = await requestJson("/api/testing/save", {
+      method: "POST",
+      body: {
+        studentId: target.studentId,
+        activityId: aid,
+        testingSessionId: sessionId,
+        attempts,
+        status: target.status === "COMPLETED" ? undefined : target.status,
+      },
+    });
+    setSaving(false);
+    if (gen !== generationRef.current || aid !== activityIdRef.current) return;
 
-      setRows((prev) =>
-        prev.map((r) =>
-          r.studentId === target.studentId
-            ? {
-                ...r,
-                saved: Boolean(data.saved),
-                pr: Boolean(data.pr),
-                celebrateLabel: data.celebrateLabel ?? null,
-                boardHits: data.boardHits ?? [],
-              }
-            : r
-        )
-      );
+    const saved = result.ok && wasSaved(result.data);
+    const data = result.ok ? result.data : null;
+    setRows((prev) =>
+      prev.map((r) =>
+        r.studentId === target.studentId
+          ? {
+              ...r,
+              saved,
+              pr: saved && Boolean(data?.pr),
+              celebrateLabel: saved && typeof data?.celebrateLabel === "string" ? data.celebrateLabel : null,
+              boardHits:
+                saved && Array.isArray(data?.boardHits)
+                  ? (data.boardHits as StudioRow["boardHits"])
+                  : [],
+            }
+          : r
+      )
+    );
+    if (!saved) {
+      setSaveError(result.ok ? "This test was not saved." : result.error);
+      return;
+    }
 
-      if (data.celebrate && data.celebrateLabel && data.best != null) {
-        const key = `${target.studentId}:${aid}:${data.best}`;
-        if (lastCelebratedKeyRef.current !== key) {
-          lastCelebratedKeyRef.current = key;
-          setBanner(data.celebrateLabel);
-          fireConfetti();
-          window.setTimeout(() => setBanner(null), 3200);
-        }
+    if (data?.celebrate && typeof data.celebrateLabel === "string" && data.best != null) {
+      const key = `${target.studentId}:${aid}:${String(data.best)}`;
+      if (lastCelebratedKeyRef.current !== key) {
+        lastCelebratedKeyRef.current = key;
+        setBanner(data.celebrateLabel);
+        fireConfetti();
+        window.setTimeout(() => setBanner(null), 3200);
       }
-      return data;
-    },
-    [readOnly, sessionId]
+    }
+  };
+
+  const saveQueueRef = useRef(createSaveQueue((target: StudioRow) => runSaveRef.current(target)));
+
+  const saveRow = useCallback(
+    (target: StudioRow) => saveQueueRef.current(target.studentId, target),
+    []
   );
 
   function updateAttempt(idx: number, value: string) {
@@ -277,6 +291,11 @@ export function LiveTestingStudio({
       <p className="text-sm text-muted">
         Select an athlete and start tracking live. Results save automatically.
       </p>
+      {saveError ? (
+        <p role="alert" className="text-sm font-medium text-sport-red">
+          {saveError}
+        </p>
+      ) : null}
 
       <section
         className="rounded-2xl border border-card-border bg-card/40"

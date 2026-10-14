@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Check } from "lucide-react";
+import { createSaveQueue, requestJson, wasSaved } from "@/lib/client-save";
 import { formatActivityValue } from "@/lib/format";
 import { formatStudentName } from "@/lib/utils";
 import { cn } from "@/lib/utils";
@@ -42,10 +43,14 @@ export function LiveTestingGrid({
 }) {
   const [rows, setRows] = useState(initialRows);
   const [saving, setSaving] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const activityIdRef = useRef(activityId);
   const generationRef = useRef(0);
   const inputRefs = useRef<Map<string, HTMLInputElement>>(new Map());
   const skipBlurRef = useRef(false);
+  const runSaveRef = useRef<
+    (job: { studentId: string; row: Row; saveActivityId: string; generation: number }) => Promise<void>
+  >(async () => undefined);
 
   useEffect(() => {
     generationRef.current += 1;
@@ -53,50 +58,70 @@ export function LiveTestingGrid({
     setRows(initialRows);
   }, [activityId, initialRows]);
 
+  runSaveRef.current = async ({ studentId, row, saveActivityId, generation }) => {
+    if (readOnly) return;
+    if (generation !== generationRef.current) return;
+    if (saveActivityId !== activityIdRef.current) return;
+
+    const attempts = row.attempts.map((a) =>
+      a === "" || a === null ? null : Number(a)
+    );
+    const hasValue = attempts.some((a) => a != null && !Number.isNaN(a));
+    const nonComplete = row.status !== "COMPLETED";
+    if (!hasValue && !nonComplete) return;
+
+    setSaving(studentId);
+    setSaveError(null);
+    const result = await requestJson("/api/testing/save", {
+      method: "POST",
+      body: {
+        studentId,
+        activityId: saveActivityId,
+        testingSessionId: sessionId,
+        attempts,
+        status: row.status === "COMPLETED" ? undefined : row.status,
+      },
+    });
+    const clearSaving = () => setSaving((current) => (current === studentId ? null : current));
+    if (generation !== generationRef.current || saveActivityId !== activityIdRef.current) {
+      clearSaving();
+      return;
+    }
+    const saved = result.ok && wasSaved(result.data);
+    setRows((prev) =>
+      prev.map((r) =>
+        r.studentId === studentId
+          ? { ...r, saved, pr: saved && result.ok && Boolean(result.data.pr) }
+          : r
+      )
+    );
+    if (!saved) {
+      setSaveError(result.ok ? "This test was not saved." : result.error);
+    }
+    clearSaving();
+  };
+
+  const saveQueueRef = useRef(
+    createSaveQueue(
+      async (job: { studentId: string; row: Row; saveActivityId: string; generation: number }) =>
+        runSaveRef.current(job)
+    )
+  );
+
   const saveRow = useCallback(
-    async (
+    (
       studentId: string,
       row: Row,
       saveActivityId: string,
       generation: number
-    ) => {
-      if (readOnly) return;
-      if (generation !== generationRef.current) return;
-      if (saveActivityId !== activityIdRef.current) return;
-
-      const attempts = row.attempts.map((a) =>
-        a === "" || a === null ? null : Number(a)
-      );
-      const hasValue = attempts.some((a) => a != null && !Number.isNaN(a));
-      const nonComplete = row.status !== "COMPLETED";
-      if (!hasValue && !nonComplete) return;
-
-      setSaving(studentId);
-      const res = await fetch("/api/testing/save", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          studentId,
-          activityId: saveActivityId,
-          testingSessionId: sessionId,
-          attempts,
-          status: row.status === "COMPLETED" ? undefined : row.status,
-        }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (generation !== generationRef.current) return;
-      if (saveActivityId !== activityIdRef.current) return;
-      const saved = res.ok && Boolean(data.saved);
-      setRows((prev) =>
-        prev.map((r) =>
-          r.studentId === studentId
-            ? { ...r, saved, pr: saved && Boolean(data.pr) }
-            : r
-        )
-      );
-      setSaving(null);
-    },
-    [sessionId, readOnly]
+    ) =>
+      saveQueueRef.current(`${saveActivityId}:${studentId}`, {
+        studentId,
+        row,
+        saveActivityId,
+        generation,
+      }),
+    []
   );
 
   function updateAttempt(studentId: string, idx: number, value: string) {
@@ -237,6 +262,11 @@ export function LiveTestingGrid({
         {readOnly && (
           <p className="mt-1 text-sm text-sport-gold">Recording paused or closed — view only.</p>
         )}
+        {saveError ? (
+          <p role="alert" className="mt-2 text-sm font-medium text-sport-red">
+            {saveError}
+          </p>
+        ) : null}
       </div>
 
       {/* Mobile: stacked athlete cards — name then attempts */}
@@ -291,7 +321,7 @@ export function LiveTestingGrid({
               <select
                 disabled={readOnly}
                 data-activity-id={activityId}
-                className="min-w-0 flex-1 rounded-lg border border-card-border bg-background px-2 py-2 text-sm disabled:opacity-60"
+                className="min-h-[44px] min-w-0 flex-1 rounded-lg border border-card-border bg-background px-2 py-2 text-base disabled:opacity-60"
                 value={row.status}
                 onChange={(e) => {
                   const status = e.target.value;
@@ -390,7 +420,7 @@ export function LiveTestingGrid({
                   <select
                     disabled={readOnly}
                     data-activity-id={activityId}
-                    className="rounded border border-card-border bg-background px-2 py-2 text-sm disabled:opacity-60"
+                    className="min-h-[44px] rounded border border-card-border bg-background px-2 py-2 text-base disabled:opacity-60"
                     value={row.status}
                     onChange={(e) => {
                       const status = e.target.value;

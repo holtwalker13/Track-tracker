@@ -74,6 +74,10 @@ Railway provides a **PostgreSQL** plugin you add next to the app (a few extra cl
 
 Skip the SQLite volume. If an earlier attempt set `DATABASE_URL=file:/data/dev.db`, delete it. Full notes: [docs/RAILWAY.md](docs/RAILWAY.md).
 
+## iPhone
+
+The browser app stays a Next.js server. The iOS project is a Capacitor shell that loads the staging site. Setup, signing, and the Xcode run steps are in [docs/IOS.md](docs/IOS.md).
+
 ## MVP screens
 
 **Coach**: Dashboard, Roster, Testing, Leaderboards, Analytics, KPI targets, Compare.

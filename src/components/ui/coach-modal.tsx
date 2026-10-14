@@ -30,7 +30,7 @@ export function CoachModal({
         aria-modal="true"
         aria-label={title}
         className={cn(
-          "relative z-10 flex max-h-[92vh] w-full flex-col overflow-hidden rounded-2xl border border-card-border bg-card shadow-2xl",
+          "relative z-10 flex max-h-[min(92dvh,calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-1.5rem))] w-full flex-col overflow-hidden rounded-2xl border border-card-border bg-card shadow-2xl",
           maxWidth
         )}
       >
@@ -46,7 +46,7 @@ export function CoachModal({
           <button
             type="button"
             onClick={onClose}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-card-border text-muted hover:text-foreground"
+            className="inline-flex h-[44px] w-[44px] items-center justify-center rounded-full border border-card-border text-muted hover:text-foreground"
             aria-label="Cancel"
           >
             <X className="h-4 w-4" />

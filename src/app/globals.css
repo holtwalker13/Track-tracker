@@ -67,5 +67,47 @@ textarea {
 }
 
 input, select, textarea {
-  font-size: 1rem;
+  font-size: 16px;
+}
+
+html,
+body {
+  max-width: 100%;
+}
+
+body {
+  min-height: 100dvh;
+}
+
+button,
+a,
+input,
+select,
+textarea,
+summary {
+  touch-action: manipulation;
+}
+
+input,
+select,
+textarea {
+  scroll-margin-top: calc(4.5rem + env(safe-area-inset-top, 0px));
+  scroll-margin-bottom: 40vh;
+}
+
+@media (pointer: coarse) {
+  button,
+  select,
+  summary,
+  input[type="submit"],
+  input[type="button"] {
+    min-height: 44px;
+  }
+}
+
+.fixed.inset-0 {
+  padding-top: max(0.75rem, env(safe-area-inset-top, 0px));
+  padding-right: max(0.75rem, env(safe-area-inset-right, 0px));
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
+  padding-left: max(0.75rem, env(safe-area-inset-left, 0px));
 }

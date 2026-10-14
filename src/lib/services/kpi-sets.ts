@@ -794,9 +794,12 @@ export async function getRankedMetricSlugs(
   const schoolId = medalOpts.schoolId;
   if (!schoolId) return slugs;
 
-  const library = await listSchoolKpiLibrary(schoolId);
-  const visible = new Set(library.map((a) => a.slug));
-  return slugs.filter((slug) => visible.has(slug));
+  const hidden = await prisma.schoolHiddenKpi.findMany({
+    where: { schoolId },
+    select: { metricSlug: true },
+  });
+  const hiddenSlugs = new Set(hidden.map((h) => h.metricSlug));
+  return slugs.filter((slug) => !hiddenSlugs.has(slug));
 }
 
 /**

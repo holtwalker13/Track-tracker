@@ -8,21 +8,51 @@ import {
 } from "@/lib/services/student-login-invite";
 import { usernamePlaceholderHint } from "@/lib/services/student-username";
 import { DEFAULT_CLASS_YEAR } from "@/lib/grades";
+import { getRankedKpiSlugsForSchool } from "@/lib/services/kpi-sets";
+import { resolveRankedSlugToActivitySlugs, metricDisplayName } from "@/lib/kpi-marks";
 
 export const ROSTER_COLUMNS: { slug: string; label: string }[] = [
   { slug: "weight", label: "BW" },
   { slug: "standing-broad-jump", label: "Broad" },
   { slug: "vertical-jump", label: "Vertical" },
   { slug: "pro-agility", label: "5-10-5" },
-  { slug: "squat", label: "Squat" },
+  { slug: "box-squat", label: "Box Squat" },
   { slug: "hang-clean", label: "Clean" },
   { slug: "bench-press", label: "Bench" },
-  { slug: "flying-10-yard", label: "F10yd" },
-  { slug: "flying-10-meter", label: "F10m" },
+  { slug: "flying-10-yard", label: "Flying 10 yd" },
+  { slug: "flying-10-meter", label: "Flying 10 m" },
   { slug: "100-meter-dash", label: "Proj 100m" },
   { slug: "flying-20-meter", label: "F20m" },
   { slug: "40-yard-dash", label: "40yd" },
 ];
+
+/** KPI columns for roster: class ranked KPIs (KPI tab) when a period is selected, else defaults. */
+export async function resolveRosterColumns(
+  schoolId: string,
+  classId?: string | null
+): Promise<{ slug: string; label: string }[]> {
+  if (!classId) return ROSTER_COLUMNS;
+
+  const ranked = await getRankedKpiSlugsForSchool(schoolId, classId, null);
+  if (ranked.length === 0) return ROSTER_COLUMNS;
+
+  const activities = await prisma.activity.findMany({
+    where: {
+      OR: [{ schoolId: null }, { schoolId }],
+    },
+    select: { slug: true, name: true },
+  });
+  const bySlug = new Map(activities.map((a) => [a.slug, a.name]));
+
+  const cols: { slug: string; label: string }[] = [{ slug: "weight", label: "BW" }];
+  for (const rankedSlug of ranked) {
+    const activitySlugs = await resolveRankedSlugToActivitySlugs(schoolId, rankedSlug);
+    const slug = activitySlugs[0] ?? rankedSlug;
+    const name = bySlug.get(slug) ?? metricDisplayName(rankedSlug);
+    cols.push({ slug, label: name });
+  }
+  return cols;
+}
 
 export type RosterMark = { value: number; display: string };
 
@@ -68,8 +98,9 @@ export async function getClassRoster(
   schoolId: string,
   classYears: number[],
   gender: AthleteGender,
-  opts?: { classId?: string; participationType?: string }
+  opts?: { classId?: string; participationType?: string; columns?: { slug: string; label: string }[] }
 ): Promise<RosterAthlete[]> {
+  const columns = opts?.columns ?? ROSTER_COLUMNS;
   const currentYear = await prisma.schoolYear.findFirst({
     where: { schoolId, isCurrent: true },
   });
@@ -108,7 +139,7 @@ export async function getClassRoster(
   });
 
   const activities = await prisma.activity.findMany({
-    where: { slug: { in: ROSTER_COLUMNS.map((c) => c.slug) } },
+    where: { slug: { in: columns.map((c) => c.slug) } },
     select: { id: true, slug: true, unit: true },
   });
   const actById = new Map(activities.map((a) => [a.id, a]));

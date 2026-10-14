@@ -55,6 +55,7 @@ export const ACTIVITY_ABBR: Record<string, string> = {
   "push-ups": "PUSH",
   "pull-ups": "PULL",
   squat: "SQT",
+  "box-squat": "Box",
   "squat-relative": "SQ/BW",
   "hang-clean": "CLN",
   "hang-clean-relative": "CL/BW",

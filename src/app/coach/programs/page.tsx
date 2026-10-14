@@ -58,7 +58,7 @@ export default async function CoachProgramsPage({
     prisma.workoutTemplate.findMany({
       where: {
         schoolId: session.schoolId,
-        OR: [{ createdById: session.userId }, { createdById: null }],
+        createdById: session.userId,
       },
       orderBy: { updatedAt: "desc" },
       include: {

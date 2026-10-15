@@ -52,7 +52,7 @@ export async function AppShell({
     <div className="min-h-screen bg-background">
       <header
         className={cn(
-          "sticky top-0 z-40 border-b border-card-border bg-background/90 backdrop-blur",
+          "sticky top-0 z-40 border-b border-card-border bg-background/90 pt-[env(safe-area-inset-top)] backdrop-blur",
           compact && "border-card-border/70"
         )}
       >
@@ -121,8 +121,10 @@ export async function AppShell({
       </header>
       <main
         className={cn(
-          "mx-auto max-w-7xl",
-          compact ? "px-3 py-3 sm:px-4 sm:py-4" : "px-3 py-4 sm:px-4 sm:py-6"
+          "mx-auto max-w-7xl overflow-x-clip",
+          compact
+            ? "px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-4 sm:pt-4"
+            : "px-3 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:px-4 sm:pt-6"
         )}
       >
         {children}

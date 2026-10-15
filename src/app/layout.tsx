@@ -1,5 +1,7 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Barlow_Condensed, Inter } from "next/font/google";
+import { ConnectionBanner } from "@/components/mobile/connection-banner";
+import { NativeRuntime } from "@/components/mobile/native-runtime";
 import { ThemeProvider } from "@/components/ui/theme-provider";
 import "./globals.css";
 
@@ -19,6 +21,14 @@ export const metadata: Metadata = {
   description: "Measure, compare, improve, and compete — scholastic athletic records",
 };
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#0c0f14",
+  interactiveWidget: "resizes-content",
+};
+
 const themeInitScript = `(function(){try{var t=localStorage.getItem('sap-theme');if(t==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}})();`;
 
 export default function RootLayout({
@@ -32,7 +42,13 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
       <body className={`${inter.className} antialiased`}>
-        <ThemeProvider>{children}</ThemeProvider>
+        <ThemeProvider>
+          <div className="min-h-dvh">
+            <NativeRuntime />
+            <ConnectionBanner />
+            {children}
+          </div>
+        </ThemeProvider>
       </body>
     </html>
   );

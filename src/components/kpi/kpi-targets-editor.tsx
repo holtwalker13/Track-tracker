@@ -226,32 +226,40 @@ export function KpiTargetsEditor({
 
   async function save() {
     if (!activeSetId || !activeSet || activeSet.id !== activeSetId) return;
+    if (status === "saving") return;
     setStatus("saving");
     const metricsPayload = metricList.map((m, index) => ({
       metricSlug: m.slug,
       ranked: Boolean(rankedBySlug[m.slug]),
       sortOrder: index,
     }));
-    const res = await fetch(`/api/kpi-sets/${activeSetId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "save-targets",
-        cells,
-        metrics: metricsPayload,
-      }),
-    });
-    if (!res.ok) {
-      setStatus("error");
-      return;
-    }
-    const data = await res.json();
-    if (data.set) {
+    try {
+      const res = await fetch(`/api/kpi-sets/${activeSetId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "save-targets",
+          cells,
+          metrics: metricsPayload,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.status === 401) {
+        window.location.assign("/login?error=session");
+        setStatus("error");
+        return;
+      }
+      if (!res.ok || !data.set) {
+        setStatus("error");
+        return;
+      }
       setOwnSets((prev) => prev.map((s) => (s.id === data.set.id ? data.set : s)));
       loadSet(data.set);
+      setStatus("saved");
+      window.setTimeout(() => setStatus((s) => (s === "saved" ? "idle" : s)), 10000);
+    } catch {
+      setStatus("error");
     }
-    setStatus("saved");
-    window.setTimeout(() => setStatus((s) => (s === "saved" ? "idle" : s)), 10000);
   }
 
   async function togglePublic() {
@@ -640,13 +648,13 @@ export function KpiTargetsEditor({
                     {MEDALS.map((medal) => (
                       <td key={medal} className="py-2 pr-3">
                         <input
-                          type="number"
-                          step="any"
+                          type="text"
+                          inputMode="decimal"
                           disabled={!ranked}
                           placeholder={ranked ? "" : "—"}
                           value={ranked ? value(meta.slug, medal) : ""}
                           onChange={(e) => setValue(meta.slug, medal, e.target.value)}
-                          className="w-24 rounded-md border border-card-border bg-background px-2 py-1 font-mono tabular-nums disabled:opacity-40"
+                          className="min-h-[44px] w-24 rounded-md border border-card-border bg-background px-2 py-1 font-mono tabular-nums disabled:opacity-40"
                         />
                       </td>
                     ))}
@@ -714,7 +722,7 @@ export function KpiTargetsEditor({
           type="button"
           onClick={save}
           disabled={status === "saving" || !activeSet || activeSet.id !== activeSetId}
-          className="btn-primary rounded-lg px-4 py-2 font-semibold disabled:opacity-60"
+          className="btn-primary min-h-[44px] rounded-lg px-4 py-2 font-semibold disabled:opacity-60"
         >
           {status === "saving" ? "Saving…" : "Save KPI set"}
         </button>
@@ -1138,11 +1146,11 @@ function DuplicateKpiSetModal({
                           {MEDAL_LABELS[medal]}
                         </span>
                         <input
-                          type="number"
-                          step="any"
+                          type="text"
+                          inputMode="decimal"
                           value={value(slug, medal)}
                           onChange={(e) => setValue(slug, medal, e.target.value)}
-                          className="mt-1 w-full rounded-md border border-card-border bg-card px-2 py-1.5 font-mono"
+                          className="mt-1 min-h-[44px] w-full rounded-md border border-card-border bg-card px-2 py-1.5 font-mono"
                         />
                       </label>
                     ))}
@@ -1544,11 +1552,11 @@ function KpiBuilderModal({
                             {MEDAL_LABELS[medal]}
                           </span>
                           <input
-                            type="number"
-                            step="any"
+                            type="text"
+                            inputMode="decimal"
                             value={targets[b]?.[g]?.[medal] ?? ""}
                             onChange={(e) => setMedalTarget(b, g, medal, e.target.value)}
-                            className="mt-1 w-full rounded-md border border-card-border bg-card px-2 py-1.5 font-mono"
+                            className="mt-1 min-h-[44px] w-full rounded-md border border-card-border bg-card px-2 py-1.5 font-mono"
                           />
                         </label>
                       ))}

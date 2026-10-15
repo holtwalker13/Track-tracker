@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import type { WorkoutLogRow } from "@/components/workouts/workout-logs-panel";
+import { coachFacingWorkoutStatus } from "@/lib/services/workouts";
 import { cn } from "@/lib/utils";
 
 export function ProgramsActivityPanel({
@@ -35,7 +36,7 @@ export function ProgramsActivityPanel({
     setShowAll(false);
   }, [date, logView]);
 
-  const completed = rows.filter((r) => r.status === "COMPLETED").length;
+  const completed = rows.filter((r) => coachFacingWorkoutStatus(r.status, r.setLogCount) === "COMPLETED").length;
   const visible = showAll ? rows : rows.slice(0, 5);
 
   return (
@@ -51,6 +52,7 @@ export function ProgramsActivityPanel({
           <p className="text-xs text-muted">
             {logView === "day" ? `Day · ${date}` : `Week · ${weekLabel}`}
             {rows.length > 0 ? ` · ${completed}/${rows.length} done` : ""}
+            {logView === "day" ? " · class table is below" : ""}
           </p>
         </div>
         <div className="flex rounded-lg border border-card-border p-0.5">
@@ -100,7 +102,7 @@ export function ProgramsActivityPanel({
                 <div className="truncate text-xs text-muted">{r.programName}</div>
               </div>
               <div className="flex shrink-0 items-center gap-2">
-                <StatusPill status={r.status} />
+                <StatusPill status={coachFacingWorkoutStatus(r.status, r.setLogCount)} />
                 {r.sessionId ? (
                   <Link
                     href={`/coach/programs/session/${r.sessionId}`}

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { ClassSubgroupFilter } from "@/components/classes/class-subgroup-filter";
+import { coachFacingWorkoutStatus } from "@/lib/services/workouts";
 
 export type WorkoutLogRow = {
   sessionId: string | null;
@@ -122,7 +123,9 @@ export function WorkoutLogsPanel({
                     <div>{r.programName}</div>
                     {r.className && <div className="text-xs text-muted">{r.className}</div>}
                   </td>
-                  <td className="px-3 py-2">{r.status.replace("_", " ")}</td>
+                  <td className="px-3 py-2">
+                    {coachFacingWorkoutStatus(r.status, r.setLogCount).replace(/_/g, " ").toLowerCase()}
+                  </td>
                   <td className="px-3 py-2">{r.setLogCount}</td>
                   <td className="px-3 py-2 text-right">
                     {r.sessionId ? (

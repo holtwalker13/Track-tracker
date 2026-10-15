@@ -19,6 +19,8 @@ import {
   weekStartSunday,
 } from "@/lib/queries/programs-hub";
 import { listWorkoutSessionsForCoachRange } from "@/lib/queries/workout-logs";
+import { getClassWorkoutDayReview } from "@/lib/queries/workout-day-review";
+import { WorkoutDayReview } from "@/components/workouts/workout-day-review";
 import { listClassSavedWorkouts, savedWorkoutCreatorName } from "@/lib/queries/class-saved-workouts";
 import { todayDateString } from "@/lib/services/workouts";
 import { classSectionLabel } from "@/lib/periods";
@@ -35,6 +37,7 @@ export default async function CoachProgramsPage({
     weeks?: string;
     date?: string;
     logView?: string;
+    assignment?: string;
   }>;
 }) {
   const session = await requireSchoolSession();
@@ -57,7 +60,7 @@ export default async function CoachProgramsPage({
 
   const rangeEnd = dateRangeDays(weekStart, weeks * 7).at(-1) ?? weekStart;
 
-  const [templates, schoolLifts, assignments, dayLogs, weekLogs] = await Promise.all([
+  const [templates, schoolLifts, assignments, dayLogs, weekLogs, dayReview] = await Promise.all([
     classId ? listClassSavedWorkouts(session.schoolId, classId) : Promise.resolve([]),
     listSchoolLifts(session.schoolId),
     classId
@@ -86,6 +89,14 @@ export default async function CoachProgramsPage({
           subgroupId: subgroupId ?? undefined,
         })
       : Promise.resolve([]),
+    classId
+      ? getClassWorkoutDayReview({
+          schoolId: session.schoolId,
+          classId,
+          date: selectedDate,
+          subgroupId: subgroupId ?? undefined,
+        })
+      : Promise.resolve(null),
   ]);
 
   const workoutLifts = liftsForWorkoutPrograms(schoolLifts);
@@ -167,6 +178,10 @@ export default async function CoachProgramsPage({
             </div>
           </div>
         )}
+
+        {dayReview ? (
+          <WorkoutDayReview review={dayReview} focusAssignmentId={sp.assignment ?? null} />
+        ) : null}
 
         <ProgramsActions
           templates={templates.map((t) => ({

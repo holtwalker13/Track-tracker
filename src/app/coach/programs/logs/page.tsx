@@ -5,6 +5,8 @@ import { COACH_NAV } from "@/lib/navigation";
 import { requireSchoolSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { listWorkoutSessionsForCoach } from "@/lib/queries/workout-logs";
+import { getClassWorkoutDayReview } from "@/lib/queries/workout-day-review";
+import { WorkoutDayReview } from "@/components/workouts/workout-day-review";
 import { todayDateString } from "@/lib/services/workouts";
 import { isGraduatingClassName } from "@/lib/periods";
 import { listClassSubgroups } from "@/lib/queries/class-subgroups";
@@ -36,6 +38,14 @@ export default async function CoachWorkoutLogsPage({
     classId: classId || undefined,
     subgroupId: subgroupId || undefined,
   });
+  const dayReview = classId
+    ? await getClassWorkoutDayReview({
+        schoolId: session.schoolId,
+        classId,
+        date,
+        subgroupId: subgroupId || undefined,
+      })
+    : null;
 
   const provisionalStudents = classId
     ? await prisma.studentProfile.findMany({
@@ -61,6 +71,12 @@ export default async function CoachWorkoutLogsPage({
           <TemporaryStudentsPanel classId={classId} date={date} students={provisionalStudents} />
         </div>
       ) : null}
+      {dayReview ? (
+        <div className="mb-6">
+          <WorkoutDayReview review={dayReview} />
+        </div>
+      ) : null}
+      <h2 className="mb-2 text-sm font-semibold">Individual logs</h2>
       <WorkoutLogsPanel
         rows={rows}
         date={date}

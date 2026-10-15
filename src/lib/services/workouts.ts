@@ -13,6 +13,16 @@ export function todayDateString(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
+/**
+ * Coach-facing status. Scheduling creates an in-progress session for every
+ * athlete, so a session with no sets is still "not started".
+ */
+export function coachFacingWorkoutStatus(status: string, setLogCount: number): string {
+  if (status === "COMPLETED") return "COMPLETED";
+  if (setLogCount > 0) return "IN_PROGRESS";
+  return "NOT_STARTED";
+}
+
 export async function listStudentAssignmentsForDate(studentId: string, dateStr: string) {
   const bounds = dayBoundsFromDateString(dateStr);
   if (!bounds) return [];

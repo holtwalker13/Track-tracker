@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import type { CoreOneRepMaxRow } from "@/lib/queries/student-core-one-rep-max";
 import { cn } from "@/lib/utils";
 
@@ -17,6 +18,8 @@ export function StudentCoreOneRepMaxEditor({
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [open, setOpen] = useState(false);
+  const coreCount = rows.filter((row) => row.coreLb != null && row.coreLb > 0).length;
 
   function setCore(slug: string, raw: string) {
     setSaved(false);
@@ -65,15 +68,33 @@ export function StudentCoreOneRepMaxEditor({
   if (rows.length === 0) return null;
 
   return (
-    <section className="mb-6 rounded-xl border border-card-border bg-card/40 px-4 py-4">
-      <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
-        <div>
-          <h2 className="text-base font-semibold">Core starting 1RM</h2>
-          <p className="mt-1 max-w-2xl text-sm text-muted">
-            Set a starting point for each lift (lb). Workouts that use % of 1RM—like 90% bench—use
-            these until the athlete has a tested or logged mark. Tested marks always win.
+    <section className="mt-8 rounded-xl border border-card-border/80 bg-card/30">
+      <button
+        type="button"
+        onClick={() => setOpen((value) => !value)}
+        aria-expanded={open}
+        className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
+      >
+        <div className="min-w-0">
+          <h2 className="text-sm font-semibold text-muted">Core starting 1RM</h2>
+          <p className="mt-0.5 text-xs text-muted/90">
+            Optional · for % workouts before the first tested mark
+            {coreCount > 0 ? ` · ${coreCount} starting point${coreCount === 1 ? "" : "s"} set` : ""}
           </p>
         </div>
+        {open ? (
+          <ChevronUp className="h-4 w-4 shrink-0 text-muted" aria-hidden />
+        ) : (
+          <ChevronDown className="h-4 w-4 shrink-0 text-muted" aria-hidden />
+        )}
+      </button>
+      {open ? (
+        <div className="border-t border-card-border px-4 pb-4 pt-3">
+      <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
+        <p className="max-w-2xl text-sm text-muted">
+          Set a starting point for each lift (lb). Workouts that use % of 1RM use these until the
+          athlete has a tested or logged mark. Tested marks always win.
+        </p>
         <button
           type="button"
           onClick={() => void save()}
@@ -138,6 +159,8 @@ export function StudentCoreOneRepMaxEditor({
           </tbody>
         </table>
       </div>
+        </div>
+      ) : null}
     </section>
   );
 }

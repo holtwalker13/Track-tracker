@@ -5,6 +5,7 @@ import { ProgramsWeekCalendar } from "@/components/workouts/programs-week-calend
 import { ProgramsActivityPanel } from "@/components/workouts/programs-activity-panel";
 import { ProgramsActions } from "@/components/workouts/programs-actions";
 import { ProgramsLiftPreview } from "@/components/workouts/programs-lift-preview";
+import { TemporaryStudentsPanel } from "@/components/workouts/temporary-students-panel";
 import { COACH_NAV } from "@/lib/navigation";
 import { requireSchoolSession } from "@/lib/auth/session";
 import { resolveCoachClassScopeFromParams } from "@/lib/queries/coach-scope-params";
@@ -102,6 +103,17 @@ export default async function CoachProgramsPage({
 
   const workoutLifts = liftsForWorkoutPrograms(schoolLifts);
   const selectedClass = classes.find((c) => c.id === classId) ?? null;
+  const provisionalStudents = classId
+    ? await prisma.studentProfile.findMany({
+        where: {
+          schoolId: session.schoolId,
+          provisional: true,
+          classEnrollments: { some: { classId } },
+        },
+        select: { id: true, firstName: true, lastName: true },
+        orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
+      })
+    : [];
   const activityRows = logView === "week" ? weekLogs : dayLogs;
   const weekLabel = `${format(parseISO(weekStart), "MMM d")} – ${format(
     parseISO(dateRangeDays(weekStart, 7).at(-1) ?? weekStart),
@@ -129,7 +141,13 @@ export default async function CoachProgramsPage({
               : "This coach has no classes yet. Add a class under School → Classes."}
           </p>
         ) : (
-          <div className="grid gap-4 xl:grid-cols-5">
+          <div className="space-y-4">
+            <TemporaryStudentsPanel
+              classId={classId}
+              date={selectedDate}
+              students={provisionalStudents}
+            />
+            <div className="grid gap-4 xl:grid-cols-5">
             <div className="xl:col-span-3">
               <Suspense fallback={null}>
                 <ProgramsWeekCalendar
@@ -158,6 +176,7 @@ export default async function CoachProgramsPage({
                   weekLabel={weekLabel}
                 />
               </Suspense>
+            </div>
             </div>
           </div>
         )}

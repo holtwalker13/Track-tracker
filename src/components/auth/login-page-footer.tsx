@@ -8,8 +8,8 @@ export function LoginPageFooter({ next }: { next?: string }) {
     <footer className="shrink-0 border-t border-card-border/40 bg-background/30 px-4 py-5">
       <div className="mx-auto max-w-md space-y-2 text-center text-[11px] leading-relaxed text-muted/75">
         <p>
-          New student or coach? Use the setup link or QR code from your school first, then sign in
-          here with your email and password.
+          New student? Open the class link or account QR from your coach, confirm your email, then sign
+          in here.
         </p>
       </div>
       <div className="mx-auto mt-4 flex max-w-md flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[10px] text-muted/55">

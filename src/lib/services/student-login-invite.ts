@@ -134,19 +134,15 @@ export async function completeStudentLoginInvite(input: {
 
   const invite = await loadInviteByToken(input.token);
   if (!invite) return { ok: false, error: "This link is invalid or has expired." };
-  if (invite.usedAt) return { ok: false, error: "This link has already been used." };
-  if (invite.expiresAt.getTime() < Date.now()) {
-    return { ok: false, error: "This link has expired. Ask your coach for a new one." };
-  }
 
   const student = invite.student;
-  const purpose: StudentInvitePurpose = student.user?.passwordSetAt ? "RESET" : "SETUP";
+  const alreadyActive = Boolean(student.user?.passwordSetAt);
 
-  if (purpose === "SETUP" && student.user?.passwordSetAt) {
-    return { ok: false, error: "This account is already set up. Ask your coach for a new login link." };
+  if (!alreadyActive && invite.usedAt) {
+    return { ok: false, error: "This link has already been used." };
   }
-  if (purpose === "RESET" && !student.user?.passwordSetAt) {
-    return { ok: false, error: "This link is for password reset, but the account is not set up yet." };
+  if (!alreadyActive && invite.expiresAt.getTime() < Date.now()) {
+    return { ok: false, error: "This link has expired. Ask your coach for a new one." };
   }
 
   const schoolSlug = student.school.slug ?? "school";
@@ -168,7 +164,8 @@ export async function completeStudentLoginInvite(input: {
       where: { id: invite.id },
       select: { usedAt: true, expiresAt: true },
     });
-    if (!fresh || fresh.usedAt || fresh.expiresAt.getTime() < Date.now()) {
+    const active = Boolean(student.user?.passwordSetAt);
+    if (!fresh || (!active && (fresh.usedAt || fresh.expiresAt.getTime() < Date.now()))) {
       throw new Error("INVITE_UNAVAILABLE");
     }
 
@@ -184,7 +181,7 @@ export async function completeStudentLoginInvite(input: {
           lastName: student.lastName,
         },
       });
-    } else if (purpose === "RESET") {
+    } else if (active) {
       throw new Error("INVITE_UNAVAILABLE");
     } else {
       const created = await tx.user.create({

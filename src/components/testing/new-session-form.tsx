@@ -21,6 +21,7 @@ export function NewTestingSessionForm({
   sameDayCount = 0,
   kpiLibrary,
   metricsByClassId,
+  defaultDate,
   surface = "card",
 }: {
   classes: { id: string; name: string; period: string | null }[];
@@ -30,6 +31,8 @@ export function NewTestingSessionForm({
   kpiLibrary?: KpiLibraryItem[];
   /** Per-class KPI set ordering: ranked slugs first, then unranked set members. */
   metricsByClassId?: Record<string, ClassKpiOrdering>;
+  /** Prefill the test date (YYYY-MM-DD). Defaults to today. */
+  defaultDate?: string;
   /** `card` = inline page block; `none` = body inside a modal shell */
   surface?: "card" | "none";
 }) {
@@ -173,7 +176,7 @@ export function NewTestingSessionForm({
             required
             name="testingDate"
             type="date"
-            defaultValue={today}
+            defaultValue={defaultDate || today}
             className="mt-1 w-full rounded-lg border border-card-border bg-background px-3 py-2"
           />
         </label>

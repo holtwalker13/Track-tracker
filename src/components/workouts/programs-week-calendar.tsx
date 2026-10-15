@@ -12,10 +12,13 @@ import {
 import { cn } from "@/lib/utils";
 import { todayDateString } from "@/lib/services/workouts";
 import { CoachModal } from "@/components/ui/coach-modal";
+import type { CalendarAttendance } from "@/lib/queries/attendance";
 import {
-  ScheduleWorkoutDialog,
-  type ScheduleTemplate,
-} from "@/components/workouts/schedule-workout-dialog";
+  ProgramsDayAddDialog,
+  type DayAddKind,
+  type TestBuilderProps,
+} from "@/components/workouts/programs-day-add-dialog";
+import { type ScheduleTemplate } from "@/components/workouts/schedule-workout-dialog";
 
 /** Desktop/tablet: Mon–Fri window. Mobile: 3 days with today centered. */
 const DESKTOP_VISIBLE_DAYS = 5;
@@ -35,6 +38,8 @@ export function ProgramsWeekCalendar({
   subgroupName,
   templates,
   tests,
+  testBuilder,
+  attendance,
 }: {
   weekStart: string;
   weeks: number;
@@ -46,6 +51,8 @@ export function ProgramsWeekCalendar({
   subgroupId?: string | null;
   subgroupName?: string | null;
   templates: ScheduleTemplate[];
+  testBuilder?: TestBuilderProps;
+  attendance?: CalendarAttendance[];
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -57,6 +64,7 @@ export function ProgramsWeekCalendar({
   const [visibleDays, setVisibleDays] = useState(MOBILE_VISIBLE_DAYS);
 
   const [addDate, setAddDate] = useState<string | null>(null);
+  const [addKind, setAddKind] = useState<DayAddKind>("choose");
   const [editing, setEditing] = useState<CalendarAssignment | null>(null);
   const [editTemplateId, setEditTemplateId] = useState("");
   const [editDate, setEditDate] = useState("");
@@ -88,6 +96,7 @@ export function ProgramsWeekCalendar({
     list.push(test);
     testsByDate.set(test.date, list);
   }
+  const attendanceByDate = new Map((attendance ?? []).map((row) => [row.date, row]));
 
   const days = Array.from({ length: weeks * 7 }, (_, i) =>
     format(addDays(parseISO(weekStart), i), "yyyy-MM-dd")
@@ -146,8 +155,9 @@ export function ProgramsWeekCalendar({
   const selectedAssignment = searchParams.get("assignment");
   const selectedTest = searchParams.get("test");
 
-  function openAdd(date: string) {
+  function openAdd(date: string, kind: DayAddKind = "choose") {
     setActionError(null);
+    setAddKind(kind);
     setAddDate(date);
     setParams({ date, logView: "day", assignment: null, test: null });
   }
@@ -315,10 +325,10 @@ export function ProgramsWeekCalendar({
                   <button
                     type="button"
                     onClick={() => openAdd(date)}
-                    disabled={!classId || templates.length === 0}
+                    disabled={!classId}
                     className="rounded-md p-0.5 text-muted hover:bg-emerald-500/15 hover:text-emerald-300 disabled:opacity-30"
-                    aria-label={`Add workout on ${date}`}
-                    title="Add workout"
+                    aria-label={`Add to ${date}`}
+                    title="Add workout, test, or attendance"
                   >
                     <Plus className="h-3.5 w-3.5" />
                   </button>
@@ -379,10 +389,25 @@ export function ProgramsWeekCalendar({
                       </div>
                     </button>
                   ))}
+                  {attendanceByDate.get(date) ? (
+                    <button
+                      type="button"
+                      onClick={() => openAdd(date, "attendance")}
+                      className="rounded-md bg-emerald-500/10 px-1 py-0.5 text-left ring-1 ring-emerald-400/25"
+                    >
+                      <div className="truncate text-[10px] font-medium leading-none text-emerald-100 sm:text-[11px]">
+                        Attendance
+                      </div>
+                      <div className="text-[9px] tabular-nums leading-none text-muted sm:text-[10px]">
+                        {attendanceByDate.get(date)!.presentCount}/
+                        {attendanceByDate.get(date)!.markedCount} here
+                      </div>
+                    </button>
+                  ) : null}
                   <button
                     type="button"
                     onClick={() => openAdd(date)}
-                    disabled={!classId || templates.length === 0}
+                    disabled={!classId}
                     className="mt-auto rounded-md border border-dashed border-card-border/70 px-1 py-2 text-center text-[10px] text-muted/80 hover:border-emerald-400/40 hover:text-emerald-300 disabled:opacity-40"
                   >
                     Add
@@ -414,13 +439,25 @@ export function ProgramsWeekCalendar({
       </div>
 
       {addDate && classId ? (
-        <ScheduleWorkoutDialog
-          templates={templates}
+        <ProgramsDayAddDialog
+          date={addDate}
+          kind={addKind}
           classId={classId}
-          scopeLabel={subgroupName ? `${classLabel} · ${subgroupName}` : classLabel}
+          classLabel={classLabel}
           subgroupId={subgroupId}
-          initialDate={addDate}
-          onClose={() => setAddDate(null)}
+          subgroupName={subgroupName}
+          templates={templates}
+          testBuilder={testBuilder}
+          creatorHref={
+            searchParams.toString()
+              ? `/coach/programs/creator?${searchParams.toString()}`
+              : "/coach/programs/creator"
+          }
+          onPick={setAddKind}
+          onClose={() => {
+            setAddDate(null);
+            setAddKind("choose");
+          }}
         />
       ) : null}
 

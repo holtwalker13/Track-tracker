@@ -43,7 +43,7 @@ export function LiveSessionControls({
       return;
     }
     if (action === "close") {
-      router.push("/coach/testing");
+      router.push("/coach/programs");
       router.refresh();
       return;
     }
@@ -59,12 +59,12 @@ export function LiveSessionControls({
     >
       <div className="flex min-w-0 items-center gap-2">
         <Link
-          href="/coach/testing"
+          href="/coach/programs"
           className={cn(
             "inline-flex items-center gap-1 rounded-lg border border-card-border text-muted hover:text-foreground",
             compact ? "px-2 py-1.5 text-xs" : "gap-1.5 px-3 py-2 text-sm"
           )}
-          aria-label="Back to testing"
+          aria-label="Back to programs"
         >
           <ArrowLeft className="h-4 w-4" aria-hidden />
           <span className={compact ? "hidden sm:inline" : undefined}>Back</span>

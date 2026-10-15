@@ -2,15 +2,11 @@ import { Suspense } from "react";
 import { AppShell } from "@/components/layout/app-shell";
 import { ProgramsScopeBar } from "@/components/workouts/programs-scope-bar";
 import { ProgramsWeekCalendar } from "@/components/workouts/programs-week-calendar";
-import { ProgramsActivityPanel } from "@/components/workouts/programs-activity-panel";
-import { ProgramsActions } from "@/components/workouts/programs-actions";
-import { ProgramsLiftPreview } from "@/components/workouts/programs-lift-preview";
 import { TemporaryStudentsPanel } from "@/components/workouts/temporary-students-panel";
 import { COACH_NAV } from "@/lib/navigation";
 import { requireSchoolSession } from "@/lib/auth/session";
 import { resolveCoachClassScopeFromParams } from "@/lib/queries/coach-scope-params";
 import { prisma } from "@/lib/db";
-import { liftsForWorkoutPrograms, listSchoolLifts } from "@/lib/queries/lifts";
 import {
   dateRangeDays,
   listAssignmentsForClassRange,
@@ -19,14 +15,18 @@ import {
   listTestsForClassRange,
   weekStartSunday,
 } from "@/lib/queries/programs-hub";
-import { listWorkoutSessionsForCoachRange } from "@/lib/queries/workout-logs";
 import { getClassWorkoutDayReview } from "@/lib/queries/workout-day-review";
 import { getTestingDayReview } from "@/lib/queries/testing-log";
 import { ProgramsDayReview } from "@/components/workouts/programs-day-review";
-import { listClassSavedWorkouts, savedWorkoutCreatorName } from "@/lib/queries/class-saved-workouts";
+import { listClassSavedWorkouts } from "@/lib/queries/class-saved-workouts";
+import { listAttendanceForClassRange } from "@/lib/queries/attendance";
+import { listSchoolKpiLibrary } from "@/lib/queries/kpi-library";
+import {
+  ensureSchoolDefaultKpiSetId,
+  getKpiSetMetricOrderingForClassScope,
+} from "@/lib/services/kpi-sets";
 import { todayDateString } from "@/lib/services/workouts";
 import { classSectionLabel } from "@/lib/periods";
-import { format, parseISO } from "date-fns";
 
 export default async function CoachProgramsPage({
   searchParams,
@@ -38,7 +38,6 @@ export default async function CoachProgramsPage({
     week?: string;
     weeks?: string;
     date?: string;
-    logView?: string;
     assignment?: string;
     test?: string;
   }>;
@@ -59,41 +58,21 @@ export default async function CoachProgramsPage({
   const weekStart = weekStartSunday(sp.week?.trim() || today);
   const weeks = Math.min(6, Math.max(1, Number(sp.weeks) || 1));
   const selectedDate = sp.date?.trim() || today;
-  const logView = sp.logView === "week" ? "week" : "day";
 
   const rangeEnd = dateRangeDays(weekStart, weeks * 7).at(-1) ?? weekStart;
 
   const selectedAssignment = sp.assignment?.trim() || "";
   const selectedTest = sp.test?.trim() || "";
 
-  const [templates, schoolLifts, assignments, dayLogs, weekLogs, tests, dayReview, testReview] =
+  const [templates, assignments, tests, dayReview, testReview, attendance, kpiLibrary] =
     await Promise.all([
     classId ? listClassSavedWorkouts(session.schoolId, classId) : Promise.resolve([]),
-    listSchoolLifts(session.schoolId),
     classId
       ? listAssignmentsForClassRange({
           schoolId: session.schoolId,
           classId,
           startDate: weekStart,
           endDate: rangeEnd,
-        })
-      : Promise.resolve([]),
-    classId
-      ? listWorkoutSessionsForCoachRange({
-          schoolId: session.schoolId,
-          startDate: selectedDate,
-          endDate: selectedDate,
-          classId,
-          subgroupId: subgroupId ?? undefined,
-        })
-      : Promise.resolve([]),
-    classId
-      ? listWorkoutSessionsForCoachRange({
-          schoolId: session.schoolId,
-          startDate: weekStart,
-          endDate: dateRangeDays(weekStart, 7).at(-1) ?? weekStart,
-          classId,
-          subgroupId: subgroupId ?? undefined,
         })
       : Promise.resolve([]),
     classId
@@ -116,9 +95,23 @@ export default async function CoachProgramsPage({
     classId && selectedTest
       ? getTestingDayReview(session.schoolId, selectedTest, classId)
       : Promise.resolve(null),
+    classId
+      ? listAttendanceForClassRange({
+          schoolId: session.schoolId,
+          classId,
+          startDate: weekStart,
+          endDate: rangeEnd,
+          subgroupId: subgroupId ?? undefined,
+        })
+      : Promise.resolve([]),
+    listSchoolKpiLibrary(session.schoolId),
   ]);
 
-  const workoutLifts = liftsForWorkoutPrograms(schoolLifts);
+  if (classId) await ensureSchoolDefaultKpiSetId(session.schoolId);
+  const classMetricOrdering = classId
+    ? await getKpiSetMetricOrderingForClassScope(session.schoolId, classId)
+    : { ranked: [] as string[], unranked: [] as string[] };
+
   const selectedClass = classes.find((c) => c.id === classId) ?? null;
   const provisionalStudents = classId
     ? await prisma.studentProfile.findMany({
@@ -131,11 +124,6 @@ export default async function CoachProgramsPage({
         orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
       })
     : [];
-  const activityRows = logView === "week" ? weekLogs : dayLogs;
-  const weekLabel = `${format(parseISO(weekStart), "MMM d")} – ${format(
-    parseISO(dateRangeDays(weekStart, 7).at(-1) ?? weekStart),
-    "MMM d"
-  )}`;
 
   return (
     <AppShell nav={COACH_NAV} title="Programs">
@@ -148,6 +136,15 @@ export default async function CoachProgramsPage({
             coachId={coachId}
             classId={classId}
             subgroupId={subgroupId ?? ""}
+            trailing={
+              classId ? (
+                <TemporaryStudentsPanel
+                  classId={classId}
+                  date={selectedDate}
+                  students={provisionalStudents}
+                />
+              ) : null
+            }
           />
         </Suspense>
 
@@ -158,45 +155,30 @@ export default async function CoachProgramsPage({
               : "This coach has no classes yet. Add a class under School → Classes."}
           </p>
         ) : (
-          <div className="space-y-4">
-            <TemporaryStudentsPanel
+          <Suspense fallback={null}>
+            <ProgramsWeekCalendar
+              weekStart={weekStart}
+              weeks={weeks}
+              assignments={assignments}
+              selectedDate={selectedDate}
               classId={classId}
-              date={selectedDate}
-              students={provisionalStudents}
+              classLabel={selectedClass ? classSectionLabel(selectedClass) : "Class"}
+              subgroupId={subgroupId}
+              subgroupName={subgroups.find((s) => s.id === subgroupId)?.name ?? null}
+              templates={templates.map((t) => ({
+                id: t.id,
+                name: t.name,
+                exercises: t.exercises,
+              }))}
+              tests={tests}
+              attendance={attendance}
+              testBuilder={{
+                classes,
+                kpiLibrary,
+                metricsByClassId: { [classId]: classMetricOrdering },
+              }}
             />
-            <div className="grid gap-4 xl:grid-cols-5">
-            <div className="xl:col-span-3">
-              <Suspense fallback={null}>
-                <ProgramsWeekCalendar
-                  weekStart={weekStart}
-                  weeks={weeks}
-                  assignments={assignments}
-                  selectedDate={selectedDate}
-                  classId={classId}
-                  classLabel={selectedClass ? classSectionLabel(selectedClass) : "Class"}
-                  subgroupId={subgroupId}
-                  subgroupName={subgroups.find((s) => s.id === subgroupId)?.name ?? null}
-                  templates={templates.map((t) => ({
-                    id: t.id,
-                    name: t.name,
-                    exercises: t.exercises,
-                  }))}
-                  tests={tests}
-                />
-              </Suspense>
-            </div>
-            <div className="xl:col-span-2 xl:min-h-[22rem]">
-              <Suspense fallback={null}>
-                <ProgramsActivityPanel
-                  rows={activityRows}
-                  date={selectedDate}
-                  logView={logView}
-                  weekLabel={weekLabel}
-                />
-              </Suspense>
-            </div>
-            </div>
-          </div>
+          </Suspense>
         )}
 
         {classId ? (
@@ -205,22 +187,6 @@ export default async function CoachProgramsPage({
             test={selectedAssignment ? null : testReview}
           />
         ) : null}
-
-        <ProgramsActions
-          templates={templates.map((t) => ({
-            ...t,
-            updatedAt: t.updatedAt.toISOString(),
-            createdByName: savedWorkoutCreatorName(t.createdBy),
-            canDelete: session.role === "ADMIN" || t.createdById === session.userId,
-          }))}
-          selectedClass={selectedClass}
-          selectedSubgroupId={subgroupId}
-          selectedSubgroupName={subgroups.find((s) => s.id === subgroupId)?.name ?? null}
-          selectedDate={selectedDate}
-          workoutLifts={workoutLifts}
-        />
-
-        <ProgramsLiftPreview lifts={schoolLifts} />
       </div>
     </AppShell>
   );

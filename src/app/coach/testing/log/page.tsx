@@ -36,8 +36,8 @@ export default async function TestingLogPage({
   return (
     <AppShell title="Testing log" nav={COACH_NAV}>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <Link href="/coach/testing" className="text-sm text-muted hover:text-foreground">
-          ← Back to testing
+        <Link href="/coach/programs" className="text-sm text-muted hover:text-foreground">
+          ← Programs
         </Link>
       </div>
 

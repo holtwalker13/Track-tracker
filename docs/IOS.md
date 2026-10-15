@@ -26,14 +26,14 @@ npm install
 cp .env.example .env   # skip this if .env already exists
 ```
 
-In `.env`, set the hosted staging origin and leave the dev URL commented out:
+In `.env`, point the simulator at this Mac and leave the staging URL commented out:
 
 ```bash
-CAPACITOR_SERVER_URL="https://your-real-staging-host.up.railway.app"
-# CAPACITOR_DEV_SERVER_URL="http://192.168.1.10:3847"
+CAPACITOR_DEV_SERVER_URL="http://127.0.0.1:3847"
+# CAPACITOR_SERVER_URL="https://your-real-staging-host.up.railway.app"
 ```
 
-Staging must already be running this branch so login and the iPhone layout are the ones you just built. The value is an origin only: `https://` plus the host, no path, password, or query string.
+A physical iPhone cannot use `127.0.0.1`. Use the Mac's Wi-Fi address instead (`ipconfig getifaddr en0`), for example `http://192.168.1.10:3847`. Staging, when you have a real host, is an origin only: `https://` plus the host, no path, password, or query string. The placeholder host in older examples makes sync fail, so keep `CAPACITOR_SERVER_URL` commented until that host exists.
 
 Web and mobile do not use a second API base URL. The browser and the WebView both call relative `/api` routes on the host they loaded. Coach, admin, student, and school checks stay on the server.
 
@@ -68,7 +68,7 @@ No camera, location, photos, or microphone entries are required. Do not add them
 4. Press **Run**.
 5. The first install may need **Settings → General → VPN & Device Management** → trust your developer certificate.
 
-The simulator destination is the same Run button with an iPhone simulator selected. The committed project has no server URL, so it opens the setup screen until `CAPACITOR_SERVER_URL` is set and you sync.
+The simulator destination is the same Run button with an iPhone simulator selected. The committed project has no server URL, so it opens the setup screen until `.env` has `CAPACITOR_DEV_SERVER_URL` and you sync.
 
 ## 5. After later changes
 

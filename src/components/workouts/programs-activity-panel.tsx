@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import type { WorkoutLogRow } from "@/components/workouts/workout-logs-panel";
 import { cn } from "@/lib/utils";
 
@@ -21,6 +21,7 @@ export function ProgramsActivityPanel({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [pending, startTransition] = useTransition();
+  const [showAll, setShowAll] = useState(false);
 
   function setLogView(next: "day" | "week") {
     const params = new URLSearchParams(searchParams.toString());
@@ -30,7 +31,12 @@ export function ProgramsActivityPanel({
     });
   }
 
+  useEffect(() => {
+    setShowAll(false);
+  }, [date, logView]);
+
   const completed = rows.filter((r) => r.status === "COMPLETED").length;
+  const visible = showAll ? rows : rows.slice(0, 5);
 
   return (
     <section
@@ -77,7 +83,7 @@ export function ProgramsActivityPanel({
             No workout logs for this {logView === "day" ? "day" : "week"}.
           </p>
         ) : (
-          rows.map((r) => (
+          visible.map((r) => (
             <div
               key={`${r.studentId}-${r.programName}-${r.sessionId ?? "none"}`}
               className="flex items-center justify-between gap-2 rounded-xl border border-card-border/70 bg-background/30 px-3 py-2"
@@ -104,12 +110,22 @@ export function ProgramsActivityPanel({
         )}
       </div>
 
-      <Link
-        href={`/coach/programs/logs?date=${encodeURIComponent(date)}`}
-        className="mt-3 text-center text-xs font-medium text-accent hover:underline"
-      >
-        Open full logs →
-      </Link>
+      {rows.length > 5 && !showAll ? (
+        <button
+          type="button"
+          onClick={() => setShowAll(true)}
+          className="mt-3 text-center text-xs font-medium text-accent hover:underline"
+        >
+          View all ({rows.length})
+        </button>
+      ) : (
+        <Link
+          href={`/coach/programs/logs?date=${encodeURIComponent(date)}`}
+          className="mt-3 text-center text-xs font-medium text-accent hover:underline"
+        >
+          Open full logs →
+        </Link>
+      )}
     </section>
   );
 }

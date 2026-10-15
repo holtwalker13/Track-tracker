@@ -1,7 +1,11 @@
 "use client";
 
 import { Plus, Trash2 } from "lucide-react";
-import type { SetPrescription } from "@/lib/workout-prescriptions";
+import {
+  percentThatHoldsCurrent1Rm,
+  projectionChangePercent,
+  type SetPrescription,
+} from "@/lib/workout-prescriptions";
 
 export type AssignLiftDraft = {
   activitySlug: string;
@@ -91,23 +95,26 @@ export function ProgramsSetBuilderGrid({
                     />
                   </td>
                   <td className="px-2 py-2">
-                    <input
-                      type="number"
-                      min={1}
-                      max={120}
-                      placeholder="—"
-                      value={set.percentOf1Rm ?? ""}
-                      onChange={(e) => {
-                        const next = [...lift.sets];
-                        const raw = e.target.value.trim();
-                        next[setIdx] = {
-                          ...set,
-                          percentOf1Rm: raw === "" ? null : Number(raw),
-                        };
-                        onUpdateLift(liftIdx, next);
-                      }}
-                      className="w-16 rounded border border-card-border bg-background px-2 py-1 text-sm"
-                    />
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        min={1}
+                        max={120}
+                        placeholder="—"
+                        value={set.percentOf1Rm ?? ""}
+                        onChange={(e) => {
+                          const next = [...lift.sets];
+                          const raw = e.target.value.trim();
+                          next[setIdx] = {
+                            ...set,
+                            percentOf1Rm: raw === "" ? null : Number(raw),
+                          };
+                          onUpdateLift(liftIdx, next);
+                        }}
+                        className="w-16 rounded border border-card-border bg-background px-2 py-1 text-sm"
+                      />
+                      <SetProjectionNote reps={set.reps} percentOf1Rm={set.percentOf1Rm} />
+                    </div>
                   </td>
                   <td className="px-2 py-2">
                     {setIdx === lift.sets.length - 1 ? (
@@ -149,5 +156,30 @@ export function ProgramsSetBuilderGrid({
         </table>
       </div>
     </div>
+  );
+}
+
+function SetProjectionNote({
+  reps,
+  percentOf1Rm,
+}: {
+  reps: number;
+  percentOf1Rm: number | null;
+}) {
+  if (percentOf1Rm == null) return null;
+  const hold = percentThatHoldsCurrent1Rm(reps);
+  if (hold == null) return null;
+  const holdLabel = `${Math.round(hold)}% holds 1RM`;
+  const delta = projectionChangePercent(reps, percentOf1Rm);
+  const rounded = delta == null ? 0 : Math.round(delta);
+  return (
+    <span className="min-w-[4.5rem] text-[10px] leading-tight">
+      <span className="block text-muted">{holdLabel}</span>
+      {rounded > 0 ? (
+        <span className="font-semibold text-emerald-300">+{rounded}%</span>
+      ) : rounded < 0 ? (
+        <span className="text-muted">{rounded}%</span>
+      ) : null}
+    </span>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
 import { ROSTER_COLUMNS, type RosterAthlete } from "@/lib/queries/roster";
@@ -198,7 +198,7 @@ export function RosterTable({
   }
 
   return (
-    <div className="overflow-x-auto rounded-xl border border-card-border">
+    <RosterHorizontalScroll>
       {selected.size > 0 && (
         <div className="flex flex-wrap items-center gap-2 border-b border-card-border bg-card px-3 py-2">
           <p className="text-sm text-muted">{selected.size} selected</p>
@@ -370,6 +370,58 @@ export function RosterTable({
         reset · username = sign-in handle (e.g. first initial + last name + grad year) · eye = visible to
         other students · slashed eye = name hidden on student leaderboards
       </p>
+    </RosterHorizontalScroll>
+  );
+}
+
+function RosterHorizontalScroll({ children }: { children: ReactNode }) {
+  const topRef = useRef<HTMLDivElement>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const spacerRef = useRef<HTMLDivElement>(null);
+  const syncing = useRef(false);
+
+  useEffect(() => {
+    const body = bodyRef.current;
+    const spacer = spacerRef.current;
+    if (!body || !spacer) return;
+    const syncWidth = () => {
+      spacer.style.width = `${body.scrollWidth}px`;
+    };
+    syncWidth();
+    const observer = new ResizeObserver(syncWidth);
+    observer.observe(body);
+    const table = body.querySelector("table");
+    if (table) observer.observe(table);
+    return () => observer.disconnect();
+  }, [children]);
+
+  return (
+    <div className="rounded-xl border border-card-border">
+      <div
+        ref={topRef}
+        onScroll={() => {
+          if (syncing.current || !topRef.current || !bodyRef.current) return;
+          syncing.current = true;
+          bodyRef.current.scrollLeft = topRef.current.scrollLeft;
+          syncing.current = false;
+        }}
+        className="h-4 overflow-x-auto overflow-y-hidden border-b border-card-border/60"
+        aria-hidden
+      >
+        <div ref={spacerRef} className="h-4" />
+      </div>
+      <div
+        ref={bodyRef}
+        onScroll={() => {
+          if (syncing.current || !topRef.current || !bodyRef.current) return;
+          syncing.current = true;
+          topRef.current.scrollLeft = bodyRef.current.scrollLeft;
+          syncing.current = false;
+        }}
+        className="overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      >
+        {children}
+      </div>
     </div>
   );
 }

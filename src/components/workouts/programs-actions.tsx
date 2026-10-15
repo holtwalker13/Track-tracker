@@ -1,19 +1,13 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { CalendarPlus, Layers, Plus } from "lucide-react";
 import { WORKOUT_GENERATORS } from "@/lib/services/workout-generator";
 import type { SchoolLiftRow } from "@/lib/queries/lifts";
-import {
-  normalizeSetPrescriptions,
-  type SetPrescription,
-} from "@/lib/workout-prescriptions";
-import {
-  ProgramsSetBuilderGrid,
-  type AssignLiftDraft,
-} from "@/components/workouts/programs-set-builder-grid";
+import { normalizeSetPrescriptions } from "@/lib/workout-prescriptions";
 import { CoachModal } from "@/components/ui/coach-modal";
+import { ScheduleWorkoutDialog } from "@/components/workouts/schedule-workout-dialog";
 import { classSectionLabel } from "@/lib/periods";
 import {
   WorkoutLiftPicker,
@@ -58,14 +52,9 @@ export function ProgramsActions({
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
-  const [scheduleOpen, setScheduleOpen] = useState(false);
+  const [scheduleTemplateId, setScheduleTemplateId] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
-
-  const [assignTemplateId, setAssignTemplateId] = useState(initialTemplates[0]?.id ?? "");
-  const [assignDate, setAssignDate] = useState(selectedDate);
-  const [assignLifts, setAssignLifts] = useState<AssignLiftDraft[]>([]);
-  const [bulkPercent, setBulkPercent] = useState("");
 
   const [programName, setProgramName] = useState("");
   const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
@@ -91,30 +80,15 @@ export function ProgramsActions({
   }, [initialTemplates]);
 
   useEffect(() => {
-    setAssignDate(selectedDate);
     setGenStartDate(selectedDate);
   }, [selectedDate]);
 
-  function draftFromTemplate(template: TemplateRow | undefined): AssignLiftDraft[] {
-    if (!template) return [];
-    return template.exercises.map((ex) => ({
-      activitySlug: ex.activity.slug,
-      name: ex.activity.name,
-      sets: normalizeSetPrescriptions(ex.setPrescriptions, ex.defaultSets, ex.defaultReps),
-    }));
-  }
-
-  useEffect(() => {
-    const selected = templates.find((t) => t.id === assignTemplateId);
-    setAssignLifts(draftFromTemplate(selected));
-  }, [assignTemplateId, templates]);
-
-  function openSchedule() {
+  function openSchedule(templateId?: string) {
     setError(null);
     setMsg(null);
-    setAssignDate(selectedDate);
-    if (!assignTemplateId && templates[0]) setAssignTemplateId(templates[0].id);
-    setScheduleOpen(true);
+    const id = templateId || templates[0]?.id;
+    if (!id) return;
+    setScheduleTemplateId(id);
   }
 
   function openCreate() {
@@ -129,7 +103,7 @@ export function ProgramsActions({
     setEditingTemplateId(template.id);
     setProgramName(template.name);
     const bySlug = new Map(template.exercises.map((ex) => [ex.activity.slug, ex]));
-    let order = 0;
+    const orderBySlug = new Map(template.exercises.map((ex, index) => [ex.activity.slug, index + 1]));
     setLifts(
       workoutLifts.map((l) => {
         const ex = bySlug.get(l.slug);
@@ -142,7 +116,7 @@ export function ProgramsActions({
           name: l.name,
           bodyGroup: l.bodyGroup,
           enabled,
-          order: enabled ? ++order : null,
+          order: enabled ? (orderBySlug.get(l.slug) ?? null) : null,
           sets: sets?.length ?? 3,
           reps: sets?.[0]?.reps ?? ex?.defaultReps ?? 5,
         };
@@ -152,83 +126,21 @@ export function ProgramsActions({
     setCreateOpen(true);
   }
 
-  function updateAssignLift(index: number, sets: SetPrescription[]) {
-    setAssignLifts((prev) => {
-      const next = [...prev];
-      next[index] = { ...next[index]!, sets };
-      return next;
-    });
-  }
-
-  function applyBulkPercent() {
-    const pct =
-      bulkPercent.trim() === ""
-        ? null
-        : Math.min(120, Math.max(1, Number(bulkPercent)));
-    if (bulkPercent.trim() !== "" && (pct == null || !Number.isFinite(pct))) return;
-    setAssignLifts((prev) =>
-      prev.map((lift) => ({
-        ...lift,
-        sets: lift.sets.map((s) => ({ ...s, percentOf1Rm: pct })),
-      }))
-    );
-  }
-
-  async function doAssign() {
-    if (!selectedClass) {
-      setError("Select a class first.");
-      return;
-    }
-    if (!assignTemplateId || assignLifts.length === 0) {
-      setError("Select a workout with at least one lift.");
+  async function archiveWorkout(template: TemplateRow) {
+    if (!window.confirm(`Remove “${template.name}” from your saved workouts? Days already on the calendar stay.`)) {
       return;
     }
     setPending(true);
     setError(null);
-    setMsg(null);
-
-    const patchRes = await fetch(`/api/workouts/templates/${assignTemplateId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        exercises: assignLifts.map((l) => ({
-          activitySlug: l.activitySlug,
-          defaultSets: l.sets.length,
-          defaultReps: l.sets[0]?.reps ?? 5,
-          setPrescriptions: l.sets,
-        })),
-      }),
-    });
-    const patchData = await patchRes.json();
-    if (!patchRes.ok) {
-      setPending(false);
-      setError(patchData.error ?? "Could not update workout intensities");
-      return;
-    }
-    const saved = patchData.template as TemplateRow;
-    setTemplates((t) => t.map((row) => (row.id === saved.id ? saved : row)));
-
-    const res = await fetch("/api/workouts/assignments", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        templateId: assignTemplateId,
-        classId: selectedClass.id,
-        subgroupId: selectedSubgroupId || undefined,
-        scheduledDate: assignDate,
-      }),
-    });
-    const data = await res.json();
+    const res = await fetch(`/api/workouts/templates/${template.id}`, { method: "DELETE" });
+    const data = await res.json().catch(() => ({}));
     setPending(false);
     if (!res.ok) {
-      setError(data.error ?? "Could not add workout to schedule");
+      setError(data.error ?? "Could not remove workout");
       return;
     }
-    setMsg(
-      `Scheduled “${data.assignment.template.name}” for ${classSectionLabel(selectedClass)} on ${assignDate}.`
-    );
-    setScheduleOpen(false);
-    router.refresh();
+    setTemplates((rows) => rows.filter((row) => row.id !== template.id));
+    setMsg(`Removed “${template.name}” from saved workouts.`);
   }
 
   async function saveProgram(e: React.FormEvent) {
@@ -286,7 +198,6 @@ export function ProgramsActions({
       setMsg(`Updated “${saved.name}”.`);
     } else {
       setTemplates((t) => [saved, ...t]);
-      setAssignTemplateId(saved.id);
       setMsg(`Created “${saved.name}”. You can add it to the schedule.`);
     }
     setCreateOpen(false);
@@ -327,17 +238,11 @@ export function ProgramsActions({
     router.refresh();
   }
 
-  const canSchedule = Boolean(selectedClass && assignTemplateId && assignLifts.length > 0);
   const classLabel = selectedClass ? classSectionLabel(selectedClass) : "Select a class";
   const scopeLabel =
     selectedSubgroupId && selectedSubgroupName
       ? `${classLabel} · ${selectedSubgroupName}`
       : classLabel;
-
-  const previewReady = useMemo(
-    () => Boolean(assignTemplateId && assignLifts.length > 0 && selectedClass),
-    [assignTemplateId, assignLifts.length, selectedClass]
-  );
 
   return (
     <div className="space-y-4">
@@ -346,14 +251,14 @@ export function ProgramsActions({
           {msg}
         </p>
       )}
-      {error && !scheduleOpen && !createOpen && !bulkOpen && (
+      {error && !scheduleTemplateId && !createOpen && !bulkOpen && (
         <p className="text-sm text-sport-red">{error}</p>
       )}
 
       <div className="grid gap-3 sm:grid-cols-3">
         <button
           type="button"
-          onClick={openSchedule}
+          onClick={() => openSchedule()}
           disabled={!selectedClass || templates.length === 0}
           className="flex items-center gap-3 rounded-2xl border border-emerald-500/30 bg-emerald-500/5 px-4 py-3 text-left transition hover:border-emerald-400/50 disabled:opacity-50"
         >
@@ -424,10 +329,7 @@ export function ProgramsActions({
                 <div className="flex gap-2">
                   <button
                     type="button"
-                    onClick={() => {
-                      setAssignTemplateId(t.id);
-                      openSchedule();
-                    }}
+                    onClick={() => openSchedule(t.id)}
                     disabled={!selectedClass}
                     className="rounded-md px-2 py-1 text-xs font-medium text-emerald-300 hover:bg-emerald-500/10 disabled:opacity-40"
                   >
@@ -440,6 +342,14 @@ export function ProgramsActions({
                   >
                     Edit
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => void archiveWorkout(t)}
+                    disabled={pending}
+                    className="rounded-md px-2 py-1 text-xs font-medium text-muted hover:bg-sport-red/10 hover:text-sport-red disabled:opacity-40"
+                  >
+                    Delete
+                  </button>
                 </div>
               </li>
             ))}
@@ -447,62 +357,16 @@ export function ProgramsActions({
         )}
       </section>
 
-      {scheduleOpen ? (
-        <CoachModal
-          eyebrow="Schedule"
-          title="Add workout to schedule"
-          onClose={() => setScheduleOpen(false)}
-          maxWidth="max-w-3xl"
-        >
-          <div className="space-y-4">
-            {error && <p className="text-sm text-sport-red">{error}</p>}
-            <div className="grid gap-3 sm:grid-cols-2">
-              <label className="block text-sm">
-                Saved workout
-                <select
-                  required
-                  value={assignTemplateId}
-                  onChange={(e) => setAssignTemplateId(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-card-border bg-background px-3 py-2"
-                >
-                  {templates.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="block text-sm">
-                Date
-                <input
-                  required
-                  type="date"
-                  value={assignDate}
-                  onChange={(e) => setAssignDate(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-card-border bg-background px-3 py-2"
-                />
-              </label>
-            </div>
-            <p className="text-xs text-muted">
-              Assigning to: <span className="font-medium text-foreground">{scopeLabel}</span>
-            </p>
-            <ProgramsSetBuilderGrid
-              lifts={assignLifts}
-              bulkPercent={bulkPercent}
-              onBulkPercentChange={setBulkPercent}
-              onApplyBulkPercent={applyBulkPercent}
-              onUpdateLift={updateAssignLift}
-            />
-            <button
-              type="button"
-              disabled={pending || !previewReady || !canSchedule}
-              onClick={() => void doAssign()}
-              className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-background disabled:opacity-50"
-            >
-              {pending ? "Scheduling…" : "Add to calendar"}
-            </button>
-          </div>
-        </CoachModal>
+      {scheduleTemplateId && selectedClass ? (
+        <ScheduleWorkoutDialog
+          templates={templates}
+          classId={selectedClass.id}
+          scopeLabel={scopeLabel}
+          subgroupId={selectedSubgroupId}
+          initialDate={selectedDate}
+          initialTemplateId={scheduleTemplateId}
+          onClose={() => setScheduleTemplateId(null)}
+        />
       ) : null}
 
       {createOpen ? (

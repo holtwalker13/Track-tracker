@@ -334,6 +334,7 @@ export default async function StudentProfilePage({
         improvementPct={gamification.improvementPct}
         recentAccolades={gamification.recentAccolades}
         almostThere={almostThere}
+        accoladesHref={`/coach/students/${id}/accolades`}
       />
 
       <PeriodLeadersCard

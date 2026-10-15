@@ -11,7 +11,7 @@ export async function GET() {
   }
 
   const templates = await prisma.workoutTemplate.findMany({
-    where: { schoolId: session.schoolId, createdById: session.userId },
+    where: { schoolId: session.schoolId, createdById: session.userId, archivedAt: null },
     orderBy: { updatedAt: "desc" },
     include: {
       exercises: {

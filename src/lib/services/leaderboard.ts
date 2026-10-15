@@ -30,5 +30,10 @@ export function rankResults<T extends { studentId: string; value: number }>(
   list.sort((a, b) =>
     direction === "HIGHER_BETTER" ? b.value - a.value : a.value - b.value
   );
-  return list.map((row, i) => ({ ...row, rank: i + 1 }));
+  let rank = 0;
+  return list.map((row, i) => {
+    const prev = i > 0 ? list[i - 1] : null;
+    if (!prev || prev.value !== row.value) rank = i + 1;
+    return { ...row, rank };
+  });
 }

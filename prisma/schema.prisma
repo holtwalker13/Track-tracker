@@ -439,6 +439,8 @@ model WorkoutTemplate {
   generatorBlockId String?
   createdById String?
   createdBy   User?    @relation("WorkoutTemplateCreatedBy", fields: [createdById], references: [id])
+  // Hidden from the coach's saved list. Scheduled days and logs stay.
+  archivedAt  DateTime?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

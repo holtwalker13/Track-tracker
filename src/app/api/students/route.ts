@@ -3,6 +3,32 @@ import { requireSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { isClassYear } from "@/lib/grades";
 import { buildStudentUsernameBase, pickUniqueUsername } from "@/lib/services/student-username";
+export async function GET(request: Request) {
+  const session = await requireSession(["COACH", "ADMIN"]);
+  if (!session?.schoolId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  const q = new URL(request.url).searchParams.get("q")?.trim() ?? "";
+  const tokens = q.split(/\s+/).filter(Boolean);
+  if (tokens.length < 1) return NextResponse.json({ students: [] });
+  const students = await prisma.studentProfile.findMany({
+    where: {
+      schoolId: session.schoolId,
+      AND: tokens.map((token) => ({
+        OR: [
+          { firstName: { contains: token, mode: "insensitive" as const } },
+          { lastName: { contains: token, mode: "insensitive" as const } },
+          { studentNumber: { contains: token, mode: "insensitive" as const } },
+        ],
+      })),
+    },
+    select: { id: true, firstName: true, lastName: true, studentNumber: true },
+    orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
+    take: 12,
+  });
+  return NextResponse.json({ students });
+}
+
 export async function POST(request: Request) {
   const session = await requireSession(["COACH", "ADMIN"]);
   if (!session?.schoolId) {

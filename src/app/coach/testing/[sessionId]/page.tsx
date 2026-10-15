@@ -10,7 +10,7 @@ import { isLiveRecordingOpen, isWithinLiveWindow } from "@/lib/constants";
 import { classSectionLabel } from "@/lib/periods";
 import { SessionDateEditor } from "@/components/testing/session-date-editor";
 import { SessionNameEditor } from "@/components/testing/session-name-editor";
-import { AddSessionStudentsPanel } from "@/components/testing/add-session-students-panel";
+import { QuickAddSessionStudent } from "@/components/testing/quick-add-session-student";
 import { listSchoolKpiLibrary } from "@/lib/queries/kpi-library";
 import { coachCanAdministerTestingSession } from "@/lib/auth/coach-scope";
 import { ClassSubgroupFilter } from "@/components/classes/class-subgroup-filter";
@@ -91,22 +91,6 @@ export default async function LiveTestingPage({
   const kpiLibrary = await listSchoolKpiLibrary(session.schoolId);
   const kpiOptionsForAdd = kpiLibrary.map((k) => ({ slug: k.slug, name: k.name }));
 
-  let addStudentCandidates: { id: string; name: string }[] = [];
-  if (classId) {
-    const onSession = new Set(testingSession.students.map((s) => s.studentId));
-    const enrollments = await prisma.classEnrollment.findMany({
-      where: { classId },
-      include: { student: { select: { id: true, firstName: true, lastName: true } } },
-      orderBy: [{ student: { lastName: "asc" } }, { student: { firstName: "asc" } }],
-    });
-    addStudentCandidates = enrollments
-      .filter((e) => !onSession.has(e.studentId))
-      .map((e) => ({
-        id: e.student.id,
-        name: `${e.student.firstName} ${e.student.lastName}`,
-      }));
-  }
-
   const rows = await Promise.all(
     rosterStudents.map(async (ss) => {
       const prev = await getPreviousBest(ss.studentId, activity.id, testingSession.testingDate);
@@ -158,13 +142,14 @@ export default async function LiveTestingPage({
         compact
       />
 
-      <div className="mb-2 flex items-baseline justify-between gap-2 sm:mb-3">
+      <div className="mb-2 flex items-start justify-between gap-2 sm:mb-3">
         <div className="min-w-0">
           <h1 className="truncate text-base font-bold tracking-tight sm:text-xl">
             {testingSession.name}
           </h1>
           <p className="truncate text-[11px] text-muted sm:text-sm">{subtitle}</p>
         </div>
+        <QuickAddSessionStudent sessionId={sessionId} classId={classId} />
       </div>
 
       <div className="mb-3 flex flex-wrap items-end gap-4">
@@ -184,12 +169,8 @@ export default async function LiveTestingPage({
         </div>
       </details>
 
-      {coachCanEdit && addStudentCandidates.length > 0 ? (
-        <AddSessionStudentsPanel sessionId={sessionId} candidates={addStudentCandidates} />
-      ) : null}
-
       <LiveTestingStudio
-        key={`${activity.id}-${sp.student ?? "first"}`}
+        key={activity.id}
         sessionId={sessionId}
         sessionPath={`/coach/testing/${sessionId}`}
         activities={activities}

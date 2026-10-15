@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   Check,
@@ -83,6 +84,7 @@ export function LiveTestingStudio({
   const searchParams = useSearchParams();
   const subgroupId = searchParams.get("subgroupId");
   const [rows, setRows] = useState(initialRows);
+  const [pickedStudentId, setPickedStudentId] = useState(initialStudentId);
   const [saving, setSaving] = useState(false);
   const [banner, setBanner] = useState<string | null>(null);
   const activityIdRef = useRef(activityId);
@@ -93,8 +95,8 @@ export function LiveTestingStudio({
   const lastCelebratedKeyRef = useRef<string | null>(null);
 
   const studentId =
-    initialStudentId && rows.some((r) => r.studentId === initialStudentId)
-      ? initialStudentId
+    pickedStudentId && rows.some((r) => r.studentId === pickedStudentId)
+      ? pickedStudentId
       : rows[0]?.studentId;
 
   const studentIndex = rows.findIndex((r) => r.studentId === studentId);
@@ -103,6 +105,10 @@ export function LiveTestingStudio({
   const activityIndex = activities.findIndex((a) => a.slug === activitySlug);
   const nextActivity = activities[activityIndex + 1] ?? null;
   const prevActivity = activities[activityIndex - 1] ?? null;
+
+  useEffect(() => {
+    if (initialStudentId) setPickedStudentId(initialStudentId);
+  }, [initialStudentId]);
 
   useEffect(() => {
     generationRef.current += 1;
@@ -184,11 +190,28 @@ export function LiveTestingStudio({
     return base;
   }
 
+  function focusAttempt(index = 0) {
+    const el = inputRefs.current.get(index);
+    if (!el || el.disabled) return;
+    el.focus();
+    el.select();
+  }
+
   function selectStudent(id: string) {
+    skipBlurRef.current = true;
+    if (!readOnly) {
+      flushSync(() => setPickedStudentId(id));
+      focusAttempt(0);
+    } else {
+      setPickedStudentId(id);
+    }
+    window.setTimeout(() => {
+      skipBlurRef.current = false;
+    }, 0);
     const params = navParams(new URLSearchParams());
     params.set("activity", activitySlug);
     params.set("student", id);
-    router.push(`${sessionPath}?${params.toString()}`);
+    router.replace(`${sessionPath}?${params.toString()}`, { scroll: false });
   }
 
   function goStudent(delta: number) {
@@ -212,16 +235,16 @@ export function LiveTestingStudio({
     setRows((prev) =>
       prev.map((r) => (r.studentId === row.studentId ? { ...nextRow, saved: false } : r))
     );
-    await saveRow(nextRow);
-    if (!advance) return;
-    if (idx < attemptCount - 1) {
-      const el = inputRefs.current.get(idx + 1);
-      el?.focus();
-      el?.select();
-    } else {
-      const next = rows[studentIndex + 1];
-      if (next) selectStudent(next.studentId);
+    // Focus before the save returns so the keyboard stays with this keypress.
+    if (advance) {
+      if (idx < attemptCount - 1) {
+        focusAttempt(idx + 1);
+      } else {
+        const next = rows[studentIndex + 1];
+        if (next) selectStudent(next.studentId);
+      }
     }
+    await saveRow(nextRow);
   }
 
   const attemptLabels = useMemo(
@@ -324,6 +347,10 @@ export function LiveTestingStudio({
                 role="option"
                 aria-selected={active}
                 title={fullName}
+                onMouseDown={(e) => {
+                  if (readOnly) return;
+                  e.preventDefault();
+                }}
                 onClick={() => selectStudent(r.studentId)}
                 className={cn(
                   "flex min-h-[3.25rem] items-center gap-2 rounded-xl border px-2.5 py-2 text-left transition",

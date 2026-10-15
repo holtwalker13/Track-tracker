@@ -14,10 +14,10 @@ export async function PATCH(
 
   const { id } = await params;
   const existing = await prisma.workoutTemplate.findFirst({
-    where: { id, schoolId: session.schoolId },
+    where: { id, schoolId: session.schoolId, archivedAt: null },
     include: { _count: { select: { assignments: true } } },
   });
-  if (!existing) {
+  if (!existing || existing.createdById !== session.userId) {
     return NextResponse.json({ error: "Program not found" }, { status: 404 });
   }
 
@@ -122,4 +122,26 @@ export async function PATCH(
   }
 
   return NextResponse.json({ template: rec, hadAssignments: existing._count.assignments > 0 });
+}
+
+export async function DELETE(
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await requireSession(["COACH", "ADMIN"]);
+  if (!session?.schoolId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  const { id } = await params;
+  const existing = await prisma.workoutTemplate.findFirst({
+    where: { id, schoolId: session.schoolId, createdById: session.userId, archivedAt: null },
+  });
+  if (!existing) {
+    return NextResponse.json({ error: "Program not found" }, { status: 404 });
+  }
+  await prisma.workoutTemplate.update({
+    where: { id },
+    data: { archivedAt: new Date() },
+  });
+  return NextResponse.json({ ok: true });
 }

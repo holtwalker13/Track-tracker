@@ -19,6 +19,7 @@ import {
 } from "@/lib/queries/programs-hub";
 import { listWorkoutSessionsForCoachRange } from "@/lib/queries/workout-logs";
 import { todayDateString } from "@/lib/services/workouts";
+import { classSectionLabel } from "@/lib/periods";
 import { format, parseISO } from "date-fns";
 
 export default async function CoachProgramsPage({
@@ -59,6 +60,7 @@ export default async function CoachProgramsPage({
       where: {
         schoolId: session.schoolId,
         createdById: session.userId,
+        archivedAt: null,
       },
       orderBy: { updatedAt: "desc" },
       include: {
@@ -136,9 +138,14 @@ export default async function CoachProgramsPage({
                   assignments={assignments}
                   selectedDate={selectedDate}
                   classId={classId}
+                  classLabel={selectedClass ? classSectionLabel(selectedClass) : "Class"}
                   subgroupId={subgroupId}
                   subgroupName={subgroups.find((s) => s.id === subgroupId)?.name ?? null}
-                  templates={templates.map((t) => ({ id: t.id, name: t.name }))}
+                  templates={templates.map((t) => ({
+                    id: t.id,
+                    name: t.name,
+                    exercises: t.exercises,
+                  }))}
                 />
               </Suspense>
             </div>

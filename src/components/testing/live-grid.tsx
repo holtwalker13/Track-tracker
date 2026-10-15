@@ -147,8 +147,8 @@ export function LiveTestingGrid({
     setRows((prev) =>
       prev.map((r) => (r.studentId === studentId ? { ...nextRow, saved: false } : r))
     );
-    await saveRow(studentId, nextRow, activityId, generationRef.current);
     if (advance) focusNext(studentId, attemptIdx);
+    await saveRow(studentId, nextRow, activityId, generationRef.current);
   }
 
   function renderAttemptInput(
@@ -252,9 +252,18 @@ export function LiveTestingGrid({
           >
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
-                <p className="truncate text-base font-semibold leading-tight">
+                <button
+                  type="button"
+                  className="truncate text-left text-base font-semibold leading-tight"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => {
+                    const el = inputRefs.current.get(inputKey(row.studentId, 0));
+                    el?.focus();
+                    el?.select();
+                  }}
+                >
                   {formatStudentName(row.firstName, row.lastName, true)}
-                </p>
+                </button>
                 <p className="mt-0.5 text-xs text-muted">
                   Prev{" "}
                   {row.previousBest != null && activityUnit
@@ -367,7 +376,18 @@ export function LiveTestingGrid({
                 )}
               >
                 <td className="py-3 pr-2 font-medium">
-                  {formatStudentName(row.firstName, row.lastName, true)}
+                  <button
+                    type="button"
+                    className="text-left"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => {
+                      const el = inputRefs.current.get(inputKey(row.studentId, 0));
+                      el?.focus();
+                      el?.select();
+                    }}
+                  >
+                    {formatStudentName(row.firstName, row.lastName, true)}
+                  </button>
                   {row.pr && (
                     <span className="ml-2 rounded bg-success/20 px-2 py-0.5 text-xs text-success">
                       NEW PR

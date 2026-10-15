@@ -45,6 +45,24 @@ export function prescriptionsFromSetsReps(
   );
 }
 
+/** Percent of 1RM that projects back to the current 1RM at this rep count (Epley). */
+export function percentThatHoldsCurrent1Rm(reps: number): number | null {
+  if (!Number.isFinite(reps) || reps <= 0) return null;
+  if (reps <= 1) return 100;
+  return 100 / (1 + reps / 30);
+}
+
+/**
+ * How much a prescribed percent changes the projected 1RM versus the athlete's current mark.
+ * Positive means a new, higher projection. 6 reps at 90% is about +8.
+ */
+export function projectionChangePercent(reps: number, percentOf1Rm: number): number | null {
+  if (!Number.isFinite(reps) || reps <= 0) return null;
+  if (!Number.isFinite(percentOf1Rm) || percentOf1Rm <= 0) return null;
+  const factor = reps <= 1 ? 1 : 1 + reps / 30;
+  return (percentOf1Rm / 100) * factor * 100 - 100;
+}
+
 /** Recommended working weight from a logged 1RM and set intensity. */
 export function recommendedWeightFrom1Rm(
   oneRepMaxLb: number | null | undefined,

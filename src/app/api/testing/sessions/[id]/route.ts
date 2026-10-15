@@ -143,6 +143,28 @@ export async function PATCH(
     });
   }
 
+  if (typeof body.enrollStudentId === "string" && body.enrollStudentId.trim()) {
+    const studentId = body.enrollStudentId.trim();
+    const student = await prisma.studentProfile.findFirst({
+      where: { id: studentId, schoolId: session.schoolId },
+      select: { id: true },
+    });
+    if (!student) {
+      return NextResponse.json({ error: "Student not found" }, { status: 404 });
+    }
+    if (rec.classId) {
+      await prisma.classEnrollment.createMany({
+        data: [{ classId: rec.classId, studentId }],
+        skipDuplicates: true,
+      });
+    }
+    await prisma.testingSessionStudent.createMany({
+      data: [{ sessionId: id, studentId }],
+      skipDuplicates: true,
+    });
+    return NextResponse.json({ ok: true, studentId });
+  }
+
   if (Array.isArray(body.studentIds) && body.studentIds.length > 0) {
     const ids = Array.from(
       new Set<string>(

@@ -11,6 +11,10 @@ import {
 import { cn } from "@/lib/utils";
 import { todayDateString } from "@/lib/services/workouts";
 import { CoachModal } from "@/components/ui/coach-modal";
+import {
+  ScheduleWorkoutDialog,
+  type ScheduleTemplate,
+} from "@/components/workouts/schedule-workout-dialog";
 
 /** Desktop/tablet: Mon–Fri window. Mobile: 3 days with today centered. */
 const DESKTOP_VISIBLE_DAYS = 5;
@@ -19,14 +23,13 @@ const MOBILE_VISIBLE_DAYS = 3;
 const MONDAY_OFFSET = 1;
 const MOBILE_MQ = "(max-width: 639px)";
 
-type TemplateOption = { id: string; name: string };
-
 export function ProgramsWeekCalendar({
   weekStart,
   weeks,
   assignments: initialAssignments,
   selectedDate,
   classId,
+  classLabel,
   subgroupId,
   subgroupName,
   templates,
@@ -36,9 +39,10 @@ export function ProgramsWeekCalendar({
   assignments: CalendarAssignment[];
   selectedDate: string;
   classId: string;
+  classLabel: string;
   subgroupId?: string | null;
   subgroupName?: string | null;
-  templates: TemplateOption[];
+  templates: ScheduleTemplate[];
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -50,7 +54,6 @@ export function ProgramsWeekCalendar({
   const [visibleDays, setVisibleDays] = useState(MOBILE_VISIBLE_DAYS);
 
   const [addDate, setAddDate] = useState<string | null>(null);
-  const [addTemplateId, setAddTemplateId] = useState(templates[0]?.id ?? "");
   const [editing, setEditing] = useState<CalendarAssignment | null>(null);
   const [editTemplateId, setEditTemplateId] = useState("");
   const [editDate, setEditDate] = useState("");
@@ -60,10 +63,6 @@ export function ProgramsWeekCalendar({
   useEffect(() => {
     setAssignments(initialAssignments);
   }, [initialAssignments]);
-
-  useEffect(() => {
-    if (!addTemplateId && templates[0]) setAddTemplateId(templates[0].id);
-  }, [templates, addTemplateId]);
 
   useEffect(() => {
     const mq = window.matchMedia(MOBILE_MQ);
@@ -138,7 +137,6 @@ export function ProgramsWeekCalendar({
   function openAdd(date: string) {
     setActionError(null);
     setAddDate(date);
-    setAddTemplateId(templates[0]?.id ?? "");
     setParams({ date, logView: "day" });
   }
 
@@ -148,33 +146,6 @@ export function ProgramsWeekCalendar({
     setEditTemplateId(a.templateId);
     setEditDate(a.date);
     setParams({ date: a.date, logView: "day" });
-  }
-
-  async function addWorkout() {
-    if (!addDate || !addTemplateId || !classId) {
-      setActionError("Pick a workout and class first.");
-      return;
-    }
-    setActionPending(true);
-    setActionError(null);
-    const res = await fetch("/api/workouts/assignments", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        templateId: addTemplateId,
-        classId,
-        subgroupId: subgroupId || undefined,
-        scheduledDate: addDate,
-      }),
-    });
-    const data = await res.json();
-    setActionPending(false);
-    if (!res.ok) {
-      setActionError(data.error ?? "Could not add workout");
-      return;
-    }
-    setAddDate(null);
-    startTransition(() => router.refresh());
   }
 
   async function saveEdit() {
@@ -320,35 +291,32 @@ export function ProgramsWeekCalendar({
                     <Plus className="h-3.5 w-3.5" />
                   </button>
                 </div>
-                <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-hidden">
-                  {dayAssignments.length === 0 ? (
+                <div className="flex min-h-0 flex-1 flex-col gap-1">
+                  {dayAssignments.map((a) => (
                     <button
+                      key={a.id}
                       type="button"
-                      onClick={() => openAdd(date)}
-                      disabled={!classId || templates.length === 0}
-                      className="rounded-md border border-dashed border-card-border/70 px-1 py-2 text-center text-[10px] text-muted/80 hover:border-emerald-400/40 hover:text-emerald-300 disabled:opacity-40"
+                      onClick={() => openEdit(a)}
+                      className="rounded-md bg-sky-500/10 px-1 py-0.5 text-left ring-1 ring-sky-400/25 hover:bg-sky-500/20"
                     >
-                      Add
+                      <div className="truncate text-[10px] font-medium leading-tight text-sky-100 sm:text-[11px]">
+                        {a.templateName}
+                      </div>
+                      <div className="text-[9px] tabular-nums text-muted sm:text-[10px]">
+                        {a.totalCount > 0
+                          ? `${a.completedCount}/${a.totalCount} logged`
+                          : "No roster"}
+                      </div>
                     </button>
-                  ) : (
-                    dayAssignments.map((a) => (
-                      <button
-                        key={a.id}
-                        type="button"
-                        onClick={() => openEdit(a)}
-                        className="rounded-md bg-sky-500/10 px-1 py-0.5 text-left ring-1 ring-sky-400/25 hover:bg-sky-500/20"
-                      >
-                        <div className="truncate text-[10px] font-medium leading-tight text-sky-100 sm:text-[11px]">
-                          {a.templateName}
-                        </div>
-                        <div className="text-[9px] tabular-nums text-muted sm:text-[10px]">
-                          {a.totalCount > 0
-                            ? `${a.completedCount}/${a.totalCount} logged`
-                            : "No roster"}
-                        </div>
-                      </button>
-                    ))
-                  )}
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => openAdd(date)}
+                    disabled={!classId || templates.length === 0}
+                    className="mt-auto rounded-md border border-dashed border-card-border/70 px-1 py-2 text-center text-[10px] text-muted/80 hover:border-emerald-400/40 hover:text-emerald-300 disabled:opacity-40"
+                  >
+                    Add
+                  </button>
                 </div>
               </div>
             );
@@ -375,49 +343,15 @@ export function ProgramsWeekCalendar({
         ) : null}
       </div>
 
-      {addDate ? (
-        <CoachModal
-          eyebrow="Schedule"
-          title={`Add workout · ${addDate}`}
+      {addDate && classId ? (
+        <ScheduleWorkoutDialog
+          templates={templates}
+          classId={classId}
+          scopeLabel={subgroupName ? `${classLabel} · ${subgroupName}` : classLabel}
+          subgroupId={subgroupId}
+          initialDate={addDate}
           onClose={() => setAddDate(null)}
-          maxWidth="max-w-md"
-        >
-          <div className="space-y-3">
-            {actionError && <p className="text-sm text-sport-red">{actionError}</p>}
-            {subgroupId && subgroupName ? (
-              <p className="text-xs text-muted">
-                Assigning to: <span className="font-medium text-foreground">{subgroupName}</span>
-              </p>
-            ) : null}
-            {templates.length === 0 ? (
-              <p className="text-sm text-muted">Create a saved workout first, then add it here.</p>
-            ) : (
-              <label className="block text-sm">
-                Saved workout
-                <select
-                  value={addTemplateId}
-                  onChange={(e) => setAddTemplateId(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-card-border bg-background px-3 py-2"
-                >
-                  {templates.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            )}
-            <button
-              type="button"
-              disabled={actionPending || !addTemplateId || templates.length === 0}
-              onClick={() => void addWorkout()}
-              className="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-background disabled:opacity-50"
-            >
-              <Plus className="h-4 w-4" />
-              {actionPending ? "Adding…" : "Add to day"}
-            </button>
-          </div>
-        </CoachModal>
+        />
       ) : null}
 
       {editing ? (

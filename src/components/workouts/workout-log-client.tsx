@@ -3,6 +3,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { WorkoutXpToast } from "@/components/gamification/workout-xp-toast";
 import type { AccoladeUnlockLine, XpAwardLine } from "@/lib/gamification/engine";
+import { epleyE1rm } from "@/lib/services/workout-progression";
 
 type Exercise = {
   id: string;
@@ -272,6 +273,12 @@ export function WorkoutLogClient({
               const suggested =
                 data.suggestedWeightBySet?.[cellKey(ex.id, setNum)] ??
                 (setNum === 1 ? data.suggestedWeightLb?.[ex.id] : null);
+              const weightNum = Number(c.weightLb);
+              const repsNum = Number(c.reps);
+              const projected =
+                !c.skipped && weightNum > 0 && repsNum > 0
+                  ? Math.round(epleyE1rm(weightNum, repsNum) * 10) / 10
+                  : null;
               return (
                 <div
                   key={setNum}
@@ -292,6 +299,11 @@ export function WorkoutLogClient({
                   </label>
                   {suggested != null && !readOnly ? (
                     <span className="pb-2 text-[11px] text-muted">Expected {suggested} lb</span>
+                  ) : null}
+                  {projected != null ? (
+                    <span className="pb-2 text-xs font-semibold text-emerald-300">
+                      Proj. 1RM {projected} lb
+                    </span>
                   ) : null}
                   <label className="text-xs">
                     Reps

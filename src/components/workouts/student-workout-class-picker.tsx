@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useTransition } from "react";
+import { Suspense, useRef, useTransition } from "react";
 import { classSectionLabel } from "@/lib/periods";
 
 function PickerInner({
@@ -17,6 +17,7 @@ function PickerInner({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [pending, startTransition] = useTransition();
+  const dateRef = useRef<HTMLInputElement>(null);
 
   function pick(next: string) {
     const params = new URLSearchParams(searchParams.toString());
@@ -27,12 +28,15 @@ function PickerInner({
     });
   }
 
-  function pickDate(next: string) {
+  function applyDate(next?: string) {
+    const value = (next ?? dateRef.current?.value ?? "").trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return;
     const params = new URLSearchParams(searchParams.toString());
-    if (next) params.set("date", next);
-    else params.delete("date");
+    params.set("date", value);
+    const href = `${pathname}?${params.toString()}`;
     startTransition(() => {
-      router.push(params.toString() ? `${pathname}?${params.toString()}` : pathname);
+      router.push(href);
+      router.refresh();
     });
   }
 
@@ -40,12 +44,23 @@ function PickerInner({
     <div className={`mb-4 flex flex-wrap gap-4 text-sm ${pending ? "opacity-70" : ""}`}>
       <label className="block min-w-[12rem] flex-1">
         <span className="font-semibold uppercase tracking-wide text-muted">Workout date</span>
-        <input
-          type="date"
-          value={date}
-          onChange={(e) => pickDate(e.target.value)}
-          className="mt-1 block w-full max-w-md rounded-lg border border-card-border bg-background px-3 py-2 font-medium"
-        />
+        <span className="mt-1 flex max-w-md gap-2">
+          <input
+            key={date}
+            ref={dateRef}
+            type="date"
+            defaultValue={date}
+            onChange={(e) => applyDate(e.target.value)}
+            className="block w-full rounded-lg border border-card-border bg-background px-3 py-2 font-medium"
+          />
+          <button
+            type="button"
+            onClick={() => applyDate()}
+            className="shrink-0 rounded-lg bg-accent px-3 py-2 text-sm font-semibold text-background"
+          >
+            Apply
+          </button>
+        </span>
       </label>
       {options.length > 0 ? (
         <label className="block min-w-[12rem] flex-1">

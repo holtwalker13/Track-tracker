@@ -1,6 +1,5 @@
-import { Target } from "lucide-react";
 import { formatActivityValue } from "@/lib/format";
-import { KPI_METRIC_META, MEDAL_LABELS, type SprintPotential } from "@/lib/kpi-targets";
+import { KPI_METRIC_META, MEDAL_LABELS, type Medal, type SprintPotential } from "@/lib/kpi-targets";
 import { Card, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
@@ -144,8 +143,6 @@ export function SprintPotentialCard({
               row.athlete == null
                 ? "—"
                 : formatActivityValue(row.athlete, unit, row.slug);
-            const targetVal =
-              row.target != null ? formatActivityValue(row.target, unit, row.slug) : "—";
             const rank = ranks?.[row.slug];
             const highlighted = highlightSlug === row.slug;
             return (
@@ -179,18 +176,26 @@ export function SprintPotentialCard({
                   <p className="truncate text-xl font-bold leading-none tabular-nums tracking-tight sm:text-2xl">
                     {mark}
                   </p>
-                  {row.hit === true && (
-                    <span className="shrink-0 text-[10px] font-semibold text-success sm:text-xs">hit</span>
-                  )}
-                  {row.hit === false && (
-                    <span className="shrink-0 text-[10px] font-semibold text-warning sm:text-xs">gap</span>
-                  )}
+                  <EarnedMedalBadge medal={earnedMedalFor(bands, row.slug)} />
                 </div>
-                <p className="mt-1 flex items-center gap-1 text-xs leading-none tabular-nums text-muted sm:mt-1.5 sm:gap-1.5 sm:text-sm">
-                  {targetVal}
-                  <Target className="h-3 w-3 shrink-0 sm:h-3.5 sm:w-3.5" aria-hidden />
-                </p>
-                <p className="mt-1 text-xs font-bold leading-tight text-muted sm:text-sm">
+                <ul className="mt-2 space-y-0.5 text-[11px] leading-tight tabular-nums sm:text-xs">
+                  {(["gold", "silver", "bronze"] as const).map((medal) => {
+                    const bandRow = bands
+                      .find((band) => band.band.medal === medal)
+                      ?.rows.find((item) => item.slug === row.slug);
+                    const value =
+                      bandRow?.target != null
+                        ? formatActivityValue(bandRow.target, unit, row.slug)
+                        : "—";
+                    return (
+                      <li key={medal} className="flex items-baseline justify-between gap-2">
+                        <span className={medalTextClass(medal)}>{MEDAL_LABELS[medal]}</span>
+                        <span className="text-foreground">{value}</span>
+                      </li>
+                    );
+                  })}
+                </ul>
+                <p className="mt-1.5 text-xs font-bold leading-tight text-muted sm:text-sm">
                   {row.name ?? meta?.name ?? row.slug}
                 </p>
               </div>
@@ -199,5 +204,32 @@ export function SprintPotentialCard({
         </div>
       )}
     </Card>
+  );
+}
+
+function medalTextClass(medal: Medal) {
+  if (medal === "gold") return "text-sport-gold";
+  if (medal === "silver") return "text-sport-silver";
+  return "text-sport-bronze";
+}
+
+function earnedMedalFor(bands: SprintPotential["bands"], slug: string): Medal | null {
+  for (const medal of ["gold", "silver", "bronze"] as const) {
+    const hit = bands
+      .find((band) => band.band.medal === medal)
+      ?.rows.find((row) => row.slug === slug)?.hit;
+    if (hit === true) return medal;
+  }
+  return null;
+}
+
+function EarnedMedalBadge({ medal }: { medal: Medal | null }) {
+  if (!medal) {
+    return <span className="shrink-0 text-[10px] font-semibold text-muted">none</span>;
+  }
+  return (
+    <span className={`shrink-0 text-[10px] font-semibold sm:text-xs ${medalTextClass(medal)}`}>
+      {MEDAL_LABELS[medal]}
+    </span>
   );
 }

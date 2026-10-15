@@ -43,7 +43,8 @@ export function GamificationSummaryCard({
   improvementPct,
   recentAccolades,
   almostThere = [],
-}: GamificationSummaryProps) {
+  accoladesHref = "/student/accolades",
+}: GamificationSummaryProps & { accoladesHref?: string }) {
   const consistencyTheme = themeForAccoladeCategory("consistency");
   const prTheme = themeForAccoladeCategory("prs");
   const impTheme = themeForAccoladeCategory("improvement");
@@ -53,7 +54,7 @@ export function GamificationSummaryCard({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <CardTitle className="text-accent">Your progress</CardTitle>
         <Link
-          href="/student/accolades"
+          href={accoladesHref}
           className="text-sm font-semibold text-sport-gold hover:underline"
         >
           All accolades

@@ -9,6 +9,7 @@ import { TemporaryStudentsPanel } from "@/components/workouts/temporary-students
 import { COACH_NAV } from "@/lib/navigation";
 import { requireSchoolSession } from "@/lib/auth/session";
 import { resolveCoachClassScopeFromParams } from "@/lib/queries/coach-scope-params";
+import { prisma } from "@/lib/db";
 import { liftsForWorkoutPrograms, listSchoolLifts } from "@/lib/queries/lifts";
 import {
   dateRangeDays,

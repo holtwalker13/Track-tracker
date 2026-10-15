@@ -9,11 +9,13 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const q = new URL(request.url).searchParams.get("q")?.trim() ?? "";
+  const officialOnly = new URL(request.url).searchParams.get("official") === "1";
   const tokens = q.split(/\s+/).filter(Boolean);
   if (tokens.length < 1) return NextResponse.json({ students: [] });
   const students = await prisma.studentProfile.findMany({
     where: {
       schoolId: session.schoolId,
+      ...(officialOnly ? { provisional: false } : {}),
       AND: tokens.map((token) => ({
         OR: [
           { firstName: { contains: token, mode: "insensitive" as const } },

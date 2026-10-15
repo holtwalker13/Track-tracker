@@ -1,0 +1,221 @@
+import bcrypt from "bcryptjs";
+import { prisma } from "@/lib/db";
+import { classIdFromJoinToken } from "@/lib/services/class-join-link";
+import { credentialMatchesRosterStudent } from "@/lib/services/class-join-match";
+import { studentLoginEmailForNumber } from "@/lib/services/student-login-invite";
+import { validateAccountPassword } from "@/lib/services/login-invite-token";
+import { ensureStudentUsername } from "@/lib/services/student-username";
+
+const BCRYPT_ROUNDS = 12;
+
+export type ClassJoinPreview = {
+  classId: string;
+  className: string;
+  period: string | null;
+  coachName: string;
+  schoolName: string;
+};
+
+type RosterMatch = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  studentNumber: string;
+  username: string | null;
+  schoolId: string;
+  userId: string | null;
+  passwordSetAt: Date | null;
+};
+
+export async function previewClassJoin(token: string): Promise<ClassJoinPreview | null> {
+  const classId = classIdFromJoinToken(token);
+  if (!classId) return null;
+  const cls = await prisma.class.findUnique({
+    where: { id: classId },
+    include: {
+      school: { select: { name: true } },
+      coach: { select: { user: { select: { firstName: true, lastName: true } } } },
+      coachAssignments: {
+        include: { coach: { select: { user: { select: { firstName: true, lastName: true } } } } },
+        take: 1,
+      },
+    },
+  });
+  if (!cls) return null;
+  const coachUser = cls.coach?.user ?? cls.coachAssignments[0]?.coach.user ?? null;
+  const coachName = coachUser ? `${coachUser.firstName} ${coachUser.lastName}` : "your coach";
+  return {
+    classId: cls.id,
+    className: cls.name,
+    period: cls.period,
+    coachName,
+    schoolName: cls.school.name,
+  };
+}
+
+async function rosterForClass(classId: string) {
+  const cls = await prisma.class.findUnique({
+    where: { id: classId },
+    include: {
+      school: { select: { id: true, slug: true } },
+      enrollments: {
+        include: {
+          student: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              studentNumber: true,
+              username: true,
+              schoolId: true,
+              userId: true,
+              user: { select: { email: true, passwordSetAt: true } },
+            },
+          },
+        },
+      },
+    },
+  });
+  return cls;
+}
+
+export async function findClassStudentByCredential(
+  classId: string,
+  credential: string
+): Promise<RosterMatch | null> {
+  const cls = await rosterForClass(classId);
+  if (!cls) return null;
+  const slug = cls.school.slug ?? "school";
+  const match = cls.enrollments.find((row) =>
+    credentialMatchesRosterStudent({
+      credential,
+      studentNumber: row.student.studentNumber,
+      username: row.student.username,
+      userEmail: row.student.user?.email ?? null,
+      schoolSlug: slug,
+    })
+  );
+  if (!match) return null;
+  return {
+    id: match.student.id,
+    firstName: match.student.firstName,
+    lastName: match.student.lastName,
+    studentNumber: match.student.studentNumber,
+    username: match.student.username,
+    schoolId: match.student.schoolId,
+    userId: match.student.userId,
+    passwordSetAt: match.student.user?.passwordSetAt ?? null,
+  };
+}
+
+export async function identifyClassStudent(token: string, credential: string) {
+  const classId = classIdFromJoinToken(token);
+  if (!classId) return { ok: false as const, error: "This class link is not valid." };
+  const student = await findClassStudentByCredential(classId, credential);
+  if (!student) {
+    return {
+      ok: false as const,
+      error: "That email is not on this class roster. Use the email or username your coach has for you.",
+    };
+  }
+  const username =
+    student.username ??
+    (await ensureStudentUsername(student.id).catch(() => student.studentNumber));
+  return {
+    ok: true as const,
+    studentId: student.id,
+    fullName: `${student.firstName} ${student.lastName}`,
+    username,
+    hasAccount: Boolean(student.passwordSetAt),
+  };
+}
+
+export async function createAccountFromClassJoin(input: {
+  token: string;
+  credential: string;
+  password: string;
+}): Promise<
+  | { ok: true; userId: string; studentId: string; schoolId: string; username: string; email: string }
+  | { ok: false; error: string }
+> {
+  const passwordError = validateAccountPassword(input.password);
+  if (passwordError) return { ok: false, error: passwordError };
+
+  const classId = classIdFromJoinToken(input.token);
+  if (!classId) return { ok: false, error: "This class link is not valid." };
+  const student = await findClassStudentByCredential(classId, input.credential);
+  if (!student) {
+    return { ok: false, error: "That email is not on this class roster." };
+  }
+  if (student.passwordSetAt) {
+    return { ok: false, error: "This account already exists. Sign in with your password." };
+  }
+
+  const school = await prisma.school.findUnique({
+    where: { id: student.schoolId },
+    select: { slug: true },
+  });
+  const email = studentLoginEmailForNumber(student.studentNumber, school?.slug ?? "school");
+  const taken = await prisma.user.findUnique({
+    where: { email },
+    select: { id: true, studentProfile: { select: { id: true } } },
+  });
+  if (taken && taken.studentProfile?.id !== student.id) {
+    return { ok: false, error: "Unable to create this account. Ask your coach." };
+  }
+
+  const passwordHash = await bcrypt.hash(input.password, BCRYPT_ROUNDS);
+  const now = new Date();
+  const userId = await prisma.$transaction(async (tx) => {
+    let linked = student.userId;
+    if (linked) {
+      await tx.user.update({
+        where: { id: linked },
+        data: {
+          email,
+          passwordHash,
+          passwordSetAt: now,
+          firstName: student.firstName,
+          lastName: student.lastName,
+        },
+      });
+    } else if (taken && !taken.studentProfile) {
+      linked = taken.id;
+      await tx.user.update({
+        where: { id: linked },
+        data: {
+          email,
+          passwordHash,
+          passwordSetAt: now,
+          role: "STUDENT",
+          firstName: student.firstName,
+          lastName: student.lastName,
+        },
+      });
+      await tx.studentProfile.update({
+        where: { id: student.id },
+        data: { userId: linked },
+      });
+    } else {
+      const created = await tx.user.create({
+        data: {
+          email,
+          passwordHash,
+          role: "STUDENT",
+          firstName: student.firstName,
+          lastName: student.lastName,
+          passwordSetAt: now,
+        },
+      });
+      linked = created.id;
+      await tx.studentProfile.update({
+        where: { id: student.id },
+        data: { userId: linked },
+      });
+    }
+    return linked!;
+  });
+
+  const username = await ensureStudentUsername(student.id).catch(() => student.username ?? student.studentNumber);
+  return { ok: true, userId, studentId: student.id, schoolId: student.schoolId, username, email };
+}

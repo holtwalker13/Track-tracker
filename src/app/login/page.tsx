@@ -12,8 +12,8 @@ function LoginForm({ error, next }: { error?: string; next?: string }) {
           <p className="mt-1 text-sm text-muted">
             Students sign in with the username from your coach (usually first initial, last name, and
             graduating year, like{" "}
-            <span className="font-mono text-foreground/90">jsmith2028</span>). Coaches use their school
-            email. Use your setup link once to choose a password.
+            <span className="font-mono text-foreground/90">jsmith2028</span>). Use your class link to
+            create an account the first time. After that, sign in here. Coaches use their school email.
           </p>
 
           <form action={loginAction} className="mt-6 space-y-4">
@@ -38,7 +38,7 @@ function LoginForm({ error, next }: { error?: string; next?: string }) {
             </label>
             {error === "setup" && (
               <p className="text-sm text-amber-300">
-                Use the setup link or QR code from your coach or admin to create your password first.
+                Use the account link or class QR from your coach to create your password first.
               </p>
             )}
             {error && error !== "setup" && <p className="text-sm text-red-400">Invalid credentials</p>}

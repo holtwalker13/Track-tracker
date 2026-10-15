@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronDown, Pencil, Trash2 } from "lucide-react";
 import { ClassCoachInlineSelect } from "@/components/classes/class-coach-select";
+import { ClassJoinLink } from "@/components/classes/class-join-link";
 import { classYearLabel } from "@/lib/grades";
 import { cn } from "@/lib/utils";
 
@@ -107,14 +108,17 @@ export function SchoolClassExpandableRow({
             </div>
           ) : null}
         </div>
-        <div className="mt-2 pl-6 sm:max-w-xs">
-          <ClassCoachInlineSelect
-            classId={classId}
-            coachIds={coachIds}
-            coaches={coaches}
-            canEdit={canEdit}
-          />
-        </div>
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-2 pl-6">
+            <div className="sm:max-w-xs">
+              <ClassCoachInlineSelect
+                classId={classId}
+                coachIds={coachIds}
+                coaches={coaches}
+                canEdit={canEdit}
+              />
+            </div>
+            <ClassJoinLink classId={classId} className={name} />
+          </div>
       </div>
       {open ? (
         <div className="border-t border-card-border px-4 py-3 text-sm">

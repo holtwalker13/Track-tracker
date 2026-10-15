@@ -18,15 +18,13 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Invalid link" }, { status: 404 });
   }
 
-  const resetFlow = preview.purpose === "RESET";
-  if (preview.alreadyActive && !resetFlow) {
-    return NextResponse.json({ ...preview, canComplete: false });
-  }
-  if (preview.used || preview.expired) {
-    return NextResponse.json({ ...preview, canComplete: false });
+  const resetFlow = false;
+  const mode = preview.alreadyActive ? "LOGIN" : "CREATE";
+  if (!preview.alreadyActive && (preview.used || preview.expired)) {
+    return NextResponse.json({ ...preview, purpose: "ACCOUNT", mode, canComplete: false });
   }
 
-  return NextResponse.json({ ...preview, canComplete: true });
+  return NextResponse.json({ ...preview, purpose: "ACCOUNT", mode, canComplete: true, resetFlow });
 }
 
 export async function POST(request: Request) {

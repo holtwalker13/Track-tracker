@@ -264,6 +264,8 @@ model StudentProfile {
   // When true, other students never see this athlete's name on leaderboards.
   // Coaches still see the real name. Marks still count in ranks and benchmarks.
   nameHidden    Boolean  @default(false)
+  // Walk-up athlete for a workout. Logs stay until a coach connects them to a roster student.
+  provisional   Boolean  @default(false)
   createdAt     DateTime @default(now())
 
   enrollments        StudentEnrollment[]

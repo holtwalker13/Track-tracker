@@ -1,7 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useTransition } from "react";
+import { Suspense, useTransition, type ReactNode } from "react";
+import { CalendarDays, Plus } from "lucide-react";
 import { classSectionLabel } from "@/lib/periods";
 import type { ProgramsClassOption, ProgramsCoachOption } from "@/lib/queries/programs-hub";
 
@@ -12,6 +14,7 @@ function ProgramsScopeBarInner({
   coachId,
   classId,
   subgroupId,
+  trailing,
 }: {
   coaches: ProgramsCoachOption[];
   classes: ProgramsClassOption[];
@@ -19,11 +22,13 @@ function ProgramsScopeBarInner({
   coachId: string;
   classId: string;
   subgroupId: string;
+  trailing?: ReactNode;
 }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [pending, startTransition] = useTransition();
+  const qs = searchParams.toString();
 
   function push(patch: Record<string, string | null>) {
     const params = new URLSearchParams(searchParams.toString());
@@ -98,6 +103,30 @@ function ProgramsScopeBarInner({
           </select>
         </label>
       ) : null}
+      {classId ? (
+        <div className="flex items-center gap-2">
+          {trailing}
+          {pathname.startsWith("/coach/programs/creator") ? (
+            <Link
+              href={qs ? `/coach/programs?${qs}` : "/coach/programs"}
+              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-card-border bg-background text-muted hover:border-accent/40 hover:text-accent"
+              aria-label="Back to programs calendar"
+              title="Calendar"
+            >
+              <CalendarDays className="h-4 w-4" aria-hidden />
+            </Link>
+          ) : (
+            <Link
+              href={qs ? `/coach/programs/creator?${qs}` : "/coach/programs/creator"}
+              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-card-border bg-background text-muted hover:border-accent/40 hover:text-accent"
+              aria-label="Program Creator"
+              title="Program Creator"
+            >
+              <Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />
+            </Link>
+          )}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -109,6 +138,7 @@ export function ProgramsScopeBar(props: {
   coachId: string;
   classId: string;
   subgroupId?: string;
+  trailing?: ReactNode;
 }) {
   return (
     <Suspense fallback={<div className="h-16 animate-pulse rounded-2xl bg-card/40" />}>

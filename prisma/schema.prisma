@@ -63,6 +63,7 @@ model School {
   workoutTemplates   WorkoutTemplate[]
   workoutAssignments WorkoutAssignment[]
   hiddenLifts        SchoolHiddenLift[]
+  classAttendance    ClassAttendance[]
 
   @@index([organizationId])
   @@index([districtId])
@@ -280,6 +281,7 @@ model StudentProfile {
   dynamicAccolades   DynamicAccoladeHolder[]
   workoutSessions    WorkoutSession[]
   workoutAssignments WorkoutAssignment[]
+  classAttendance    ClassAttendance[]
   loginInvite        StudentLoginInvite?
   coreOneRepMaxes    StudentCoreOneRepMax[]
 
@@ -337,6 +339,7 @@ model Class {
   workoutAssignments WorkoutAssignment[]
   workoutTemplates   WorkoutTemplate[]
   kpiSets            KpiSet[]
+  attendance         ClassAttendance[]
 
   @@index([schoolId])
   @@index([coachId])
@@ -392,6 +395,28 @@ model ClassEnrollment {
 
   @@unique([classId, studentId])
   @@index([classId])
+  @@index([studentId])
+}
+
+// Daily present/absent for a class roster. Rows exist only after a coach marks attendance.
+model ClassAttendance {
+  id               String         @id @default(cuid())
+  schoolId         String
+  school           School         @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  classId          String
+  class            Class          @relation(fields: [classId], references: [id], onDelete: Cascade)
+  studentId        String
+  student          StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  /// Calendar day as YYYY-MM-DD (school-local, no timezone shift).
+  date             String
+  present          Boolean
+  recordedByUserId String?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  @@unique([classId, studentId, date])
+  @@index([schoolId, date])
+  @@index([classId, date])
   @@index([studentId])
 }
 

@@ -2,8 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { CalendarPlus, Layers, Plus } from "lucide-react";
-import { WORKOUT_GENERATORS } from "@/lib/services/workout-generator";
+import { CalendarPlus, Plus } from "lucide-react";
 import type { SchoolLiftRow } from "@/lib/queries/lifts";
 import { normalizeSetPrescriptions } from "@/lib/workout-prescriptions";
 import { CoachModal } from "@/components/ui/coach-modal";
@@ -56,7 +55,6 @@ export function ProgramsActions({
 
   const [scheduleTemplateId, setScheduleTemplateId] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
-  const [bulkOpen, setBulkOpen] = useState(false);
 
   const [programName, setProgramName] = useState("");
   const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
@@ -73,17 +71,9 @@ export function ProgramsActions({
     }));
   const [lifts, setLifts] = useState(defaultLiftState);
 
-  const [genStartDate, setGenStartDate] = useState(selectedDate);
-  const [genBlockName, setGenBlockName] = useState("Fall linear block");
-  const [genWeeks, setGenWeeks] = useState(4);
-
   useEffect(() => {
     setTemplates(initialTemplates);
   }, [initialTemplates]);
-
-  useEffect(() => {
-    setGenStartDate(selectedDate);
-  }, [selectedDate]);
 
   function openSchedule(templateId?: string) {
     setError(null);
@@ -220,40 +210,6 @@ export function ProgramsActions({
     router.refresh();
   }
 
-  async function generateBlock(e: React.FormEvent) {
-    e.preventDefault();
-    if (!selectedClass) {
-      setError("Select a class first.");
-      return;
-    }
-    setPending(true);
-    setError(null);
-    setMsg(null);
-    const res = await fetch("/api/workouts/generate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        generatorKey: "linear-5x5-mwf",
-        classId: selectedClass.id,
-        subgroupId: selectedSubgroupId || undefined,
-        startDate: genStartDate,
-        blockName: genBlockName,
-        weeks: genWeeks,
-      }),
-    });
-    const data = await res.json();
-    setPending(false);
-    if (!res.ok) {
-      setError(data.error ?? "Could not generate block");
-      return;
-    }
-    setMsg(
-      `Generated ${data.assignmentsCreated} workouts (${data.generatorLabel}). Athletes see them on matching dates.`
-    );
-    setBulkOpen(false);
-    router.refresh();
-  }
-
   const classLabel = selectedClass ? classSectionLabel(selectedClass) : "Select a class";
   const scopeLabel =
     selectedSubgroupId && selectedSubgroupName
@@ -267,11 +223,11 @@ export function ProgramsActions({
           {msg}
         </p>
       )}
-      {error && !scheduleTemplateId && !createOpen && !bulkOpen && (
+      {error && !scheduleTemplateId && !createOpen && (
         <p className="text-sm text-sport-red">{error}</p>
       )}
 
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2">
         <button
           type="button"
           onClick={() => openSchedule()}
@@ -294,21 +250,6 @@ export function ProgramsActions({
           <span>
             <span className="block text-sm font-semibold">Create new workout</span>
             <span className="block text-xs text-muted">Build a day program from lifts</span>
-          </span>
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            setError(null);
-            setBulkOpen(true);
-          }}
-          disabled={!selectedClass}
-          className="flex items-center gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/5 px-4 py-3 text-left transition hover:border-amber-400/50 disabled:opacity-50"
-        >
-          <Layers className="h-5 w-5 shrink-0 text-amber-200" />
-          <span>
-            <span className="block text-sm font-semibold">Bulk build block</span>
-            <span className="block text-xs text-muted">Sister action · multi-week assign</span>
           </span>
         </button>
       </div>
@@ -436,60 +377,6 @@ export function ProgramsActions({
         </CoachModal>
       ) : null}
 
-      {bulkOpen ? (
-        <CoachModal
-          eyebrow="Bulk"
-          title="Build training block"
-          onClose={() => setBulkOpen(false)}
-          maxWidth="max-w-lg"
-        >
-          <form onSubmit={generateBlock} className="space-y-3">
-            {error && <p className="text-sm text-sport-red">{error}</p>}
-            <p className="text-xs text-muted">{WORKOUT_GENERATORS["linear-5x5-mwf"].description}</p>
-            <p className="text-sm">
-              Assigning to: <span className="font-medium">{scopeLabel}</span>
-            </p>
-            <label className="block text-sm">
-              Block name
-              <input
-                required
-                value={genBlockName}
-                onChange={(e) => setGenBlockName(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-card-border bg-background px-3 py-2"
-              />
-            </label>
-            <label className="block text-sm">
-              Start date
-              <input
-                required
-                type="date"
-                value={genStartDate}
-                onChange={(e) => setGenStartDate(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-card-border bg-background px-3 py-2"
-              />
-            </label>
-            <label className="block text-sm">
-              Weeks
-              <input
-                required
-                type="number"
-                min={1}
-                max={12}
-                value={genWeeks}
-                onChange={(e) => setGenWeeks(Number(e.target.value))}
-                className="mt-1 w-full rounded-lg border border-card-border bg-background px-3 py-2"
-              />
-            </label>
-            <button
-              type="submit"
-              disabled={pending || !selectedClass}
-              className="rounded-lg bg-amber-400/20 px-4 py-2 text-sm font-semibold text-amber-100 ring-1 ring-amber-400/40 disabled:opacity-50"
-            >
-              {pending ? "Generating…" : "Generate block"}
-            </button>
-          </form>
-        </CoachModal>
-      ) : null}
     </div>
   );
 }

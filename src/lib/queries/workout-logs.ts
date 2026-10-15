@@ -181,6 +181,7 @@ export type CoachWorkoutLogRow = {
   setLogCount: number;
   completedAt: string | null;
   scheduledDate: string;
+  provisional: boolean;
 };
 
 export async function listWorkoutSessionsForCoach(input: {
@@ -220,7 +221,7 @@ export async function listWorkoutSessionsForCoachRange(input: {
       template: { select: { name: true } },
       sessions: {
         include: {
-          student: { select: { id: true, firstName: true, lastName: true, studentNumber: true } },
+          student: { select: { id: true, firstName: true, lastName: true, studentNumber: true, provisional: true } },
           _count: { select: { setLogs: true } },
         },
       },
@@ -268,6 +269,7 @@ export async function listWorkoutSessionsForCoachRange(input: {
         setLogCount: s?._count.setLogs ?? 0,
         completedAt: s?.completedAt?.toISOString() ?? null,
         scheduledDate,
+        provisional: student.provisional,
       });
     }
   }

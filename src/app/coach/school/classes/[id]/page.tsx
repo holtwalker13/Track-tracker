@@ -8,6 +8,7 @@ import { listStudents } from "@/lib/queries/coach";
 import { ClassRosterEditor } from "@/components/classes/class-roster-editor";
 import { ClassSubgroupEditor } from "@/components/classes/class-subgroup-editor";
 import { listClassSubgroups } from "@/lib/queries/class-subgroups";
+import { ClassJoinLink } from "@/components/classes/class-join-link";
 import { ClassMetaEditor } from "@/components/classes/class-meta-editor";
 import { coachDisplayName } from "@/lib/coach-display";
 import { ensureClassCoachRowsFromLead } from "@/lib/services/class-coaches";
@@ -114,6 +115,7 @@ export default async function SchoolClassDetailPage({
               {" · "}athletes can also be in other classes
             </p>
           </div>
+          <ClassJoinLink classId={cls.id} className={cls.name} />
         </div>
         {canEdit ? (
           <ClassMetaEditor

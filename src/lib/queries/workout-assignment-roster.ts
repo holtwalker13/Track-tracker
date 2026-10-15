@@ -5,6 +5,7 @@ const studentSelect = {
   firstName: true,
   lastName: true,
   studentNumber: true,
+  provisional: true,
 } as const;
 
 export type WorkoutAssignmentStudent = {
@@ -12,6 +13,7 @@ export type WorkoutAssignmentStudent = {
   firstName: string;
   lastName: string;
   studentNumber: string;
+  provisional: boolean;
 };
 
 /** Students who should receive a workout assignment (subgroup, individual, or full class). */

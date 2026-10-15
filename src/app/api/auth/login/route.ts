@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { cookies } from "next/headers";
 import { findUserByCredential } from "@/lib/auth/credentials-login";
 import { SESSION_COOKIE, sessionCookieOptions, relativeRedirect } from "@/lib/auth/cookie";
+import { loginDestination } from "@/lib/auth/login-destination";
 import { studentUsesBlockedSharedDemoPassword } from "@/lib/auth/demo-login-guard";
 import { signSessionToken } from "@/lib/auth/session";
 
@@ -29,12 +30,7 @@ async function readCredentials(request: Request): Promise<{
 }
 
 function safeNext(next: string | undefined, role: string): string {
-  if (next && next.startsWith("/") && !next.startsWith("//") && !next.startsWith("/login")) {
-    return next;
-  }
-  if (role === "STUDENT") return "/student";
-  if (role === "ADMIN") return "/admin";
-  return "/coach/school/roster";
+  return loginDestination(role, next);
 }
 
 export async function POST(request: Request) {

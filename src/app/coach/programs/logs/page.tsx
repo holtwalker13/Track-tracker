@@ -8,6 +8,7 @@ import { listWorkoutSessionsForCoach } from "@/lib/queries/workout-logs";
 import { todayDateString } from "@/lib/services/workouts";
 import { isGraduatingClassName } from "@/lib/periods";
 import { listClassSubgroups } from "@/lib/queries/class-subgroups";
+import { TemporaryStudentsPanel } from "@/components/workouts/temporary-students-panel";
 
 export default async function CoachWorkoutLogsPage({
   searchParams,
@@ -36,6 +37,18 @@ export default async function CoachWorkoutLogsPage({
     subgroupId: subgroupId || undefined,
   });
 
+  const provisionalStudents = classId
+    ? await prisma.studentProfile.findMany({
+        where: {
+          schoolId: session.schoolId,
+          provisional: true,
+          classEnrollments: { some: { classId } },
+        },
+        select: { id: true, firstName: true, lastName: true },
+        orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
+      })
+    : [];
+
   return (
     <AppShell nav={COACH_NAV} title="Workout logs">
       <p className="mb-4 text-sm">
@@ -43,6 +56,11 @@ export default async function CoachWorkoutLogsPage({
           ← Programs
         </Link>
       </p>
+      {classId ? (
+        <div className="mb-4">
+          <TemporaryStudentsPanel classId={classId} date={date} students={provisionalStudents} />
+        </div>
+      ) : null}
       <WorkoutLogsPanel
         rows={rows}
         date={date}

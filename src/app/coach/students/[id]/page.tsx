@@ -304,8 +304,8 @@ export default async function StudentProfilePage({
 
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-card-border bg-card/40 px-4 py-3">
         <p className="text-sm text-muted">
-          Login ID <span className="font-mono text-foreground">{student.studentNumber}</span> is unique
-          within this school; athletes sign in with that ID after opening their invite link.
+          Account link for <span className="font-mono text-foreground">{student.studentNumber}</span>.
+          It creates the account the first time and signs them in after that, on the student dashboard.
         </p>
         <StudentLoginLinkButton
           studentId={student.id}

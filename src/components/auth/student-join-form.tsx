@@ -8,7 +8,8 @@ type Preview = {
   fullName: string;
   username: string;
   schoolName: string;
-  purpose?: "SETUP" | "RESET";
+  purpose?: "SETUP" | "RESET" | "ACCOUNT";
+  mode?: "LOGIN" | "CREATE";
   canComplete?: boolean;
   alreadyActive?: boolean;
   expired?: boolean;
@@ -23,6 +24,8 @@ export function StudentJoinForm({ token }: { token: string }) {
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
   const [confirmName, setConfirmName] = useState(false);
+  const [signInPassword, setSignInPassword] = useState("");
+  const [replacePassword, setReplacePassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [createdLogin, setCreatedLogin] = useState<{ username: string; email: string } | null>(
     null
@@ -122,26 +125,7 @@ export function StudentJoinForm({ token }: { token: string }) {
       <div className="flex min-h-screen items-center justify-center px-4">
         <Card className="w-full max-w-md p-6 text-center">
           <h1 className="text-xl font-bold">Link not found</h1>
-          <p className="mt-2 text-sm text-muted">{error ?? "Ask your coach to send a new login link."}</p>
-        </Card>
-      </div>
-    );
-  }
-
-  if (preview.alreadyActive && preview.purpose !== "RESET") {
-    return (
-      <div className="flex min-h-screen items-center justify-center px-4">
-        <Card className="w-full max-w-md p-6">
-          <h1 className="text-xl font-bold">Account already set up</h1>
-          <p className="mt-2 text-sm text-muted">
-            {preview.fullName} ({preview.username}) already has a login. Use the sign-in page on this device.
-          </p>
-          <a
-            href="/login"
-            className="mt-6 inline-block w-full rounded-lg bg-accent py-3 text-center font-semibold text-background"
-          >
-            Go to sign in
-          </a>
+          <p className="mt-2 text-sm text-muted">{error ?? "Ask your coach to send a new account link."}</p>
         </Card>
       </div>
     );
@@ -156,24 +140,107 @@ export function StudentJoinForm({ token }: { token: string }) {
             {preview.used
               ? "This link was already used."
               : "This link has expired."}{" "}
-            Ask your coach to copy a fresh login link from the roster.
+            Ask your coach to copy a fresh account link from the roster.
           </p>
         </Card>
       </div>
     );
   }
 
-  const isReset = preview.purpose === "RESET";
+  const signingIn = preview.mode === "LOGIN" || preview.alreadyActive;
+
+  async function signIn(e: React.FormEvent) {
+    e.preventDefault();
+    setSubmitting(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: preview?.username,
+          password: signInPassword,
+          next: "/student",
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data.error ?? "That password does not match this account.");
+        return;
+      }
+      router.replace(typeof data.redirect === "string" ? data.redirect : "/student");
+      router.refresh();
+    } catch {
+      setError("Something went wrong. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  if (signingIn && !replacePassword) {
+    return (
+      <div className="flex min-h-screen items-center justify-center px-4 py-10">
+        <Card className="w-full max-w-md">
+          <p className="text-xs uppercase tracking-widest text-accent">{preview.schoolName}</p>
+          <h1 className="mt-2 text-2xl font-bold">Sign in</h1>
+          <p className="mt-1 text-sm text-muted">
+            {preview.fullName} already has an account. Sign in to open your dashboard.
+          </p>
+          <dl className="mt-6 space-y-3 rounded-lg border border-card-border bg-background/50 px-4 py-3 text-sm">
+            <div className="flex justify-between gap-4">
+              <dt className="text-muted">Name</dt>
+              <dd className="text-right font-semibold">{preview.fullName}</dd>
+            </div>
+            <div className="flex justify-between gap-4">
+              <dt className="text-muted">Username</dt>
+              <dd className="font-mono font-semibold">{preview.username}</dd>
+            </div>
+          </dl>
+          <form onSubmit={signIn} className="mt-6 space-y-4">
+            <label className="block text-sm">
+              Password
+              <input
+                type="password"
+                value={signInPassword}
+                onChange={(e) => setSignInPassword(e.target.value)}
+                autoComplete="current-password"
+                required
+                className="mt-1 w-full rounded-lg border border-card-border bg-background px-3 py-3"
+              />
+            </label>
+            {error && <p className="text-sm text-red-400">{error}</p>}
+            <button
+              type="submit"
+              disabled={submitting}
+              className="w-full rounded-lg bg-accent py-3 font-semibold text-background disabled:opacity-60"
+            >
+              {submitting ? "Signing in…" : "Sign in"}
+            </button>
+          </form>
+          <button
+            type="button"
+            onClick={() => {
+              setError(null);
+              setReplacePassword(true);
+            }}
+            className="mt-4 text-sm text-accent hover:underline"
+          >
+            Set a new password
+          </button>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen items-center justify-center px-4 py-10">
       <Card className="w-full max-w-md">
         <p className="text-xs uppercase tracking-widest text-accent">{preview.schoolName}</p>
-        <h1 className="mt-2 text-2xl font-bold">{isReset ? "Set a new password" : "Create your login"}</h1>
+        <h1 className="mt-2 text-2xl font-bold">{signingIn ? "Set a new password" : "Create your account"}</h1>
         <p className="mt-1 text-sm text-muted">
-          {isReset
-            ? "Confirm your roster info, then choose a new password. Your old password will stop working."
-            : "Confirm your roster info, then choose a password only you should know."}
+          {signingIn
+            ? "Confirm your name, then choose a new password. Your old password will stop working."
+            : "Confirm your name, then choose a password only you should know."}
         </p>
 
         <dl className="mt-6 space-y-3 rounded-lg border border-card-border bg-background/50 px-4 py-3 text-sm">
@@ -237,12 +304,12 @@ export function StudentJoinForm({ token }: { token: string }) {
             className="w-full rounded-lg bg-accent py-3 font-semibold text-background disabled:opacity-60"
           >
             {submitting
-              ? isReset
+              ? signingIn
                 ? "Updating password…"
                 : "Creating account…"
-              : isReset
-                ? "Update password & sign in"
-                : "Create account & sign in"}
+              : signingIn
+                ? "Update password and sign in"
+                : "Create account and sign in"}
           </button>
         </form>
       </Card>

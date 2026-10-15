@@ -80,8 +80,8 @@ export function InviteLinkActions({
     return () => window.removeEventListener("keydown", onKey);
   }, [qrOpen]);
 
-  const copyLabel = copyTitle ?? (active ? `Copy password reset link for ${subjectLabel}` : `Copy setup link for ${subjectLabel}`);
-  const qrLabel = qrTitle ?? `Show QR code for ${subjectLabel}`;
+  const copyLabel = copyTitle ?? `Account link for ${subjectLabel}`;
+  const qrLabel = qrTitle ?? `Show account QR code for ${subjectLabel}`;
 
   return (
     <>
@@ -147,7 +147,7 @@ export function InviteLinkActions({
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h2 id={dialogTitleId} className="text-lg font-semibold">
-                  Scan to set up login
+                  Scan to open your account
                 </h2>
                 <p className="mt-1 text-sm text-muted">{subjectLabel}</p>
               </div>
@@ -162,7 +162,7 @@ export function InviteLinkActions({
             </div>
             <div className="mt-4 flex justify-center rounded-xl bg-white p-4">
               {/* eslint-disable-next-line @next/next/no-img-element -- QR data URL */}
-              <img src={qrDataUrl} alt={`QR code for ${subjectLabel} login setup`} width={280} height={280} />
+              <img src={qrDataUrl} alt={`QR code for ${subjectLabel} account`} width={280} height={280} />
             </div>
             <p className="mt-3 break-all text-center font-mono text-[10px] text-muted">{qrUrl}</p>
             <button

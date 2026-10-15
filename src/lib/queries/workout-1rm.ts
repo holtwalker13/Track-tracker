@@ -1,4 +1,3 @@
-import { prisma } from "@/lib/db";
 import {
   normalizeSetPrescriptions,
   recommendedWeightFrom1Rm,
@@ -6,31 +5,15 @@ import {
 } from "@/lib/workout-prescriptions";
 import { suggestWorkingWeight } from "@/lib/services/workout-progression";
 import { getRecentLiftHistory } from "@/lib/queries/workout-logs";
+import { resolveStudentLiftOneRepMax } from "@/lib/queries/student-core-one-rep-max";
 
-/** Best absolute 1RM (lb) from formal testing / workout-synced performance rows. */
+/** Effective 1RM (lb): best tested mark, else coach core starting point. */
 export async function getStudentLiftOneRepMax(
   studentId: string,
   activitySlug: string
 ): Promise<number | null> {
-  const activity = await prisma.activity.findUnique({
-    where: { slug: activitySlug },
-    select: { id: true, unit: true },
-  });
-  if (!activity || activity.unit !== "lb") return null;
-
-  const best = await prisma.performanceResult.findFirst({
-    where: {
-      studentId,
-      activityId: activity.id,
-      status: "COMPLETED",
-      isBestAttempt: true,
-      resultValue: { not: null },
-    },
-    orderBy: { resultValue: "desc" },
-    select: { resultValue: true },
-  });
-
-  return best?.resultValue != null && best.resultValue > 0 ? best.resultValue : null;
+  const resolved = await resolveStudentLiftOneRepMax(studentId, activitySlug);
+  return resolved.value;
 }
 
 export type ExerciseWithPrescription = {

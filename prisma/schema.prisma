@@ -281,6 +281,7 @@ model StudentProfile {
   workoutSessions    WorkoutSession[]
   workoutAssignments WorkoutAssignment[]
   loginInvite        StudentLoginInvite?
+  coreOneRepMaxes    StudentCoreOneRepMax[]
 
   @@unique([schoolId, studentNumber])
   @@unique([schoolId, username])
@@ -427,8 +428,24 @@ model Activity {
   results           PerformanceResult[]
   benchmarkValues   BenchmarkValue[]
   templateExercises WorkoutTemplateExercise[]
+  coreOneRepMaxes   StudentCoreOneRepMax[]
 
   @@index([schoolId])
+}
+
+// Coach-entered starting 1RM (lb) before testing or workout logs exist.
+model StudentCoreOneRepMax {
+  id         String         @id @default(cuid())
+  studentId  String
+  student    StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  activityId String
+  activity   Activity       @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  valueLb    Float
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+
+  @@unique([studentId, activityId])
+  @@index([studentId])
 }
 
 model WorkoutTemplate {

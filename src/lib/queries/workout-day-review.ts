@@ -205,6 +205,7 @@ export async function getClassWorkoutDayReview(input: {
   classId: string;
   date: string;
   subgroupId?: string;
+  assignmentId?: string;
 }): Promise<WorkoutDayReview> {
   const bounds = dayBoundsFromDateString(input.date);
   if (!bounds) return { date: input.date, assignments: [] };
@@ -213,6 +214,7 @@ export async function getClassWorkoutDayReview(input: {
     where: {
       schoolId: input.schoolId,
       classId: input.classId,
+      ...(input.assignmentId ? { id: input.assignmentId } : {}),
       scheduledDate: { gte: bounds.start, lte: bounds.end },
     },
     include: {

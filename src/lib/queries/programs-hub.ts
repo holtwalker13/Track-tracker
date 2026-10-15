@@ -26,6 +26,14 @@ export type CalendarAssignment = {
   totalCount: number;
 };
 
+export type CalendarTest = {
+  id: string;
+  date: string;
+  name: string;
+  athleteCount: number;
+  recordedCount: number;
+};
+
 /** Sunday start (Sun–Sat school week). */
 export function weekStartSunday(dateStr: string): string {
   const d = parseISO(dateStr);
@@ -124,6 +132,51 @@ export async function listAssignmentsForClassRange(input: {
       templateName: a.template.name,
       completedCount,
       totalCount,
+    };
+  });
+}
+
+export async function listTestsForClassRange(input: {
+  schoolId: string;
+  classId: string;
+  startDate: string;
+  endDate: string;
+}): Promise<CalendarTest[]> {
+  const startBounds = dayBoundsFromDateString(input.startDate);
+  const endBounds = dayBoundsFromDateString(input.endDate);
+  if (!startBounds || !endBounds) return [];
+
+  const sessions = await prisma.testingSession.findMany({
+    where: {
+      schoolId: input.schoolId,
+      classId: input.classId,
+      archivedAt: null,
+      testingDate: { gte: startBounds.start, lte: endBounds.end },
+    },
+    select: {
+      id: true,
+      name: true,
+      testingDate: true,
+      students: { select: { studentId: true } },
+      results: {
+        where: { status: { not: "SUPERSEDED" }, isBestAttempt: true, resultValue: { not: null } },
+        select: { studentId: true },
+      },
+    },
+    orderBy: [{ testingDate: "asc" }, { createdAt: "asc" }],
+  });
+
+  return sessions.map((session) => {
+    const athletes = new Set(session.students.map((row) => row.studentId));
+    const recorded = new Set(
+      session.results.map((row) => row.studentId).filter((id) => athletes.size === 0 || athletes.has(id))
+    );
+    return {
+      id: session.id,
+      date: session.testingDate.toISOString().slice(0, 10),
+      name: session.name,
+      athleteCount: athletes.size,
+      recordedCount: recorded.size,
     };
   });
 }

@@ -32,6 +32,106 @@ export async function listTestingLogSessionsForClass(
   }));
 }
 
+export type TestingDayActivity = {
+  activityId: string;
+  slug: string;
+  name: string;
+  unit: string;
+  direction: "HIGHER_BETTER" | "LOWER_BETTER";
+};
+
+export type TestingDayAthlete = {
+  studentId: string;
+  name: string;
+  cells: Record<string, { display: string; value: number } | null>;
+};
+
+export type TestingDayReview = {
+  sessionId: string;
+  name: string;
+  date: string;
+  activities: TestingDayActivity[];
+  athletes: TestingDayAthlete[];
+  recordedCount: number;
+};
+
+/** One testing session as athletes × events, for the programs day review. */
+export async function getTestingDayReview(
+  schoolId: string,
+  sessionId: string,
+  classId?: string
+): Promise<TestingDayReview | null> {
+  const session = await prisma.testingSession.findFirst({
+    where: {
+      id: sessionId,
+      schoolId,
+      archivedAt: null,
+      ...(classId ? { classId } : {}),
+    },
+    include: {
+      activities: {
+        include: { activity: true },
+        orderBy: { sortOrder: "asc" },
+      },
+      students: {
+        include: { student: true },
+        orderBy: [{ student: { lastName: "asc" } }, { student: { firstName: "asc" } }],
+      },
+      results: {
+        where: { status: { not: "SUPERSEDED" }, isBestAttempt: true, resultValue: { not: null } },
+        select: {
+          studentId: true,
+          activityId: true,
+          displayValue: true,
+          resultValue: true,
+        },
+      },
+    },
+  });
+  if (!session) return null;
+
+  const activities: TestingDayActivity[] = session.activities.map((row) => ({
+    activityId: row.activityId,
+    slug: row.activity.slug,
+    name: row.activity.name,
+    unit: row.activity.unit,
+    direction: row.activity.scoringDirection === "LOWER_BETTER" ? "LOWER_BETTER" : "HIGHER_BETTER",
+  }));
+  const best = new Map<string, { display: string; value: number }>();
+  for (const result of session.results) {
+    if (result.resultValue == null) continue;
+    const activity = session.activities.find((row) => row.activityId === result.activityId)?.activity;
+    if (!activity) continue;
+    best.set(`${result.studentId}:${result.activityId}`, {
+      value: result.resultValue,
+      display:
+        result.displayValue ??
+        formatActivityValue(result.resultValue, activity.unit, activity.slug, activity.name),
+    });
+  }
+
+  const athletes: TestingDayAthlete[] = session.students.map((row) => {
+    const cells: TestingDayAthlete["cells"] = {};
+    for (const activity of activities) {
+      cells[activity.activityId] = best.get(`${row.studentId}:${activity.activityId}`) ?? null;
+    }
+    const name = `${row.student.firstName} ${row.student.lastName}`;
+    return { studentId: row.studentId, name, cells };
+  });
+  const recordedCount = athletes.filter((athlete) =>
+    activities.some((activity) => athlete.cells[activity.activityId] != null)
+  ).length;
+
+  return {
+    sessionId: session.id,
+    name: session.name,
+    date: session.testingDate.toISOString().slice(0, 10),
+    activities,
+    athletes,
+    recordedCount,
+  };
+}
+
 /** Scholastic grid: athletes × activities from the session (dynamic columns). */
 export async function getTestingLogGrid(sessionId: string, schoolId: string) {
   const session = await prisma.testingSession.findFirst({

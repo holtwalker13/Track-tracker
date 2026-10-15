@@ -52,7 +52,7 @@ export function ProgramsActivityPanel({
           <p className="text-xs text-muted">
             {logView === "day" ? `Day · ${date}` : `Week · ${weekLabel}`}
             {rows.length > 0 ? ` · ${completed}/${rows.length} done` : ""}
-            {logView === "day" ? " · class table is below" : ""}
+            {logView === "day" ? " · click a workout or test to review it" : ""}
           </p>
         </div>
         <div className="flex rounded-lg border border-card-border p-0.5">

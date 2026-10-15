@@ -3,9 +3,10 @@
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { addDays, format, parseISO } from "date-fns";
-import { ChevronLeft, ChevronRight, Eye, Pencil, Plus, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Pencil, Plus, Trash2 } from "lucide-react";
 import {
   type CalendarAssignment,
+  type CalendarTest,
   weekStartSunday,
 } from "@/lib/queries/programs-hub";
 import { cn } from "@/lib/utils";
@@ -33,10 +34,12 @@ export function ProgramsWeekCalendar({
   subgroupId,
   subgroupName,
   templates,
+  tests,
 }: {
   weekStart: string;
   weeks: number;
   assignments: CalendarAssignment[];
+  tests: CalendarTest[];
   selectedDate: string;
   classId: string;
   classLabel: string;
@@ -78,6 +81,12 @@ export function ProgramsWeekCalendar({
     const list = byDate.get(a.date) ?? [];
     list.push(a);
     byDate.set(a.date, list);
+  }
+  const testsByDate = new Map<string, CalendarTest[]>();
+  for (const test of tests) {
+    const list = testsByDate.get(test.date) ?? [];
+    list.push(test);
+    testsByDate.set(test.date, list);
   }
 
   const days = Array.from({ length: weeks * 7 }, (_, i) =>
@@ -134,10 +143,13 @@ export function ProgramsWeekCalendar({
     setParams({ week: next });
   }
 
+  const selectedAssignment = searchParams.get("assignment");
+  const selectedTest = searchParams.get("test");
+
   function openAdd(date: string) {
     setActionError(null);
     setAddDate(date);
-    setParams({ date, logView: "day", assignment: null });
+    setParams({ date, logView: "day", assignment: null, test: null });
   }
 
   function openEdit(a: CalendarAssignment) {
@@ -148,9 +160,22 @@ export function ProgramsWeekCalendar({
     setParams({ date: a.date, logView: "day" });
   }
 
-  function openReview(a: CalendarAssignment) {
+  function toggleWorkout(a: CalendarAssignment) {
     setEditing(null);
-    setParams({ date: a.date, logView: "day", assignment: a.id });
+    if (selectedAssignment === a.id) {
+      setParams({ date: a.date, logView: "day", assignment: null, test: null });
+      return;
+    }
+    setParams({ date: a.date, logView: "day", assignment: a.id, test: null });
+  }
+
+  function toggleTest(test: CalendarTest) {
+    setEditing(null);
+    if (selectedTest === test.id) {
+      setParams({ date: test.date, logView: "day", assignment: null, test: null });
+      return;
+    }
+    setParams({ date: test.date, logView: "day", assignment: null, test: test.id });
   }
 
   async function saveEdit() {
@@ -205,7 +230,7 @@ export function ProgramsWeekCalendar({
         <div>
           <h2 className="text-base font-semibold">Week calendar</h2>
           <p className="text-xs text-muted">
-            Pencil edits a future workout · eye opens that day’s logs
+            Click a workout or test to review it · pencil edits a workout
             <span className="sm:hidden"> · 3-day view, today centered</span>
             <span className="hidden sm:inline"> · Mon–Fri default · scroll for Sun/Sat</span>
           </p>
@@ -250,10 +275,10 @@ export function ProgramsWeekCalendar({
         >
           {days.map((date, index) => {
             const dayAssignments = byDate.get(date) ?? [];
+            const dayTests = testsByDate.get(date) ?? [];
             const selected = date === selectedDate;
             const today = todayDateString();
             const isToday = date === today;
-            const isFuture = date > today;
             const dow = format(parseISO(date), "EEE");
             const dayNum = format(parseISO(date), "d");
 
@@ -272,7 +297,7 @@ export function ProgramsWeekCalendar({
                 <div className="mb-1 flex items-center justify-between gap-1">
                   <button
                     type="button"
-                    onClick={() => setParams({ date, logView: "day", assignment: null })}
+                    onClick={() => setParams({ date, logView: "day", assignment: null, test: null })}
                     className="flex min-w-0 flex-1 items-baseline justify-between gap-1 text-left"
                   >
                     <span className="text-[10px] font-semibold uppercase tracking-wide text-muted">
@@ -302,45 +327,57 @@ export function ProgramsWeekCalendar({
                   {dayAssignments.map((a) => (
                     <div
                       key={a.id}
-                      className="rounded-md bg-sky-500/10 px-1 py-0.5 ring-1 ring-sky-400/25"
+                      className={cn(
+                        "rounded-md bg-sky-500/10 px-1 py-0.5 ring-1",
+                        selectedAssignment === a.id ? "ring-accent" : "ring-sky-400/25"
+                      )}
                     >
-                      <div className="flex items-start gap-0.5">
+                      <div className="flex items-center gap-0.5">
                         <button
                           type="button"
-                          onClick={() => (isFuture ? openEdit(a) : openReview(a))}
-                          className="min-w-0 flex-1 truncate text-left text-[10px] font-medium leading-tight text-sky-100 hover:text-white sm:text-[11px]"
+                          onClick={() => toggleWorkout(a)}
+                          className="min-w-0 flex-1 truncate text-left text-[10px] font-medium leading-none text-sky-100 hover:text-white sm:text-[11px]"
                         >
                           {a.templateName}
                         </button>
                         <button
                           type="button"
                           onClick={() => openEdit(a)}
-                          className="rounded p-0.5 text-muted hover:bg-background/40 hover:text-sky-200"
+                          className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded text-muted hover:bg-background/40 hover:text-sky-200"
                           aria-label={`Edit ${a.templateName} on ${a.date}`}
                           title="Edit workout"
                         >
                           <Pencil className="h-3 w-3" />
                         </button>
-                        {!isFuture ? (
-                          <button
-                            type="button"
-                            onClick={() => openReview(a)}
-                            className="rounded p-0.5 text-muted hover:bg-background/40 hover:text-emerald-200"
-                            aria-label={`View logs for ${a.templateName} on ${a.date}`}
-                            title="View logs"
-                          >
-                            <Eye className="h-3 w-3" />
-                          </button>
-                        ) : null}
                       </div>
                       <button
                         type="button"
-                        onClick={() => (isFuture ? openEdit(a) : openReview(a))}
-                        className="text-left text-[9px] tabular-nums text-muted sm:text-[10px]"
+                        onClick={() => toggleWorkout(a)}
+                        className="text-left text-[9px] tabular-nums leading-none text-muted sm:text-[10px]"
                       >
                         {a.totalCount > 0 ? `${a.completedCount}/${a.totalCount} logged` : "No roster"}
                       </button>
                     </div>
+                  ))}
+                  {dayTests.map((test) => (
+                    <button
+                      key={test.id}
+                      type="button"
+                      onClick={() => toggleTest(test)}
+                      className={cn(
+                        "rounded-md bg-amber-500/10 px-1 py-0.5 text-left ring-1",
+                        selectedTest === test.id ? "ring-accent" : "ring-amber-400/30"
+                      )}
+                    >
+                      <div className="truncate text-[10px] font-medium leading-none text-amber-100 sm:text-[11px]">
+                        {test.name}
+                      </div>
+                      <div className="text-[9px] tabular-nums leading-none text-muted sm:text-[10px]">
+                        {test.athleteCount > 0
+                          ? `${test.recordedCount}/${test.athleteCount} tested`
+                          : "Test"}
+                      </div>
+                    </button>
                   ))}
                   <button
                     type="button"

@@ -16,11 +16,13 @@ import {
   listAssignmentsForClassRange,
   listClassesForCoach,
   listSchoolCoaches,
+  listTestsForClassRange,
   weekStartSunday,
 } from "@/lib/queries/programs-hub";
 import { listWorkoutSessionsForCoachRange } from "@/lib/queries/workout-logs";
 import { getClassWorkoutDayReview } from "@/lib/queries/workout-day-review";
-import { WorkoutDayReview } from "@/components/workouts/workout-day-review";
+import { getTestingDayReview } from "@/lib/queries/testing-log";
+import { ProgramsDayReview } from "@/components/workouts/programs-day-review";
 import { listClassSavedWorkouts, savedWorkoutCreatorName } from "@/lib/queries/class-saved-workouts";
 import { todayDateString } from "@/lib/services/workouts";
 import { classSectionLabel } from "@/lib/periods";
@@ -38,6 +40,7 @@ export default async function CoachProgramsPage({
     date?: string;
     logView?: string;
     assignment?: string;
+    test?: string;
   }>;
 }) {
   const session = await requireSchoolSession();
@@ -60,7 +63,11 @@ export default async function CoachProgramsPage({
 
   const rangeEnd = dateRangeDays(weekStart, weeks * 7).at(-1) ?? weekStart;
 
-  const [templates, schoolLifts, assignments, dayLogs, weekLogs, dayReview] = await Promise.all([
+  const selectedAssignment = sp.assignment?.trim() || "";
+  const selectedTest = sp.test?.trim() || "";
+
+  const [templates, schoolLifts, assignments, dayLogs, weekLogs, tests, dayReview, testReview] =
+    await Promise.all([
     classId ? listClassSavedWorkouts(session.schoolId, classId) : Promise.resolve([]),
     listSchoolLifts(session.schoolId),
     classId
@@ -90,12 +97,24 @@ export default async function CoachProgramsPage({
         })
       : Promise.resolve([]),
     classId
+      ? listTestsForClassRange({
+          schoolId: session.schoolId,
+          classId,
+          startDate: weekStart,
+          endDate: rangeEnd,
+        })
+      : Promise.resolve([]),
+    classId && selectedAssignment
       ? getClassWorkoutDayReview({
           schoolId: session.schoolId,
           classId,
           date: selectedDate,
           subgroupId: subgroupId ?? undefined,
+          assignmentId: selectedAssignment,
         })
+      : Promise.resolve(null),
+    classId && selectedTest
+      ? getTestingDayReview(session.schoolId, selectedTest, classId)
       : Promise.resolve(null),
   ]);
 
@@ -162,6 +181,7 @@ export default async function CoachProgramsPage({
                     name: t.name,
                     exercises: t.exercises,
                   }))}
+                  tests={tests}
                 />
               </Suspense>
             </div>
@@ -179,8 +199,11 @@ export default async function CoachProgramsPage({
           </div>
         )}
 
-        {dayReview ? (
-          <WorkoutDayReview review={dayReview} focusAssignmentId={sp.assignment ?? null} />
+        {classId ? (
+          <ProgramsDayReview
+            workout={selectedTest ? null : dayReview}
+            test={selectedAssignment ? null : testReview}
+          />
         ) : null}
 
         <ProgramsActions

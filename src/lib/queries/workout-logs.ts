@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db";
 import { studentsTargetedByWorkoutAssignment } from "@/lib/queries/workout-assignment-roster";
-import { dayBoundsFromDateString, getOrCreateWorkoutSession } from "@/lib/services/workouts";
+import { dayBoundsFromDateString } from "@/lib/services/workouts";
 import type { WorkoutLogExportRow } from "@/lib/services/workout-export";
 import type { LiftLogSample } from "@/lib/services/workout-progression";
 import { suggestWorkingWeight } from "@/lib/services/workout-progression";
@@ -248,10 +248,6 @@ export async function listWorkoutSessionsForCoachRange(input: {
       subgroupId: a.subgroupId,
       studentId: a.studentId,
     });
-
-    for (const student of students) {
-      await getOrCreateWorkoutSession(a.id, student.id);
-    }
 
     const scheduledDate = a.scheduledDate.toISOString().slice(0, 10);
 

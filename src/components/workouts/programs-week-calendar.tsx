@@ -3,7 +3,7 @@
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { addDays, format, parseISO } from "date-fns";
-import { ChevronLeft, ChevronRight, Pencil, Plus, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Eye, Pencil, Plus, Trash2 } from "lucide-react";
 import {
   type CalendarAssignment,
   weekStartSunday,
@@ -137,7 +137,7 @@ export function ProgramsWeekCalendar({
   function openAdd(date: string) {
     setActionError(null);
     setAddDate(date);
-    setParams({ date, logView: "day" });
+    setParams({ date, logView: "day", assignment: null });
   }
 
   function openEdit(a: CalendarAssignment) {
@@ -146,6 +146,11 @@ export function ProgramsWeekCalendar({
     setEditTemplateId(a.templateId);
     setEditDate(a.date);
     setParams({ date: a.date, logView: "day" });
+  }
+
+  function openReview(a: CalendarAssignment) {
+    setEditing(null);
+    setParams({ date: a.date, logView: "day", assignment: a.id });
   }
 
   async function saveEdit() {
@@ -200,7 +205,7 @@ export function ProgramsWeekCalendar({
         <div>
           <h2 className="text-base font-semibold">Week calendar</h2>
           <p className="text-xs text-muted">
-            + adds a workout · tap to edit/remove
+            Pencil edits a future workout · eye opens that day’s logs
             <span className="sm:hidden"> · 3-day view, today centered</span>
             <span className="hidden sm:inline"> · Mon–Fri default · scroll for Sun/Sat</span>
           </p>
@@ -246,7 +251,9 @@ export function ProgramsWeekCalendar({
           {days.map((date, index) => {
             const dayAssignments = byDate.get(date) ?? [];
             const selected = date === selectedDate;
-            const isToday = date === todayDateString();
+            const today = todayDateString();
+            const isToday = date === today;
+            const isFuture = date > today;
             const dow = format(parseISO(date), "EEE");
             const dayNum = format(parseISO(date), "d");
 
@@ -265,7 +272,7 @@ export function ProgramsWeekCalendar({
                 <div className="mb-1 flex items-center justify-between gap-1">
                   <button
                     type="button"
-                    onClick={() => setParams({ date, logView: "day" })}
+                    onClick={() => setParams({ date, logView: "day", assignment: null })}
                     className="flex min-w-0 flex-1 items-baseline justify-between gap-1 text-left"
                   >
                     <span className="text-[10px] font-semibold uppercase tracking-wide text-muted">
@@ -293,21 +300,47 @@ export function ProgramsWeekCalendar({
                 </div>
                 <div className="flex min-h-0 flex-1 flex-col gap-1">
                   {dayAssignments.map((a) => (
-                    <button
+                    <div
                       key={a.id}
-                      type="button"
-                      onClick={() => openEdit(a)}
-                      className="rounded-md bg-sky-500/10 px-1 py-0.5 text-left ring-1 ring-sky-400/25 hover:bg-sky-500/20"
+                      className="rounded-md bg-sky-500/10 px-1 py-0.5 ring-1 ring-sky-400/25"
                     >
-                      <div className="truncate text-[10px] font-medium leading-tight text-sky-100 sm:text-[11px]">
-                        {a.templateName}
+                      <div className="flex items-start gap-0.5">
+                        <button
+                          type="button"
+                          onClick={() => (isFuture ? openEdit(a) : openReview(a))}
+                          className="min-w-0 flex-1 truncate text-left text-[10px] font-medium leading-tight text-sky-100 hover:text-white sm:text-[11px]"
+                        >
+                          {a.templateName}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => openEdit(a)}
+                          className="rounded p-0.5 text-muted hover:bg-background/40 hover:text-sky-200"
+                          aria-label={`Edit ${a.templateName} on ${a.date}`}
+                          title="Edit workout"
+                        >
+                          <Pencil className="h-3 w-3" />
+                        </button>
+                        {!isFuture ? (
+                          <button
+                            type="button"
+                            onClick={() => openReview(a)}
+                            className="rounded p-0.5 text-muted hover:bg-background/40 hover:text-emerald-200"
+                            aria-label={`View logs for ${a.templateName} on ${a.date}`}
+                            title="View logs"
+                          >
+                            <Eye className="h-3 w-3" />
+                          </button>
+                        ) : null}
                       </div>
-                      <div className="text-[9px] tabular-nums text-muted sm:text-[10px]">
-                        {a.totalCount > 0
-                          ? `${a.completedCount}/${a.totalCount} logged`
-                          : "No roster"}
-                      </div>
-                    </button>
+                      <button
+                        type="button"
+                        onClick={() => (isFuture ? openEdit(a) : openReview(a))}
+                        className="text-left text-[9px] tabular-nums text-muted sm:text-[10px]"
+                      >
+                        {a.totalCount > 0 ? `${a.completedCount}/${a.totalCount} logged` : "No roster"}
+                      </button>
+                    </div>
                   ))}
                   <button
                     type="button"

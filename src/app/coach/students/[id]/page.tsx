@@ -49,6 +49,8 @@ import { leaderboardHighlightFromSearch } from "@/lib/leaderboard-link";
 import { StudentLoginLinkButton } from "@/components/athletes/student-login-link-button";
 import { studentLoginStatusFromRow } from "@/lib/services/student-login-invite";
 import { getStudentLeaderboard } from "@/lib/queries/leaderboard-student";
+import { listStudentCoreOneRepMaxRows } from "@/lib/queries/student-core-one-rep-max";
+import { StudentCoreOneRepMaxEditor } from "@/components/athletes/student-core-one-rep-max-editor";
 
 export default async function StudentProfilePage({
   params,
@@ -244,6 +246,7 @@ export default async function StudentProfilePage({
     progress,
     activityRanks,
     peerLeaders,
+    coreOneRepMaxRows,
   ] = await Promise.all([
     getCategoryRadar(id, grade),
     getLatestResultsGrouped(id, schoolYearId),
@@ -265,6 +268,7 @@ export default async function StudentProfilePage({
       window,
       classId: profileClassId,
     }),
+    listStudentCoreOneRepMaxRows(session.schoolId, id),
   ]);
   const ranks = { ...activityRanks };
 
@@ -313,6 +317,8 @@ export default async function StudentProfilePage({
           loginStatus={loginStatus}
         />
       </div>
+
+      <StudentCoreOneRepMaxEditor studentId={student.id} initialRows={coreOneRepMaxRows} />
 
       <Suspense fallback={null}>
         <AthleteProfileClassPicker

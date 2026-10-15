@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 import { requireSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { parseExerciseInput, type ExerciseInput } from "@/lib/services/workout-template-exercises";
+import {
+  coachSharesSavedWorkout,
+  savedWorkoutCreatorName,
+} from "@/lib/queries/class-saved-workouts";
 
 export async function PATCH(
   request: Request,
@@ -17,7 +21,14 @@ export async function PATCH(
     where: { id, schoolId: session.schoolId, archivedAt: null },
     include: { _count: { select: { assignments: true } } },
   });
-  if (!existing || existing.createdById !== session.userId) {
+  if (
+    !existing ||
+    !(
+      existing.createdById === session.userId ||
+      session.role === "ADMIN" ||
+      (await coachSharesSavedWorkout(session.userId, session.schoolId, existing))
+    )
+  ) {
     return NextResponse.json({ error: "Program not found" }, { status: 404 });
   }
 
@@ -110,6 +121,7 @@ export async function PATCH(
             orderBy: { sortOrder: "asc" },
             include: { activity: { select: { slug: true, name: true } } },
           },
+          createdBy: { select: { firstName: true, lastName: true } },
           _count: { select: { assignments: true } },
         },
       });
@@ -121,7 +133,14 @@ export async function PATCH(
     );
   }
 
-  return NextResponse.json({ template: rec, hadAssignments: existing._count.assignments > 0 });
+  return NextResponse.json({
+    template: {
+      ...rec,
+      createdByName: savedWorkoutCreatorName(rec.createdBy),
+      canDelete: session.role === "ADMIN" || rec.createdById === session.userId,
+    },
+    hadAssignments: existing._count.assignments > 0,
+  });
 }
 
 export async function DELETE(
@@ -134,9 +153,9 @@ export async function DELETE(
   }
   const { id } = await params;
   const existing = await prisma.workoutTemplate.findFirst({
-    where: { id, schoolId: session.schoolId, createdById: session.userId, archivedAt: null },
+    where: { id, schoolId: session.schoolId, archivedAt: null },
   });
-  if (!existing) {
+  if (!existing || (existing.createdById !== session.userId && session.role !== "ADMIN")) {
     return NextResponse.json({ error: "Program not found" }, { status: 404 });
   }
   await prisma.workoutTemplate.update({

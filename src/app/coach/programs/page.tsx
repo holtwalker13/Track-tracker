@@ -8,7 +8,6 @@ import { ProgramsLiftPreview } from "@/components/workouts/programs-lift-preview
 import { COACH_NAV } from "@/lib/navigation";
 import { requireSchoolSession } from "@/lib/auth/session";
 import { resolveCoachClassScopeFromParams } from "@/lib/queries/coach-scope-params";
-import { prisma } from "@/lib/db";
 import { liftsForWorkoutPrograms, listSchoolLifts } from "@/lib/queries/lifts";
 import {
   dateRangeDays,
@@ -18,6 +17,7 @@ import {
   weekStartSunday,
 } from "@/lib/queries/programs-hub";
 import { listWorkoutSessionsForCoachRange } from "@/lib/queries/workout-logs";
+import { listClassSavedWorkouts, savedWorkoutCreatorName } from "@/lib/queries/class-saved-workouts";
 import { todayDateString } from "@/lib/services/workouts";
 import { classSectionLabel } from "@/lib/periods";
 import { format, parseISO } from "date-fns";
@@ -56,21 +56,7 @@ export default async function CoachProgramsPage({
   const rangeEnd = dateRangeDays(weekStart, weeks * 7).at(-1) ?? weekStart;
 
   const [templates, schoolLifts, assignments, dayLogs, weekLogs] = await Promise.all([
-    prisma.workoutTemplate.findMany({
-      where: {
-        schoolId: session.schoolId,
-        createdById: session.userId,
-        archivedAt: null,
-      },
-      orderBy: { updatedAt: "desc" },
-      include: {
-        exercises: {
-          orderBy: { sortOrder: "asc" },
-          include: { activity: { select: { slug: true, name: true } } },
-        },
-        _count: { select: { assignments: true } },
-      },
-    }),
+    classId ? listClassSavedWorkouts(session.schoolId, classId) : Promise.resolve([]),
     listSchoolLifts(session.schoolId),
     classId
       ? listAssignmentsForClassRange({
@@ -166,6 +152,8 @@ export default async function CoachProgramsPage({
           templates={templates.map((t) => ({
             ...t,
             updatedAt: t.updatedAt.toISOString(),
+            createdByName: savedWorkoutCreatorName(t.createdBy),
+            canDelete: session.role === "ADMIN" || t.createdById === session.userId,
           }))}
           selectedClass={selectedClass}
           selectedSubgroupId={subgroupId}

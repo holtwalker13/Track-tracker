@@ -3,26 +3,40 @@ import { requireSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { LIFTING_WORKOUT_SLUGS } from "@/lib/lifting";
 import { parseExerciseInput, type ExerciseInput } from "@/lib/services/workout-template-exercises";
+import {
+  listClassSavedWorkouts,
+  savedWorkoutCreatorName,
+} from "@/lib/queries/class-saved-workouts";
 
-export async function GET() {
+export async function GET(request: Request) {
   const session = await requireSession(["COACH", "ADMIN"]);
   if (!session?.schoolId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const templates = await prisma.workoutTemplate.findMany({
-    where: { schoolId: session.schoolId, createdById: session.userId, archivedAt: null },
-    orderBy: { updatedAt: "desc" },
-    include: {
-      exercises: {
-        orderBy: { sortOrder: "asc" },
-        include: { activity: { select: { slug: true, name: true } } },
-      },
-      _count: { select: { assignments: true } },
-    },
-  });
+  const classId = new URL(request.url).searchParams.get("classId")?.trim() ?? "";
+  const templates = classId
+    ? await listClassSavedWorkouts(session.schoolId, classId)
+    : await prisma.workoutTemplate.findMany({
+        where: { schoolId: session.schoolId, createdById: session.userId, archivedAt: null },
+        orderBy: { updatedAt: "desc" },
+        include: {
+          exercises: {
+            orderBy: { sortOrder: "asc" },
+            include: { activity: { select: { slug: true, name: true } } },
+          },
+          createdBy: { select: { firstName: true, lastName: true } },
+          _count: { select: { assignments: true } },
+        },
+      });
 
-  return NextResponse.json({ templates });
+  return NextResponse.json({
+    templates: templates.map((template) => ({
+      ...template,
+      createdByName: savedWorkoutCreatorName(template.createdBy),
+      canDelete: session.role === "ADMIN" || template.createdById === session.userId,
+    })),
+  });
 }
 
 export async function POST(request: Request) {
@@ -46,6 +60,15 @@ export async function POST(request: Request) {
     }));
   }
 
+  const classId = body.classId ? String(body.classId) : null;
+  if (classId) {
+    const cls = await prisma.class.findFirst({
+      where: { id: classId, schoolId: session.schoolId },
+      select: { id: true },
+    });
+    if (!cls) return NextResponse.json({ error: "Class not found" }, { status: 404 });
+  }
+
   const slugs = exercises.map((e) => String(e.activitySlug ?? "").trim()).filter(Boolean);
   const activities = await prisma.activity.findMany({ where: { slug: { in: slugs } } });
   const bySlug = new Map(activities.map((a) => [a.slug, a.id]));
@@ -60,6 +83,7 @@ export async function POST(request: Request) {
       schoolId: session.schoolId,
       name,
       createdById: session.userId,
+      classId,
       exercises: {
         create: exercises.map((e, i) => {
           const parsed = parseExerciseInput(e);
@@ -79,8 +103,16 @@ export async function POST(request: Request) {
         orderBy: { sortOrder: "asc" },
         include: { activity: { select: { slug: true, name: true } } },
       },
+      createdBy: { select: { firstName: true, lastName: true } },
+      _count: { select: { assignments: true } },
     },
   });
 
-  return NextResponse.json({ template: rec });
+  return NextResponse.json({
+    template: {
+      ...rec,
+      createdByName: savedWorkoutCreatorName(rec.createdBy),
+      canDelete: true,
+    },
+  });
 }

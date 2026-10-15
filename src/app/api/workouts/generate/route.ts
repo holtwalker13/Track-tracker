@@ -71,6 +71,7 @@ export async function POST(request: Request) {
           generatorKey,
           generatorBlockId,
           createdById: session.userId,
+          classId,
           exercises: {
             create: day.exercises.map((e, i) => {
               const activityId = bySlug.get(e.activitySlug);

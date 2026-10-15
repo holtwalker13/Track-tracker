@@ -332,6 +332,7 @@ model Class {
   subgroups          ClassSubgroup[]
   sessions           TestingSession[]
   workoutAssignments WorkoutAssignment[]
+  workoutTemplates   WorkoutTemplate[]
   kpiSets            KpiSet[]
 
   @@index([schoolId])
@@ -439,6 +440,9 @@ model WorkoutTemplate {
   generatorBlockId String?
   createdById String?
   createdBy   User?    @relation("WorkoutTemplateCreatedBy", fields: [createdById], references: [id])
+  // Class this saved workout belongs to. Coaches on that class share it.
+  classId     String?
+  class       Class?   @relation(fields: [classId], references: [id], onDelete: SetNull)
   // Hidden from the coach's saved list. Scheduled days and logs stay.
   archivedAt  DateTime?
   createdAt   DateTime @default(now())
@@ -448,6 +452,7 @@ model WorkoutTemplate {
   assignments WorkoutAssignment[]
 
   @@index([schoolId])
+  @@index([classId])
   @@index([generatorBlockId])
 }
 

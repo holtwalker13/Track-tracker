@@ -19,6 +19,8 @@ type TemplateRow = {
   id: string;
   name: string;
   updatedAt: string;
+  createdByName?: string | null;
+  canDelete?: boolean;
   exercises: {
     id: string;
     defaultSets: number;
@@ -92,6 +94,10 @@ export function ProgramsActions({
   }
 
   function openCreate() {
+    if (!selectedClass) {
+      setError("Select a class first.");
+      return;
+    }
     setEditingTemplateId(null);
     setProgramName("");
     setLifts(defaultLiftState());
@@ -127,7 +133,7 @@ export function ProgramsActions({
   }
 
   async function archiveWorkout(template: TemplateRow) {
-    if (!window.confirm(`Remove “${template.name}” from your saved workouts? Days already on the calendar stay.`)) {
+    if (!window.confirm(`Remove “${template.name}” from this class’s saved workouts? Days already on the calendar stay.`)) {
       return;
     }
     setPending(true);
@@ -177,12 +183,22 @@ export function ProgramsActions({
     }
 
     const isEdit = Boolean(editingTemplateId);
+    const classIdForCreate = selectedClass?.id;
+    if (!isEdit && !classIdForCreate) {
+      setPending(false);
+      setError("Select a class first.");
+      return;
+    }
     const res = await fetch(
       isEdit ? `/api/workouts/templates/${editingTemplateId}` : "/api/workouts/templates",
       {
         method: isEdit ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: programName, exercises }),
+        body: JSON.stringify({
+          name: programName,
+          exercises,
+          ...(isEdit || !classIdForCreate ? {} : { classId: classIdForCreate }),
+        }),
       }
     );
     const data = await res.json();
@@ -271,7 +287,8 @@ export function ProgramsActions({
         <button
           type="button"
           onClick={openCreate}
-          className="flex items-center gap-3 rounded-2xl border border-sky-500/30 bg-sky-500/5 px-4 py-3 text-left transition hover:border-sky-400/50"
+          disabled={!selectedClass}
+          className="flex items-center gap-3 rounded-2xl border border-sky-500/30 bg-sky-500/5 px-4 py-3 text-left transition hover:border-sky-400/50 disabled:opacity-50"
         >
           <Plus className="h-5 w-5 shrink-0 text-sky-300" />
           <span>
@@ -300,19 +317,24 @@ export function ProgramsActions({
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <div>
             <h2 className="text-base font-semibold">Saved workouts</h2>
-            <p className="text-xs text-muted">Day programs you can schedule or edit</p>
+            <p className="text-xs text-muted">Shared with the coaches on this class</p>
           </div>
           <button
             type="button"
             onClick={openCreate}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-sky-400/15 px-3 py-1.5 text-xs font-semibold text-sky-300 ring-1 ring-sky-400/35"
+            disabled={!selectedClass}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-sky-400/15 px-3 py-1.5 text-xs font-semibold text-sky-300 ring-1 ring-sky-400/35 disabled:opacity-50"
           >
             <Plus className="h-3.5 w-3.5" />
             New
           </button>
         </div>
         {templates.length === 0 ? (
-          <p className="text-sm text-muted">No workouts yet — create one to schedule on the calendar.</p>
+          <p className="text-sm text-muted">
+            {selectedClass
+              ? "No workouts for this class yet."
+              : "Select a class to see its saved workouts."}
+          </p>
         ) : (
           <ul className="space-y-2">
             {templates.map((t) => (
@@ -322,6 +344,9 @@ export function ProgramsActions({
               >
                 <div className="min-w-0 flex-1">
                   <div className="font-medium">{t.name}</div>
+                  <div className="mt-0.5 text-xs text-muted">
+                    {t.createdByName ? `Coach ${t.createdByName}` : "Coach unknown"}
+                  </div>
                   <div className="mt-0.5 text-xs text-muted">
                     {t.exercises.map((ex) => ex.activity.name).join(" · ") || "No lifts"}
                   </div>
@@ -342,14 +367,16 @@ export function ProgramsActions({
                   >
                     Edit
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => void archiveWorkout(t)}
-                    disabled={pending}
-                    className="rounded-md px-2 py-1 text-xs font-medium text-muted hover:bg-sport-red/10 hover:text-sport-red disabled:opacity-40"
-                  >
-                    Delete
-                  </button>
+                  {t.canDelete !== false ? (
+                    <button
+                      type="button"
+                      onClick={() => void archiveWorkout(t)}
+                      disabled={pending}
+                      className="rounded-md px-2 py-1 text-xs font-medium text-muted hover:bg-sport-red/10 hover:text-sport-red disabled:opacity-40"
+                    >
+                      Delete
+                    </button>
+                  ) : null}
                 </div>
               </li>
             ))}

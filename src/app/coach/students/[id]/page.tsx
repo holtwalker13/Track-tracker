@@ -318,8 +318,6 @@ export default async function StudentProfilePage({
         />
       </div>
 
-      <StudentCoreOneRepMaxEditor studentId={student.id} initialRows={coreOneRepMaxRows} />
-
       <Suspense fallback={null}>
         <AthleteProfileClassPicker
           classes={pickerClasses}
@@ -389,6 +387,8 @@ export default async function StudentProfilePage({
       />
 
       <AthleteResultsHistory grouped={latestGrouped} attemptLog={attemptLog} />
+
+      <StudentCoreOneRepMaxEditor studentId={student.id} initialRows={coreOneRepMaxRows} />
     </AppShell>
   );
 }

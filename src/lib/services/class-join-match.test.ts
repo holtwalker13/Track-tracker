@@ -7,6 +7,7 @@ describe("credentialMatchesRosterStudent", () => {
     studentNumber: "S0012",
     username: "jsmith2028",
     userEmail: "s0012@demo.local",
+    rosterEmail: null as string | null,
     schoolSlug: "demo",
   };
 
@@ -20,6 +21,17 @@ describe("credentialMatchesRosterStudent", () => {
     assert.equal(
       credentialMatchesRosterStudent({ ...student, credential: "joey@gmail.com" }),
       false
+    );
+  });
+
+  it("matches roster upload email when domain differs from school login domain", () => {
+    assert.equal(
+      credentialMatchesRosterStudent({
+        ...student,
+        rosterEmail: "joey@gmail.com",
+        credential: "joey@gmail.com",
+      }),
+      true
     );
   });
 });

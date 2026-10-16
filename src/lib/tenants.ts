@@ -18,6 +18,8 @@ export type TenantConfig = {
   description: string;
   coachEmail: string;
   studentEmail: string | null;
+  /** Email domains that resolve sign-ins to this school (lowercase, no @). */
+  loginEmailDomains: string[];
   emptyRoster: boolean;
 };
 
@@ -29,6 +31,7 @@ export const TENANTS: TenantConfig[] = [
     description: "Anonymous sample roster with the full testing history. Safe to click around.",
     coachEmail: "coach1@demo.local",
     studentEmail: "student1@demo.local",
+    loginEmailDomains: ["demo.local"],
     emptyRoster: false,
   },
   {
@@ -38,16 +41,19 @@ export const TENANTS: TenantConfig[] = [
     description: "Live school with weightlifting periods. Demo student: Kendall Leland.",
     coachEmail: "coach1@jhs.demo",
     studentEmail: "student1@jhs.demo",
+    loginEmailDomains: ["jhs.demo"],
     emptyRoster: false,
   },
   {
     slug: "chs",
-    name: "Central High School",
-    shortName: "CHS",
-    description: "Separate school system with its own coaches, students, and test marks.",
-    coachEmail: "coach1@chs.demo",
-    studentEmail: "student1@chs.demo",
-    emptyRoster: false,
+    name: "Cape High School",
+    shortName: "Cape",
+    description:
+      "Pilot school (HS + JHS). Upload rosters in admin; coaches use school email or roster email for students.",
+    coachEmail: "coach1@capehigh.placeholder",
+    studentEmail: null,
+    loginEmailDomains: ["capehigh.placeholder", "chs.demo"],
+    emptyRoster: true,
   },
 ];
 

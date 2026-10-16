@@ -36,8 +36,11 @@ export function ImportRosterForm({ compact = false }: { compact?: boolean }) {
       {!compact ? <h2 className="font-semibold">Upload roster spreadsheet</h2> : null}
       <p className="text-sm text-muted">
         CSV from Excel or Google Sheets. Header row:{" "}
-        <code className="text-xs">firstName,lastName,gender,classYear,studentNumber,className,period</code>
-        . Missing students are created. Weightlifting classes are created from{" "}
+        <code className="text-xs">
+          firstName,lastName,email,gender,classYear,studentNumber,className,period
+        </code>
+        . Optional <code className="text-xs">email</code> is stored for sign-in when it differs from
+        the school domain. Missing students are created. Weightlifting classes are created from{" "}
         <code className="text-xs">className</code>.
       </p>
       <a

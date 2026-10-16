@@ -257,9 +257,15 @@ async function main() {
     slug: "chs",
     name: chsTenant.name,
     orgId: org.id,
-    emailDomain: "chs.demo",
+    emailDomain: "capehigh.placeholder",
     hash,
   });
+
+  const cape = await prisma.school.findUnique({ where: { slug: "chs" } });
+  if (cape && cape.name !== chsTenant.name) {
+    await prisma.school.update({ where: { id: cape.id }, data: { name: chsTenant.name } });
+    console.log(`Renamed school slug chs → "${chsTenant.name}".`);
+  }
 
   const admin = await prisma.user.findUnique({ where: { email: ADMIN_LOGIN.email } });
   if (!admin) {

@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { headerIndex, parseCsv } from "@/lib/csv";
 import { DEFAULT_CLASS_YEAR, isClassYear } from "@/lib/grades";
 import { genderFromFirstName } from "@/lib/gender";
+import { normalizeLoginEmail } from "@/lib/school-login-email";
 import { buildStudentUsernameBase, pickUniqueUsername } from "@/lib/services/student-username";
 
 function parseGender(raw: string | undefined, firstName: string, index: number): "M" | "F" {
@@ -57,6 +58,7 @@ export async function POST(request: Request) {
   const classIdx = headerIndex(header, ["className", "classname", "classhour", "course", "section"]);
   const periodIdx = headerIndex(header, ["period"]);
   const sportsIdx = headerIndex(header, ["sports", "sport"]);
+  const emailIdx = headerIndex(header, ["email", "studentemail", "schoolemail", "loginemail"]);
 
   const schoolYear = await prisma.schoolYear.findFirst({
     where: { schoolId: session.schoolId, isCurrent: true },
@@ -102,6 +104,8 @@ export async function POST(request: Request) {
     const gender = parseGender(genderIdx >= 0 ? row[genderIdx] : undefined, first, i);
     const classYear = parseYear(yearIdx >= 0 ? row[yearIdx] : undefined);
     const sports = sportsIdx >= 0 ? (row[sportsIdx] ?? "").trim() || null : null;
+    const rosterEmailRaw = emailIdx >= 0 ? (row[emailIdx] ?? "").trim() : "";
+    const rosterEmail = rosterEmailRaw.includes("@") ? normalizeLoginEmail(rosterEmailRaw) : null;
     let studentNumber = numIdx >= 0 ? (row[numIdx] ?? "").trim().toUpperCase() : "";
 
     let student = null;
@@ -155,6 +159,7 @@ export async function POST(request: Request) {
           username,
           firstName: first,
           lastName: last,
+          rosterEmail,
           dateOfBirth: new Date(2010, 0, 1),
           gender,
           sports,
@@ -168,6 +173,12 @@ export async function POST(request: Request) {
       createdStudents += 1;
     } else {
       existingStudents += 1;
+      if (rosterEmail) {
+        await prisma.studentProfile.update({
+          where: { id: student.id },
+          data: { rosterEmail },
+        });
+      }
       await prisma.studentEnrollment.upsert({
         where: {
           studentId_schoolYearId: { studentId: student.id, schoolYearId: schoolYear.id },

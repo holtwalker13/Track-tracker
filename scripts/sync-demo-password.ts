@@ -10,7 +10,7 @@ const PASSWORD = process.env.DEMO_PASSWORD || DEMO_PASSWORD;
 
 async function main() {
   const hash = await bcrypt.hash(PASSWORD, 10);
-  const coachDomains = ["demo.local", "jhs.demo", "chs.demo"];
+  const coachDomains = ["demo.local", "jhs.demo", "chs.demo", "capehigh.placeholder"];
 
   const result = await prisma.user.updateMany({
     where: {

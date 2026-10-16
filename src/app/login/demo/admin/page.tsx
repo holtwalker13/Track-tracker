@@ -12,6 +12,7 @@ export default async function DemoAdminLoginPage({
       mode="admin"
       title="App admin"
       accountLabel={ADMIN_LOGIN.email}
+      adminEmail={ADMIN_LOGIN.email}
       next={sp.next}
       error={sp.error}
     />

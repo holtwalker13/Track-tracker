@@ -67,6 +67,7 @@ async function rosterForClass(classId: string) {
               lastName: true,
               studentNumber: true,
               username: true,
+              rosterEmail: true,
               schoolId: true,
               userId: true,
               user: { select: { email: true, passwordSetAt: true } },
@@ -92,6 +93,7 @@ export async function findClassStudentByCredential(
       studentNumber: row.student.studentNumber,
       username: row.student.username,
       userEmail: row.student.user?.email ?? null,
+      rosterEmail: row.student.rosterEmail,
       schoolSlug: slug,
     })
   );

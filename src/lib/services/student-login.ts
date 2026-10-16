@@ -5,6 +5,7 @@ import { studentLoginEmailForNumber } from "@/lib/services/student-login-invite"
 
 export function studentEmailDomainForSchoolSlug(schoolSlug: string): string {
   if (schoolSlug === "demo") return "demo.local";
+  if (schoolSlug === "chs") return "capehigh.placeholder";
   return `${schoolSlug}.demo`;
 }
 

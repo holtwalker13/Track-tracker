@@ -140,7 +140,7 @@ else
   npm run db:seed
 fi
 
-echo "==> Ensuring Demo / JHS / Cape High schools (live JHS names preserved)..."
+echo "==> Ensuring Demo / JHS / Cape High schools (existing names and records preserved)..."
 npm run db:migrate-tenants
 
 echo "==> Syncing sandbox demo passwords (skipping students who set a password)..."

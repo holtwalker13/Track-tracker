@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { loginDestination } from "@/lib/auth/login-destination";
 import {
   emailAllowedByPolicy,
+  emailMatchesRoster,
   isSeedDemoLogin,
   loginPolicyForSlug,
   normalizeLoginEmail,
@@ -96,12 +97,15 @@ export async function settleSchoolEmailOnLogin(userId: string, credential: strin
   if (!typed.includes("@")) return accountNeedsSchoolEmail(account);
 
   const exceptions = await exceptionsFor(account.schoolId);
-  const allowed = emailAllowedByPolicy({
-    email: typed,
-    audience: account.audience,
-    policy,
-    exceptions,
-  });
+  const matchesRoster = account.audience === "student" && emailMatchesRoster(typed, account.rosterEmail);
+  const allowed =
+    matchesRoster ||
+    emailAllowedByPolicy({
+      email: typed,
+      audience: account.audience,
+      policy,
+      exceptions,
+    });
   if (!allowed) return accountNeedsSchoolEmail(account);
 
   const roster = account.rosterEmail ? normalizeLoginEmail(account.rosterEmail) : null;
@@ -142,21 +146,17 @@ export async function claimSchoolLoginEmail(
   if (!email.includes("@")) return { ok: false, error: "Enter a full email address." };
 
   const exceptions = await exceptionsFor(account.schoolId);
-  if (!emailAllowedByPolicy({ email, audience: account.audience, policy, exceptions })) {
+  const roster = account.rosterEmail ? normalizeLoginEmail(account.rosterEmail) : null;
+  const matchesRoster = account.audience === "student" && emailMatchesRoster(email, roster);
+  if (
+    !matchesRoster &&
+    !emailAllowedByPolicy({ email, audience: account.audience, policy, exceptions })
+  ) {
     return { ok: false, error: schoolEmailHint(policy, account.audience) };
   }
 
-  const roster = account.rosterEmail ? normalizeLoginEmail(account.rosterEmail) : null;
   if (account.audience === "student" && roster && roster !== email) {
-    const rosterAllowed = emailAllowedByPolicy({
-      email: roster,
-      audience: "student",
-      policy,
-      exceptions,
-    });
-    if (rosterAllowed) {
-      return { ok: false, error: `Use the email already on your roster: ${roster}` };
-    }
+    return { ok: false, error: `Use the email already on your roster: ${roster}` };
   }
 
   const taken = await prisma.user.findUnique({ where: { email }, select: { id: true } });

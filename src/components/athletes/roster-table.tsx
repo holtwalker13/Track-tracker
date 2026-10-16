@@ -349,8 +349,8 @@ export function RosterTable({
         </tbody>
       </table>
       <p className="border-t border-card-border px-3 py-2 text-xs text-muted">
-        {athletes.length} student{athletes.length === 1 ? "" : "s"} · type an email and click away to
-        save it · username = sign-in handle · eye = visible to other students
+        {athletes.length} student{athletes.length === 1 ? "" : "s"} · type any email and click away to
+        save it, including a test address · username = sign-in handle · eye = visible to other students
       </p>
     </RosterHorizontalScroll>
   );

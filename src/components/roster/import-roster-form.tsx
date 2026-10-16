@@ -25,7 +25,7 @@ export function ImportRosterForm({ compact = false }: { compact?: boolean }) {
     const skipped = Number(data.skippedEmails ?? 0);
     setMsg(
       `Created ${data.createdStudents} student(s), updated ${data.existingStudents}, added email on ${data.emailsAdded ?? 0}.${
-        skipped > 0 ? ` Skipped ${skipped} email(s) that are not an allowed school address.` : ""
+        skipped > 0 ? ` Skipped ${skipped} value(s) that were not an email address.` : ""
       }`
     );
     router.refresh();
@@ -44,7 +44,8 @@ export function ImportRosterForm({ compact = false }: { compact?: boolean }) {
         </code>
         . An <code className="text-xs">email</code> column fills the roster email. Rows that match an
         existing student by ID, username, or first and last name keep that student and add the email.
-        New names are added. Jackson students need <code className="text-xs">@jacksonindians.us</code>.
+        New names are added. Any email can be saved, including a test address. Jackson students
+        normally use <code className="text-xs">@jacksonindians.us</code>.
       </p>
       <a
         href="/templates/roster-import.csv"

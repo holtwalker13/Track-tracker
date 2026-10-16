@@ -7,7 +7,7 @@ import { studentLoginEmailForNumber } from "@/lib/services/student-login-invite"
 import { validateAccountPassword } from "@/lib/services/login-invite-token";
 import { ensureStudentUsername } from "@/lib/services/student-username";
 import {
-  emailAllowedByPolicy,
+  emailMatchesRoster,
   loginPolicyForSlug,
   normalizeLoginEmail,
   schoolEmailHint,
@@ -129,11 +129,7 @@ async function newAccountEmailError(student: RosterMatch, credential: string): P
   if (!email.includes("@") || !roster) {
     return `${schoolEmailHint(policy, "student")} Your coach needs that email on the roster before you can create an account.`;
   }
-  const exceptions = await prisma.schoolLoginEmailException.findMany({
-    where: { schoolId: student.schoolId, role: "STUDENT" },
-    select: { email: true, role: true },
-  });
-  if (!emailAllowedByPolicy({ email, audience: "student", policy, exceptions }) || email !== roster) {
+  if (!emailMatchesRoster(email, roster)) {
     return `${schoolEmailHint(policy, "student")} Use the email on your roster.`;
   }
   return null;

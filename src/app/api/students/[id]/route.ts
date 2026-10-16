@@ -4,12 +4,7 @@ import { prisma } from "@/lib/db";
 import { isClassYear } from "@/lib/grades";
 import { assertCoachOrAdminStudentAccess } from "@/lib/auth/tenant-access";
 import { writeAuditLog } from "@/lib/security/audit-log";
-import {
-  emailAllowedByPolicy,
-  loginPolicyForSlug,
-  normalizeLoginEmail,
-  schoolEmailHint,
-} from "@/lib/school-login-email";
+import { normalizeLoginEmail } from "@/lib/school-login-email";
 
 export async function PATCH(
   request: Request,
@@ -79,22 +74,8 @@ export async function PATCH(
       data.rosterEmail = null;
     } else {
       const email = normalizeLoginEmail(raw);
-      if (!email.includes("@")) {
+      if (!email.includes("@") || email.startsWith("@") || email.endsWith("@")) {
         return NextResponse.json({ error: "Enter a full email address." }, { status: 400 });
-      }
-      const school = await prisma.school.findUnique({
-        where: { id: session.schoolId },
-        select: { slug: true },
-      });
-      const policy = loginPolicyForSlug(school?.slug);
-      if (policy) {
-        const exceptions = await prisma.schoolLoginEmailException.findMany({
-          where: { schoolId: session.schoolId, role: "STUDENT" },
-          select: { email: true, role: true },
-        });
-        if (!emailAllowedByPolicy({ email, audience: "student", policy, exceptions })) {
-          return NextResponse.json({ error: schoolEmailHint(policy, "student") }, { status: 400 });
-        }
       }
       const taken = await prisma.studentProfile.findFirst({
         where: { schoolId: session.schoolId, rosterEmail: email, id: { not: id } },

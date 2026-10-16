@@ -52,6 +52,7 @@ export default async function SchoolRosterPage({
           a.fullName.toLowerCase().includes(q) ||
           a.studentNumber.toLowerCase().includes(q) ||
           (a.username ?? a.usernameHint).toLowerCase().includes(q) ||
+          (a.rosterEmail ?? "").toLowerCase().includes(q) ||
           (a.sports ?? "").toLowerCase().includes(q) ||
           (a.className ?? "").toLowerCase().includes(q)
       )
@@ -92,15 +93,15 @@ export default async function SchoolRosterPage({
       />
 
       <RosterTable athletes={athletes} columns={[]} />
+      <div className="mt-6 max-w-2xl">
+        <ImportRosterForm />
+      </div>
       {emptyRoster && (
-        <div className="mt-6 max-w-2xl">
-          <p className="mb-3 text-sm text-muted">
-            {school?.slug === "jhs"
-              ? "JHS has no students yet. Upload a spreadsheet to load weightlifting class rosters."
-              : "No students on this roster yet. Add one above or import a spreadsheet."}
-          </p>
-          <ImportRosterForm />
-        </div>
+        <p className="mt-4 max-w-xl text-sm text-muted">
+          {school?.slug === "jhs"
+            ? "JHS has no students yet. Upload a spreadsheet below to load the roster, including an email column."
+            : "No students on this roster yet. Add one above or import a spreadsheet below."}
+        </p>
       )}
       {!emptyRoster && athletes.length === 0 && (
         <p className="mt-4 max-w-xl text-sm text-muted">

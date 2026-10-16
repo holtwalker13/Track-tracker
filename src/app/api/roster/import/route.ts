@@ -4,7 +4,11 @@ import { prisma } from "@/lib/db";
 import { headerIndex, parseCsv } from "@/lib/csv";
 import { DEFAULT_CLASS_YEAR, isClassYear } from "@/lib/grades";
 import { genderFromFirstName } from "@/lib/gender";
-import { normalizeLoginEmail } from "@/lib/school-login-email";
+import {
+  emailAllowedByPolicy,
+  loginPolicyForSlug,
+  normalizeLoginEmail,
+} from "@/lib/school-login-email";
 import { buildStudentUsernameBase, pickUniqueUsername } from "@/lib/services/student-username";
 
 function parseGender(raw: string | undefined, firstName: string, index: number): "M" | "F" {
@@ -38,6 +42,19 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "CSV needs a header and at least one row" }, { status: 400 });
   }
 
+  const school = await prisma.school.findUnique({
+    where: { id: session.schoolId },
+    select: { slug: true },
+  });
+  const policy = loginPolicyForSlug(school?.slug);
+  const exceptions = policy
+    ? await prisma.schoolLoginEmailException.findMany({
+        where: { schoolId: session.schoolId, role: "STUDENT" },
+        select: { email: true, role: true },
+      })
+    : [];
+  let skippedEmails = 0;
+
   const header = rows[0]!;
   const firstIdx = headerIndex(header, ["firstName", "first", "firstname"]);
   const lastIdx = headerIndex(header, ["lastName", "last", "lastname"]);
@@ -59,6 +76,7 @@ export async function POST(request: Request) {
   const periodIdx = headerIndex(header, ["period"]);
   const sportsIdx = headerIndex(header, ["sports", "sport"]);
   const emailIdx = headerIndex(header, ["email", "studentemail", "schoolemail", "loginemail"]);
+  const usernameIdx = headerIndex(header, ["username", "login", "signin"]);
 
   const schoolYear = await prisma.schoolYear.findFirst({
     where: { schoolId: session.schoolId, isCurrent: true },
@@ -83,6 +101,7 @@ export async function POST(request: Request) {
 
   let createdStudents = 0;
   let existingStudents = 0;
+  let emailsAdded = 0;
   let enrolled = 0;
   const classCache = new Map<string, string>();
 
@@ -105,13 +124,34 @@ export async function POST(request: Request) {
     const classYear = parseYear(yearIdx >= 0 ? row[yearIdx] : undefined);
     const sports = sportsIdx >= 0 ? (row[sportsIdx] ?? "").trim() || null : null;
     const rosterEmailRaw = emailIdx >= 0 ? (row[emailIdx] ?? "").trim() : "";
-    const rosterEmail = rosterEmailRaw.includes("@") ? normalizeLoginEmail(rosterEmailRaw) : null;
+    let rosterEmail = rosterEmailRaw.includes("@") ? normalizeLoginEmail(rosterEmailRaw) : null;
+    if (
+      rosterEmail &&
+      policy &&
+      !emailAllowedByPolicy({ email: rosterEmail, audience: "student", policy, exceptions })
+    ) {
+      rosterEmail = null;
+      skippedEmails += 1;
+    }
     let studentNumber = numIdx >= 0 ? (row[numIdx] ?? "").trim().toUpperCase() : "";
 
     let student = null;
     if (studentNumber) {
       student = await prisma.studentProfile.findFirst({
         where: { schoolId: session.schoolId, studentNumber },
+        select: {
+          id: true,
+          studentNumber: true,
+          firstName: true,
+          lastName: true,
+          userId: true,
+        },
+      });
+    }
+    const usernameRaw = usernameIdx >= 0 ? (row[usernameIdx] ?? "").trim().toLowerCase() : "";
+    if (!student && usernameRaw) {
+      student = await prisma.studentProfile.findFirst({
+        where: { schoolId: session.schoolId, username: { equals: usernameRaw, mode: "insensitive" } },
         select: {
           id: true,
           studentNumber: true,
@@ -171,6 +211,7 @@ export async function POST(request: Request) {
         },
       });
       createdStudents += 1;
+      if (rosterEmail) emailsAdded += 1;
     } else {
       existingStudents += 1;
       if (rosterEmail) {
@@ -178,6 +219,7 @@ export async function POST(request: Request) {
           where: { id: student.id },
           data: { rosterEmail },
         });
+        emailsAdded += 1;
       }
       await prisma.studentEnrollment.upsert({
         where: {
@@ -225,5 +267,7 @@ export async function POST(request: Request) {
     existingStudents,
     classes: classCache.size,
     enrolled,
+    emailsAdded,
+    skippedEmails,
   });
 }

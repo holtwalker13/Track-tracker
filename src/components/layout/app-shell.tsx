@@ -1,8 +1,10 @@
 import { Podium } from "lucide-react";
+import { redirect } from "next/navigation";
 import { TopNav } from "@/components/layout/top-nav";
 import { SchoolSwitcher } from "@/components/admin/school-switcher";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import type { NavItem } from "@/lib/navigation";
+import { userMustClaimSchoolEmail } from "@/lib/auth/school-email-claim";
 import { getSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { cn } from "@/lib/utils";
@@ -23,6 +25,13 @@ export async function AppShell({
   navCompact?: boolean;
 }) {
   const session = await getSession();
+  if (
+    session &&
+    (session.role === "STUDENT" || session.role === "COACH") &&
+    (await userMustClaimSchoolEmail(session.userId))
+  ) {
+    redirect("/login/school-email");
+  }
   let schoolName: string | null = null;
   let schools: { id: string; name: string }[] = [];
   if (session?.schoolId) {

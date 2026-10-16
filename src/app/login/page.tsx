@@ -10,16 +10,15 @@ function LoginForm({ error, next }: { error?: string; next?: string }) {
           <p className="text-xs uppercase tracking-widest text-accent">Measure → Compare → Improve</p>
           <h1 className="mt-2 text-2xl font-bold">Athletic Performance Platform</h1>
           <p className="mt-1 text-sm text-muted">
-            Students sign in with the username from your coach (usually first initial, last name, and
-            graduating year, like{" "}
-            <span className="font-mono text-foreground/90">jsmith2028</span>). Use your class link to
-            create an account the first time. After that, sign in here. Coaches use their school email.
+            Students who already have an account can still sign in with their username. Track Tracker is
+            switching to school email and the same password. New students use the email on the roster.
+            Coaches use their school email.
           </p>
 
           <form action={loginAction} className="mt-6 space-y-4">
             {next ? <input type="hidden" name="next" value={next} /> : null}
             <label className="block text-sm">
-              Username or email
+              Username or school email
               <input
                 name="email"
                 placeholder="jsmith2028"

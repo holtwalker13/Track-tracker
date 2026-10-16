@@ -7,6 +7,7 @@ import { Eye, EyeOff } from "lucide-react";
 import { ROSTER_COLUMNS, type RosterAthlete } from "@/lib/queries/roster";
 import { StudentLoginLinkButton } from "@/components/athletes/student-login-link-button";
 import { RosterUsernameField } from "@/components/athletes/roster-username-field";
+import { RosterEmailField } from "@/components/athletes/roster-email-field";
 import { classYearShort } from "@/lib/grades";
 import { cn } from "@/lib/utils";
 
@@ -15,6 +16,7 @@ type SortKey =
   | "lastName"
   | "studentNumber"
   | "username"
+  | "rosterEmail"
   | "classYear"
   | "sports"
   | "participationType"
@@ -51,7 +53,11 @@ export function RosterTable({
     }
     setSortKey(key);
     setSortDir(
-      key === "firstName" || key === "lastName" || key === "studentNumber" || key === "username"
+      key === "firstName" ||
+        key === "lastName" ||
+        key === "studentNumber" ||
+        key === "username" ||
+        key === "rosterEmail"
         ? "asc"
         : "desc"
     );
@@ -88,7 +94,9 @@ export function RosterTable({
               ? row.studentNumber
               : sortKey === "username"
                 ? row.username ?? row.usernameHint
-                : sortKey === "classYear"
+                : sortKey === "rosterEmail"
+                  ? row.rosterEmail ?? ""
+                  : sortKey === "classYear"
                   ? String(row.classYear ?? "")
                   : sortKey === "sports"
                     ? row.sports ?? ""
@@ -236,6 +244,7 @@ export function RosterTable({
             <Header label="Visible" sortId="nameHidden" />
             <Header label="Login" sortId="loginStatus" />
             <Header label="Username" sortId="username" />
+            <Header label="Email" sortId="rosterEmail" />
             <Header label="ID" sortId="studentNumber" />
             <Header label="Year" sortId="classYear" />
             <Header label="Type" sortId="participationType" />
@@ -303,6 +312,9 @@ export function RosterTable({
                     usernameHint={a.usernameHint}
                   />
                 </td>
+                <td className="whitespace-nowrap px-3 py-2">
+                  <RosterEmailField studentId={a.studentId} rosterEmail={a.rosterEmail} />
+                </td>
                 <td className="whitespace-nowrap px-3 py-2 font-mono text-xs tabular-nums text-muted">
                   {a.studentNumber}
                 </td>
@@ -337,9 +349,8 @@ export function RosterTable({
         </tbody>
       </table>
       <p className="border-t border-card-border px-3 py-2 text-xs text-muted">
-        {athletes.length} student{athletes.length === 1 ? "" : "s"} · username = sign-in handle (e.g.
-        first initial + last name + grad year) · eye = visible to other students · slashed eye = name
-        hidden on student leaderboards
+        {athletes.length} student{athletes.length === 1 ? "" : "s"} · type an email and click away to
+        save it · username = sign-in handle · eye = visible to other students
       </p>
     </RosterHorizontalScroll>
   );

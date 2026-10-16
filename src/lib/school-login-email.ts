@@ -1,5 +1,63 @@
 import { prisma } from "@/lib/db";
-import { TENANTS, type TenantSlug } from "@/lib/tenants";
+import { TENANTS, tenantBySlug, type TenantSlug } from "@/lib/tenants";
+
+export type LoginAudience = "student" | "faculty";
+
+export type SchoolLoginPolicy = {
+  studentDomains: string[];
+  facultyDomains: string[];
+};
+
+export function loginPolicyForSlug(slug: string | null | undefined): SchoolLoginPolicy | null {
+  const tenant = tenantBySlug(slug);
+  if (!tenant?.studentLoginDomains?.length && !tenant?.facultyLoginDomains?.length) return null;
+  return {
+    studentDomains: tenant.studentLoginDomains ?? [],
+    facultyDomains: tenant.facultyLoginDomains ?? [],
+  };
+}
+
+export function domainsForAudience(policy: SchoolLoginPolicy, audience: LoginAudience): string[] {
+  return audience === "faculty" ? policy.facultyDomains : policy.studentDomains;
+}
+
+/** Seeded demo mailboxes stay on the old sandbox domain and are not asked to switch. */
+export function isSeedDemoLogin(email: string): boolean {
+  return /^(coach|student)\d+@(jhs\.demo|demo\.local|chs\.demo|capehigh\.placeholder)$/i.test(
+    normalizeLoginEmail(email)
+  );
+}
+
+export function emailMatchesDomains(email: string, domains: string[]): boolean {
+  const domain = emailDomain(email);
+  if (!domain) return false;
+  return domains.some((d) => d.toLowerCase() === domain);
+}
+
+export function schoolEmailHint(policy: SchoolLoginPolicy, audience: LoginAudience): string {
+  const domains = domainsForAudience(policy, audience);
+  const list = domains.map((d) => `@${d}`).join(" or ");
+  if (audience === "faculty") return `Faculty sign in with a ${list} email.`;
+  return `Students sign in with a ${list} email.`;
+}
+
+export function emailAllowedByPolicy(input: {
+  email: string;
+  audience: LoginAudience;
+  policy: SchoolLoginPolicy | null;
+  exceptions?: { email: string; role: string }[];
+}): boolean {
+  const email = normalizeLoginEmail(input.email);
+  if (!email.includes("@")) return false;
+  if (isSeedDemoLogin(email)) return true;
+  if (!input.policy) return true;
+  const domains = domainsForAudience(input.policy, input.audience);
+  if (emailMatchesDomains(email, domains)) return true;
+  const role = input.audience === "faculty" ? "FACULTY" : "STUDENT";
+  return (input.exceptions ?? []).some(
+    (row) => row.email.toLowerCase() === email && row.role === role
+  );
+}
 
 export function normalizeLoginEmail(raw: string): string {
   return raw.trim().toLowerCase();

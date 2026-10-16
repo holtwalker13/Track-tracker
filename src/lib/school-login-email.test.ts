@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 import {
   emailAllowedByPolicy,
   emailDomain,
+  emailMatchesRoster,
   loginPolicyForSlug,
   resolveSchoolSlugFromEmailDomain,
 } from "@/lib/school-login-email";
@@ -43,6 +44,14 @@ describe("Jackson login policy", () => {
       emailAllowedByPolicy({ email: "kid@gmail.com", audience: "faculty", policy, exceptions }),
       false
     );
+  });
+});
+
+describe("emailMatchesRoster", () => {
+  it("accepts the roster address even when it is outside the school domain", () => {
+    assert.equal(emailMatchesRoster("Test@Gmail.com", "test@gmail.com"), true);
+    assert.equal(emailMatchesRoster("other@gmail.com", "test@gmail.com"), false);
+    assert.equal(emailMatchesRoster("test@gmail.com", null), false);
   });
 });
 

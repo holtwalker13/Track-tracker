@@ -4,11 +4,7 @@ import { prisma } from "@/lib/db";
 import { headerIndex, parseCsv } from "@/lib/csv";
 import { DEFAULT_CLASS_YEAR, isClassYear } from "@/lib/grades";
 import { genderFromFirstName } from "@/lib/gender";
-import {
-  emailAllowedByPolicy,
-  loginPolicyForSlug,
-  normalizeLoginEmail,
-} from "@/lib/school-login-email";
+import { normalizeLoginEmail } from "@/lib/school-login-email";
 import { buildStudentUsernameBase, pickUniqueUsername } from "@/lib/services/student-username";
 
 function parseGender(raw: string | undefined, firstName: string, index: number): "M" | "F" {
@@ -42,17 +38,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "CSV needs a header and at least one row" }, { status: 400 });
   }
 
-  const school = await prisma.school.findUnique({
-    where: { id: session.schoolId },
-    select: { slug: true },
-  });
-  const policy = loginPolicyForSlug(school?.slug);
-  const exceptions = policy
-    ? await prisma.schoolLoginEmailException.findMany({
-        where: { schoolId: session.schoolId, role: "STUDENT" },
-        select: { email: true, role: true },
-      })
-    : [];
   let skippedEmails = 0;
 
   const header = rows[0]!;
@@ -124,15 +109,8 @@ export async function POST(request: Request) {
     const classYear = parseYear(yearIdx >= 0 ? row[yearIdx] : undefined);
     const sports = sportsIdx >= 0 ? (row[sportsIdx] ?? "").trim() || null : null;
     const rosterEmailRaw = emailIdx >= 0 ? (row[emailIdx] ?? "").trim() : "";
-    let rosterEmail = rosterEmailRaw.includes("@") ? normalizeLoginEmail(rosterEmailRaw) : null;
-    if (
-      rosterEmail &&
-      policy &&
-      !emailAllowedByPolicy({ email: rosterEmail, audience: "student", policy, exceptions })
-    ) {
-      rosterEmail = null;
-      skippedEmails += 1;
-    }
+    const rosterEmail = rosterEmailRaw.includes("@") ? normalizeLoginEmail(rosterEmailRaw) : null;
+    if (rosterEmailRaw && !rosterEmail) skippedEmails += 1;
     let studentNumber = numIdx >= 0 ? (row[numIdx] ?? "").trim().toUpperCase() : "";
 
     let student = null;

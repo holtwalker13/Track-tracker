@@ -41,6 +41,12 @@ export function schoolEmailHint(policy: SchoolLoginPolicy, audience: LoginAudien
   return `Students sign in with a ${list} email.`;
 }
 
+/** Address already stored on this student's roster, including a test address outside the school domain. */
+export function emailMatchesRoster(email: string, rosterEmail: string | null | undefined): boolean {
+  if (!rosterEmail?.includes("@")) return false;
+  return normalizeLoginEmail(email) === normalizeLoginEmail(rosterEmail);
+}
+
 export function emailAllowedByPolicy(input: {
   email: string;
   audience: LoginAudience;

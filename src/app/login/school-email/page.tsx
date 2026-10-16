@@ -6,7 +6,11 @@ import {
   loadSchoolEmailAccount,
   userMustClaimSchoolEmail,
 } from "@/lib/auth/school-email-claim";
-import { loginPolicyForSlug, schoolEmailHint } from "@/lib/school-login-email";
+import {
+  emailMatchesDomains,
+  loginPolicyForSlug,
+  schoolEmailHint,
+} from "@/lib/school-login-email";
 import { SchoolEmailClaimForm } from "@/components/auth/school-email-claim-form";
 
 export default async function SchoolEmailPage({
@@ -28,6 +32,10 @@ export default async function SchoolEmailPage({
 
   const prefill =
     audience === "student" && account.rosterEmail?.includes("@") ? account.rosterEmail : "";
+  const rosterOutsideDomain =
+    audience === "student" &&
+    prefill.includes("@") &&
+    !emailMatchesDomains(prefill, policy.studentDomains);
 
   return (
     <div className="flex min-h-screen items-center justify-center px-4 py-10">
@@ -39,6 +47,12 @@ export default async function SchoolEmailPage({
           school email for this account — you will use that email the next time you sign in.
         </p>
         <p className="mt-2 text-sm text-foreground/90">{schoolEmailHint(policy, audience)}</p>
+        {rosterOutsideDomain ? (
+          <p className="mt-2 text-sm text-foreground/90">
+            The email already on your roster can be used here, including a test address outside that
+            domain.
+          </p>
+        ) : null}
         <SchoolEmailClaimForm nextPath={next} defaultEmail={prefill} />
       </Card>
     </div>

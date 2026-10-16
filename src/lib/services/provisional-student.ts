@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { calendarDateAtNoonUtc } from "@/lib/calendar-date";
 import { DEFAULT_CLASS_YEAR } from "@/lib/grades";
 import { dayBoundsFromDateString, getOrCreateWorkoutSession } from "@/lib/services/workouts";
 
@@ -13,6 +14,9 @@ export async function createProvisionalStudent(input: {
   firstName: string;
   lastName: string;
   date?: string | null;
+  /** Class enrollment (attendance) always happens. Workout and test are optional. */
+  addToWorkout?: boolean;
+  addToTest?: boolean;
 }) {
   const firstName = input.firstName.trim();
   const lastName = input.lastName.trim();
@@ -41,6 +45,9 @@ export async function createProvisionalStudent(input: {
     studentNumber = tempStudentNumber();
   }
 
+  const addToWorkout = input.addToWorkout !== false;
+  const addToTest = input.addToTest === true;
+
   const student = await prisma.studentProfile.create({
     data: {
       schoolId: input.schoolId,
@@ -50,6 +57,8 @@ export async function createProvisionalStudent(input: {
       dateOfBirth: new Date(2010, 0, 1),
       anonymousId: `provisional-${studentNumber.toLowerCase()}`,
       provisional: true,
+      provisionalInWorkouts: addToWorkout,
+      provisionalInTests: addToTest,
       enrollments: {
         create: { schoolYearId: schoolYear.id, gradeLevel: DEFAULT_CLASS_YEAR },
       },
@@ -58,7 +67,7 @@ export async function createProvisionalStudent(input: {
   });
 
   let sessionId: string | null = null;
-  if (input.date) {
+  if (addToWorkout && input.date) {
     const bounds = dayBoundsFromDateString(input.date);
     if (bounds) {
       const assignment = await prisma.workoutAssignment.findFirst({
@@ -73,6 +82,33 @@ export async function createProvisionalStudent(input: {
       if (assignment) {
         const session = await getOrCreateWorkoutSession(assignment.id, student.id);
         sessionId = session.id;
+      }
+    }
+  }
+
+  if (addToTest && input.date) {
+    const noon = calendarDateAtNoonUtc(input.date);
+    if (noon) {
+      const dayStart = new Date(
+        Date.UTC(noon.getUTCFullYear(), noon.getUTCMonth(), noon.getUTCDate(), 0, 0, 0, 0)
+      );
+      const dayEnd = new Date(
+        Date.UTC(noon.getUTCFullYear(), noon.getUTCMonth(), noon.getUTCDate(), 23, 59, 59, 999)
+      );
+      const tests = await prisma.testingSession.findMany({
+        where: {
+          schoolId: input.schoolId,
+          classId: cls.id,
+          archivedAt: null,
+          testingDate: { gte: dayStart, lte: dayEnd },
+        },
+        select: { id: true },
+      });
+      if (tests.length > 0) {
+        await prisma.testingSessionStudent.createMany({
+          data: tests.map((test) => ({ sessionId: test.id, studentId: student.id })),
+          skipDuplicates: true,
+        });
       }
     }
   }

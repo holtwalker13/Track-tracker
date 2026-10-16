@@ -14,6 +14,8 @@ export async function POST(request: Request) {
     firstName: String(body.firstName ?? ""),
     lastName: String(body.lastName ?? ""),
     date: body.date ? String(body.date) : null,
+    addToWorkout: body.addToWorkout !== false,
+    addToTest: body.addToTest === true,
   });
   if (!result.ok) return NextResponse.json({ error: result.error }, { status: 400 });
   return NextResponse.json(result);

@@ -6,6 +6,7 @@ const studentSelect = {
   lastName: true,
   studentNumber: true,
   provisional: true,
+  provisionalInWorkouts: true,
 } as const;
 
 export type WorkoutAssignmentStudent = {
@@ -14,7 +15,12 @@ export type WorkoutAssignmentStudent = {
   lastName: string;
   studentNumber: string;
   provisional: boolean;
+  provisionalInWorkouts: boolean;
 };
+
+function onWorkoutRoster(student: { provisional: boolean; provisionalInWorkouts: boolean }) {
+  return !student.provisional || student.provisionalInWorkouts;
+}
 
 /** Students who should receive a workout assignment (subgroup, individual, or full class). */
 export async function studentsTargetedByWorkoutAssignment(input: {
@@ -29,7 +35,7 @@ export async function studentsTargetedByWorkoutAssignment(input: {
       where: { id: input.studentId },
       select: studentSelect,
     });
-    return student ? [student] : [];
+    return student && onWorkoutRoster(student) ? [student] : [];
   }
 
   if (input.subgroupId) {
@@ -38,7 +44,7 @@ export async function studentsTargetedByWorkoutAssignment(input: {
       include: { student: { select: studentSelect } },
       orderBy: [{ student: { lastName: "asc" } }, { student: { firstName: "asc" } }],
     });
-    return members.map((m) => m.student);
+    return members.map((m) => m.student).filter(onWorkoutRoster);
   }
 
   if (input.classId) {
@@ -47,7 +53,7 @@ export async function studentsTargetedByWorkoutAssignment(input: {
       include: { student: { select: studentSelect } },
       orderBy: [{ student: { lastName: "asc" } }, { student: { firstName: "asc" } }],
     });
-    return enrollments.map((e) => e.student);
+    return enrollments.map((e) => e.student).filter(onWorkoutRoster);
   }
 
   return [];

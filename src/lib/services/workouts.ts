@@ -61,8 +61,15 @@ export async function listStudentAssignmentsForDate(studentId: string, dateStr: 
   });
   const subgroupSet = new Set(memberSubgroups.map((m) => m.subgroupId));
 
+  const profile = await prisma.studentProfile.findUnique({
+    where: { id: studentId },
+    select: { provisional: true, provisionalInWorkouts: true },
+  });
+  const workoutsOff = Boolean(profile?.provisional && !profile.provisionalInWorkouts);
+
   const seen = new Set<string>();
   return rows.filter((a) => {
+    if (workoutsOff && a.studentId !== studentId) return false;
     if (a.subgroupId && !subgroupSet.has(a.subgroupId)) return false;
     const key = a.classId ?? a.id;
     if (seen.has(key)) return false;

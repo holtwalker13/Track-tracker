@@ -41,8 +41,10 @@ export function RosterUsernameField({
     }
   }
 
+  const widthCh = Math.max(14, value.length + 1, usernameHint.length + 1);
+
   return (
-    <div className="min-w-[7rem]">
+    <div className="inline-block whitespace-nowrap">
       <input
         value={value}
         onChange={(e) => setValue(e.target.value.toLowerCase())}
@@ -50,8 +52,9 @@ export function RosterUsernameField({
         disabled={pending}
         placeholder={usernameHint}
         title={`Suggested: ${usernameHint}`}
+        size={widthCh}
         className={cn(
-          "w-full rounded border border-card-border bg-background px-2 py-1 font-mono text-xs",
+          "rounded border border-card-border bg-background px-2 py-1 font-mono text-xs",
           error && "border-red-400/60"
         )}
         aria-label="Student username"

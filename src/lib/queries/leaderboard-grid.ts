@@ -17,7 +17,6 @@ export async function getLeaderboardActivities(
     ageBracket?: string;
   } = {}
 ) {
-  const featured = ["40-yard-dash", "vertical-jump"];
   const hidden = await prisma.schoolHiddenKpi.findMany({
     where: { schoolId },
     select: { metricSlug: true },
@@ -74,16 +73,7 @@ export async function getLeaderboardActivities(
     if (act) ordered.push(act);
   }
 
-  return [...ordered].sort((a, b) => {
-    const ai = featured.indexOf(a.slug);
-    const bi = featured.indexOf(b.slug);
-    if (ai !== -1 || bi !== -1) {
-      if (ai === -1) return 1;
-      if (bi === -1) return -1;
-      return ai - bi;
-    }
-    return 0;
-  });
+  return ordered;
 }
 
 export type LeaderboardBoardEntry = {

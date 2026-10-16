@@ -17,6 +17,7 @@ function ScopeBarInner({
   subgroupId,
   showCoach,
   showSubgroup,
+  allClassesLabel,
 }: {
   coaches: ScopeCoachOption[];
   classes: ScopeClassOption[];
@@ -26,6 +27,7 @@ function ScopeBarInner({
   subgroupId: string;
   showCoach: boolean;
   showSubgroup: boolean;
+  allClassesLabel?: string;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -78,11 +80,14 @@ function ScopeBarInner({
           {classes.length === 0 ? (
             <option value="">No classes</option>
           ) : (
-            classes.map((c) => (
-              <option key={c.id} value={c.id}>
-                {classSectionLabel(c)}
-              </option>
-            ))
+            <>
+              {allClassesLabel ? <option value="all">{allClassesLabel}</option> : null}
+              {classes.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {classSectionLabel(c)}
+                </option>
+              ))}
+            </>
           )}
         </select>
       </label>
@@ -116,6 +121,8 @@ export function CoachClassScopeBar(props: {
   subgroupId?: string;
   showCoach?: boolean;
   showSubgroup?: boolean;
+  /** When set, the class menu can choose school-wide events (`classId=all`). */
+  allClassesLabel?: string;
 }) {
   return (
     <Suspense fallback={<div className="mb-4 h-16 animate-pulse rounded-2xl bg-card/40" />}>

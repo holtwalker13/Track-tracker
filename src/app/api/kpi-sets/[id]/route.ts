@@ -58,12 +58,16 @@ export async function PATCH(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const coachId = await resolveCoachId(session.userId, session.schoolId, session.role);
-  if (!coachId) {
+  if (!coachId && session.role !== "ADMIN") {
     return NextResponse.json({ error: "No coach profile" }, { status: 400 });
   }
 
   const { id } = await params;
   const body = await request.json().catch(() => ({}));
+  const access =
+    session.role === "ADMIN"
+      ? { schoolId: session.schoolId, asSchoolAdmin: true as const }
+      : undefined;
 
   try {
     if (body.action === "save-targets" || Array.isArray(body.cells)) {
@@ -83,19 +87,29 @@ export async function PATCH(
               : null,
         ageBracket: String(c.ageBracket ?? ""),
       }));
-      const set = await saveKpiSetTargets(id, coachId, {
-        cells: normalized,
-        metrics,
-      });
+      const set = await saveKpiSetTargets(
+        id,
+        coachId ?? "",
+        {
+          cells: normalized,
+          metrics,
+        },
+        access
+      );
       return NextResponse.json({ ok: true, set });
     }
 
-    const set = await updateKpiSetMeta(id, coachId, {
-      name: body.name != null ? String(body.name) : undefined,
-      sport: body.sport != null ? String(body.sport) : undefined,
-      description: body.description !== undefined ? body.description : undefined,
-      isPublic: body.isPublic != null ? Boolean(body.isPublic) : undefined,
-    });
+    const set = await updateKpiSetMeta(
+      id,
+      coachId ?? "",
+      {
+        name: body.name != null ? String(body.name) : undefined,
+        sport: body.sport != null ? String(body.sport) : undefined,
+        description: body.description !== undefined ? body.description : undefined,
+        isPublic: body.isPublic != null ? Boolean(body.isPublic) : undefined,
+      },
+      access
+    );
     return NextResponse.json({ ok: true, set });
   } catch (e) {
     return NextResponse.json(
@@ -114,12 +128,18 @@ export async function DELETE(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const coachId = await resolveCoachId(session.userId, session.schoolId, session.role);
-  if (!coachId) {
+  if (!coachId && session.role !== "ADMIN") {
     return NextResponse.json({ error: "No coach profile" }, { status: 400 });
   }
   const { id } = await params;
   try {
-    await deleteKpiSet(id, coachId);
+    await deleteKpiSet(
+      id,
+      coachId ?? "",
+      session.role === "ADMIN"
+        ? { schoolId: session.schoolId, asSchoolAdmin: true }
+        : undefined
+    );
     return NextResponse.json({ ok: true });
   } catch (e) {
     return NextResponse.json(

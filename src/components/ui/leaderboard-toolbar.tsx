@@ -10,9 +10,11 @@ type ClassOption = { id: string; name: string; period: string | null };
 function LeaderboardToolbarInner({
   classes,
   lockedGender,
+  schoolWideClassId,
 }: {
   classes: ClassOption[];
   lockedGender?: "M" | "F";
+  schoolWideClassId?: string;
 }) {
   return (
     <div className="mb-6 flex flex-wrap items-center justify-between gap-3 sm:mb-7">
@@ -21,7 +23,11 @@ function LeaderboardToolbarInner({
         <span className="h-6 w-px shrink-0 bg-card-border" aria-hidden />
         <GenderToggle variant="inline" lockedGender={lockedGender} />
       </div>
-      <LeaderboardFilterModal classes={classes} showGender={false} />
+      <LeaderboardFilterModal
+        classes={classes}
+        showGender={false}
+        schoolWideClassId={schoolWideClassId}
+      />
     </div>
   );
 }
@@ -29,6 +35,7 @@ function LeaderboardToolbarInner({
 export function LeaderboardToolbar(props: {
   classes: ClassOption[];
   lockedGender?: "M" | "F";
+  schoolWideClassId?: string;
 }) {
   return (
     <Suspense

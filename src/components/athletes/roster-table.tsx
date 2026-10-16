@@ -11,11 +11,11 @@ import { classYearShort } from "@/lib/grades";
 import { cn } from "@/lib/utils";
 
 type SortKey =
-  | "name"
+  | "firstName"
+  | "lastName"
   | "studentNumber"
   | "username"
   | "classYear"
-  | "classPeriod"
   | "sports"
   | "participationType"
   | "nameHidden"
@@ -30,15 +30,13 @@ function participationLabel(value: string | null) {
 
 export function RosterTable({
   athletes,
-  showClass,
-  columns = ROSTER_COLUMNS,
+  columns = [],
 }: {
   athletes: RosterAthlete[];
-  showClass: boolean;
   columns?: { slug: string; label: string }[];
 }) {
   const router = useRouter();
-  const [sortKey, setSortKey] = useState<SortKey>("name");
+  const [sortKey, setSortKey] = useState<SortKey>("lastName");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [hiddenById, setHiddenById] = useState<Record<string, boolean>>(() =>
@@ -52,7 +50,11 @@ export function RosterTable({
       return;
     }
     setSortKey(key);
-    setSortDir(key === "name" || key === "studentNumber" || key === "username" ? "asc" : "desc");
+    setSortDir(
+      key === "firstName" || key === "lastName" || key === "studentNumber" || key === "username"
+        ? "asc"
+        : "desc"
+    );
   }
 
   const sorted = useMemo(() => {
@@ -77,38 +79,24 @@ export function RosterTable({
         if (bv == null) return -1;
         return (av - bv) * dir;
       }
-      const astr =
-        sortKey === "name"
-          ? a.fullName
-          : sortKey === "studentNumber"
-            ? a.studentNumber
-            : sortKey === "username"
-              ? a.username ?? a.usernameHint
-              : sortKey === "classYear"
-              ? String(a.classYear ?? "")
-              : sortKey === "classPeriod"
-                ? `${a.classPeriod ?? ""} ${a.className ?? ""}`
-                : sortKey === "sports"
-                  ? a.sports ?? ""
-                  : sortKey === "participationType"
-                    ? a.participationType ?? ""
-                    : "";
-      const bstr =
-        sortKey === "name"
-          ? b.fullName
-          : sortKey === "studentNumber"
-            ? b.studentNumber
-            : sortKey === "username"
-              ? b.username ?? b.usernameHint
-              : sortKey === "classYear"
-              ? String(b.classYear ?? "")
-              : sortKey === "classPeriod"
-                ? `${b.classPeriod ?? ""} ${b.className ?? ""}`
-                : sortKey === "sports"
-                  ? b.sports ?? ""
-                  : sortKey === "participationType"
-                    ? b.participationType ?? ""
-                    : "";
+      const text = (row: RosterAthlete) =>
+        sortKey === "firstName"
+          ? row.firstName
+          : sortKey === "lastName"
+            ? row.lastName
+            : sortKey === "studentNumber"
+              ? row.studentNumber
+              : sortKey === "username"
+                ? row.username ?? row.usernameHint
+                : sortKey === "classYear"
+                  ? String(row.classYear ?? "")
+                  : sortKey === "sports"
+                    ? row.sports ?? ""
+                    : sortKey === "participationType"
+                      ? row.participationType ?? ""
+                      : "";
+      const astr = text(a);
+      const bstr = text(b);
       return astr.localeCompare(bstr, undefined, { numeric: true, sensitivity: "base" }) * dir;
     });
     return copy;
@@ -243,27 +231,13 @@ export function RosterTable({
                 aria-label="Select all athletes"
               />
             </th>
-            <th className="sticky left-0 z-10 bg-card px-3 py-2.5 font-semibold">
-              <button
-                type="button"
-                onClick={() => toggleSort("name")}
-                className={cn(
-                  "inline-flex items-center gap-1 uppercase tracking-wide transition hover:text-sky-300",
-                  sortKey === "name" ? "text-sky-300" : "text-muted"
-                )}
-              >
-                Name
-                <span className="text-[10px] opacity-80" aria-hidden>
-                  {sortKey === "name" ? (sortDir === "asc" ? "▲" : "▼") : "↕"}
-                </span>
-              </button>
-            </th>
+            <Header label="First" sortId="firstName" />
+            <Header label="Last" sortId="lastName" />
             <Header label="Visible" sortId="nameHidden" />
             <Header label="Login" sortId="loginStatus" />
             <Header label="Username" sortId="username" />
             <Header label="ID" sortId="studentNumber" />
-            {showClass && <Header label="Year" sortId="classYear" />}
-            <Header label="Hour / Class" sortId="classPeriod" />
+            <Header label="Year" sortId="classYear" />
             <Header label="Type" sortId="participationType" />
             <Header label="Sports" sortId="sports" />
             {columns.map((col) => (
@@ -284,9 +258,14 @@ export function RosterTable({
                     aria-label={`Select ${a.fullName}`}
                   />
                 </td>
-                <td className="sticky left-0 z-10 bg-background px-3 py-2 font-medium whitespace-nowrap">
+                <td className="whitespace-nowrap px-3 py-2 font-medium">
                   <Link href={`/coach/students/${a.studentId}`} className="hover:text-accent">
-                    {a.fullName}
+                    {a.firstName}
+                  </Link>
+                </td>
+                <td className="whitespace-nowrap px-3 py-2 font-medium">
+                  <Link href={`/coach/students/${a.studentId}`} className="hover:text-accent">
+                    {a.lastName}
                   </Link>
                 </td>
                 <td className="px-3 py-2">
@@ -317,26 +296,18 @@ export function RosterTable({
                     loginStatus={a.loginStatus}
                   />
                 </td>
-                <td className="px-3 py-2">
+                <td className="whitespace-nowrap px-3 py-2">
                   <RosterUsernameField
                     studentId={a.studentId}
                     username={a.username}
                     usernameHint={a.usernameHint}
                   />
                 </td>
-                <td className="px-3 py-2 font-mono text-xs tabular-nums text-muted">{a.studentNumber}</td>
-                {showClass && (
-                  <td className="px-3 py-2 tabular-nums text-muted">
-                    {a.classYear != null ? classYearShort(a.classYear) : "—"}
-                  </td>
-                )}
-                <td className="px-3 py-2 text-muted">
-                  <span className="block whitespace-nowrap">{a.classPeriod ?? "—"}</span>
-                  {a.className && (
-                    <span className="block max-w-[9rem] truncate text-[11px] text-muted/80" title={a.className}>
-                      {a.className}
-                    </span>
-                  )}
+                <td className="whitespace-nowrap px-3 py-2 font-mono text-xs tabular-nums text-muted">
+                  {a.studentNumber}
+                </td>
+                <td className="whitespace-nowrap px-3 py-2 tabular-nums text-muted">
+                  {a.classYear != null ? classYearShort(a.classYear) : "—"}
                 </td>
                 <td className="px-3 py-2">
                   <span
@@ -352,7 +323,7 @@ export function RosterTable({
                     {participationLabel(a.participationType)}
                   </span>
                 </td>
-                <td className="max-w-[10rem] truncate px-3 py-2 text-muted" title={a.sports ?? undefined}>
+                <td className="whitespace-nowrap px-3 py-2 text-muted" title={a.sports ?? undefined}>
                   {a.sports ?? "—"}
                 </td>
                 {columns.map((col) => (
@@ -366,10 +337,9 @@ export function RosterTable({
         </tbody>
       </table>
       <p className="border-t border-card-border px-3 py-2 text-xs text-muted">
-        {athletes.length} athlete{athletes.length === 1 ? "" : "s"} · copy/link + QR = one account link
-        (create a password, or sign in if you already have one)
-        reset · username = sign-in handle (e.g. first initial + last name + grad year) · eye = visible to
-        other students · slashed eye = name hidden on student leaderboards
+        {athletes.length} student{athletes.length === 1 ? "" : "s"} · username = sign-in handle (e.g.
+        first initial + last name + grad year) · eye = visible to other students · slashed eye = name
+        hidden on student leaderboards
       </p>
     </RosterHorizontalScroll>
   );

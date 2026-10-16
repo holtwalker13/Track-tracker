@@ -38,14 +38,25 @@ export default async function BenchmarksPage({
   let ownSets: KpiSetSummary[] = [];
   let publicSets: KpiSetSummary[] = [];
 
+  const scopedCoach = scope.coachId
+    ? await prisma.coachProfile.findFirst({
+        where: { id: scope.coachId, schoolId: session.schoolId },
+      })
+    : null;
+
   try {
-    const ctx = await ensureCoachActiveKpiSet(session.userId, session.schoolId);
+    const owner = scopedCoach ?? null;
+    const ctx = owner
+      ? await ensureCoachActiveKpiSet(owner.userId, session.schoolId)
+      : await ensureCoachActiveKpiSet(session.userId, session.schoolId);
     coachProfileId = ctx.coach.id;
     activeSetId = ctx.activeSet.id;
   } catch {
-    const anyCoach = await prisma.coachProfile.findFirst({
-      where: { schoolId: session.schoolId },
-    });
+    const anyCoach =
+      scopedCoach ??
+      (await prisma.coachProfile.findFirst({
+        where: { schoolId: session.schoolId },
+      }));
     if (anyCoach) {
       const ctx = await ensureCoachActiveKpiSet(anyCoach.userId, session.schoolId);
       coachProfileId = ctx.coach.id;

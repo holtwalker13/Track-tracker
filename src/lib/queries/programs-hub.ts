@@ -20,10 +20,12 @@ export type ProgramsClassOption = {
 export type CalendarAssignment = {
   id: string;
   date: string;
+  kind: "workout" | "test";
   templateId: string;
   templateName: string;
   completedCount: number;
   totalCount: number;
+  hasResults: boolean;
 };
 
 export type CalendarTest = {
@@ -101,25 +103,41 @@ export async function listAssignmentsForClassRange(input: {
       sessions: { select: { status: true, studentId: true } },
       class: {
         select: {
-          enrollments: { select: { studentId: true } },
+          enrollments: {
+            select: {
+              studentId: true,
+              student: { select: { provisional: true, provisionalInWorkouts: true } },
+            },
+          },
         },
       },
-      subgroup: { select: { members: { select: { studentId: true } } } },
+      subgroup: {
+        select: {
+          members: {
+            select: {
+              studentId: true,
+              student: { select: { provisional: true, provisionalInWorkouts: true } },
+            },
+          },
+        },
+      },
     },
     orderBy: [{ scheduledDate: "asc" }, { createdAt: "asc" }],
   });
 
-  return assignments.map((a) => {
+  const workoutItems: CalendarAssignment[] = assignments.map((a) => {
     const date = a.scheduledDate.toISOString().slice(0, 10);
     // Count only the athletes the assignment targets: individual, subgroup
     // members, or the full class roster — so subgroup assignments don't show
     // class-wide denominators.
+    const onWorkout = (student: { provisional: boolean; provisionalInWorkouts: boolean }) =>
+      !student.provisional || student.provisionalInWorkouts;
     const targeted = new Set(
       a.studentId
         ? [a.studentId]
         : a.subgroup
-          ? a.subgroup.members.map((m) => m.studentId)
-          : (a.class?.enrollments.map((e) => e.studentId) ?? [])
+          ? a.subgroup.members.filter((m) => onWorkout(m.student)).map((m) => m.studentId)
+          : (a.class?.enrollments.filter((e) => onWorkout(e.student)).map((e) => e.studentId) ?? [])
     );
     const totalCount = targeted.size;
     const completedCount = a.sessions.filter(
@@ -128,12 +146,16 @@ export async function listAssignmentsForClassRange(input: {
     return {
       id: a.id,
       date,
+      kind: "workout" as const,
       templateId: a.template.id,
       templateName: a.template.name,
       completedCount,
       totalCount,
+      hasResults: completedCount > 0,
     };
   });
+
+  return workoutItems;
 }
 
 export async function listTestsForClassRange(input: {

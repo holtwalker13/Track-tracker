@@ -115,7 +115,16 @@ export async function POST(request: Request) {
     })),
   });
 
-  const studentIds = cls.enrollments.map((e) => e.studentId);
+  const roster = await prisma.classEnrollment.findMany({
+    where: { classId: cls.id },
+    select: {
+      studentId: true,
+      student: { select: { provisional: true, provisionalInTests: true } },
+    },
+  });
+  const studentIds = roster
+    .filter((row) => !row.student.provisional || row.student.provisionalInTests)
+    .map((row) => row.studentId);
   if (studentIds.length > 0) {
     await prisma.testingSessionStudent.createMany({
       data: studentIds.map((studentId) => ({ sessionId: rec.id, studentId })),

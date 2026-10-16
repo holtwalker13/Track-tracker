@@ -3,7 +3,7 @@
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { addDays, format, parseISO } from "date-fns";
-import { ChevronLeft, ChevronRight, Pencil, Plus, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Pencil, Trash2 } from "lucide-react";
 import {
   type CalendarAssignment,
   type CalendarTest,
@@ -68,6 +68,7 @@ export function ProgramsWeekCalendar({
   const [editing, setEditing] = useState<CalendarAssignment | null>(null);
   const [editTemplateId, setEditTemplateId] = useState("");
   const [editDate, setEditDate] = useState("");
+  const [editName, setEditName] = useState("");
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionPending, setActionPending] = useState(false);
 
@@ -167,6 +168,7 @@ export function ProgramsWeekCalendar({
     setEditing(a);
     setEditTemplateId(a.templateId);
     setEditDate(a.date);
+    setEditName(a.templateName);
     setParams({ date: a.date, logView: "day" });
   }
 
@@ -177,6 +179,24 @@ export function ProgramsWeekCalendar({
       return;
     }
     setParams({ date: a.date, logView: "day", assignment: a.id, test: null });
+  }
+
+  function openEditTest(test: CalendarTest) {
+    setActionError(null);
+    setEditing({
+      id: test.id,
+      date: test.date,
+      kind: "test",
+      templateId: "",
+      templateName: test.name,
+      completedCount: test.recordedCount,
+      totalCount: test.athleteCount,
+      hasResults: test.recordedCount > 0,
+    });
+    setEditName(test.name);
+    setEditTemplateId("");
+    setEditDate(test.date);
+    setParams({ date: test.date, logView: "day" });
   }
 
   function toggleTest(test: CalendarTest) {
@@ -192,6 +212,31 @@ export function ProgramsWeekCalendar({
     if (!editing) return;
     setActionPending(true);
     setActionError(null);
+    if (editing.kind === "test") {
+      const name = editName.trim();
+      if (!name) {
+        setActionPending(false);
+        setActionError("Test name is required.");
+        return;
+      }
+      const res = await fetch(`/api/testing/sessions/${editing.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name }),
+      });
+      const data = await res.json().catch(() => ({}));
+      setActionPending(false);
+      if (!res.ok) {
+        setActionError(data.error ?? "Could not rename test");
+        return;
+      }
+      setAssignments((prev) =>
+        prev.map((row) => (row.id === editing.id ? { ...row, templateName: name } : row))
+      );
+      setEditing(null);
+      startTransition(() => router.refresh());
+      return;
+    }
     const res = await fetch(`/api/workouts/assignments/${editing.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -212,16 +257,23 @@ export function ProgramsWeekCalendar({
 
   async function removeAssignment() {
     if (!editing) return;
-    if (!window.confirm(`Remove “${editing.templateName}” from ${editing.date}?`)) return;
+    const isTest = editing.kind === "test";
+    const warn = isTest
+      ? editing.hasResults
+        ? `Delete “${editing.templateName}” and all marks recorded in this test? This removes those results from athlete profiles, leaderboards, and compare.`
+        : `Delete “${editing.templateName}”?`
+      : `Remove “${editing.templateName}” from ${editing.date}?`;
+    if (!window.confirm(warn)) return;
     setActionPending(true);
     setActionError(null);
-    const res = await fetch(`/api/workouts/assignments/${editing.id}`, {
-      method: "DELETE",
-    });
+    const res = await fetch(
+      isTest ? `/api/testing/sessions/${editing.id}` : `/api/workouts/assignments/${editing.id}`,
+      { method: "DELETE" }
+    );
     const data = await res.json().catch(() => ({}));
     setActionPending(false);
     if (!res.ok) {
-      setActionError(data.error ?? "Could not remove workout");
+      setActionError(data.error ?? (isTest ? "Could not delete test" : "Could not remove workout"));
       return;
     }
     setAssignments((prev) => prev.filter((a) => a.id !== editing.id));
@@ -240,7 +292,7 @@ export function ProgramsWeekCalendar({
         <div>
           <h2 className="text-base font-semibold">Week calendar</h2>
           <p className="text-xs text-muted">
-            Click a workout or test to review it · pencil edits a workout
+            + Create adds a workout, test, or attendance · click a chip to review it · pencil edits or deletes
             <span className="sm:hidden"> · 3-day view, today centered</span>
             <span className="hidden sm:inline"> · Mon–Fri default · scroll for Sun/Sat</span>
           </p>
@@ -326,11 +378,11 @@ export function ProgramsWeekCalendar({
                     type="button"
                     onClick={() => openAdd(date)}
                     disabled={!classId}
-                    className="rounded-md p-0.5 text-muted hover:bg-emerald-500/15 hover:text-emerald-300 disabled:opacity-30"
-                    aria-label={`Add to ${date}`}
+                    className="shrink-0 rounded-md px-1 py-0.5 text-[10px] font-semibold leading-none text-muted hover:bg-emerald-500/15 hover:text-emerald-300 disabled:opacity-30"
+                    aria-label={`Create on ${date}`}
                     title="Add workout, test, or attendance"
                   >
-                    <Plus className="h-3.5 w-3.5" />
+                    + Create
                   </button>
                 </div>
                 <div className="flex min-h-0 flex-1 flex-col gap-1">
@@ -370,24 +422,41 @@ export function ProgramsWeekCalendar({
                     </div>
                   ))}
                   {dayTests.map((test) => (
-                    <button
+                    <div
                       key={test.id}
-                      type="button"
-                      onClick={() => toggleTest(test)}
                       className={cn(
-                        "rounded-md bg-amber-500/10 px-1 py-0.5 text-left ring-1",
+                        "rounded-md bg-amber-500/10 px-1 py-0.5 ring-1",
                         selectedTest === test.id ? "ring-accent" : "ring-amber-400/30"
                       )}
                     >
-                      <div className="truncate text-[10px] font-medium leading-none text-amber-100 sm:text-[11px]">
-                        {test.name}
+                      <div className="flex items-center gap-0.5">
+                        <button
+                          type="button"
+                          onClick={() => toggleTest(test)}
+                          className="min-w-0 flex-1 truncate text-left text-[10px] font-medium leading-none text-amber-100 hover:text-white sm:text-[11px]"
+                        >
+                          {test.name}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => openEditTest(test)}
+                          className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded text-muted hover:bg-background/40 hover:text-amber-100"
+                          aria-label={`Edit ${test.name}`}
+                          title="Edit test"
+                        >
+                          <Pencil className="h-3 w-3" />
+                        </button>
                       </div>
-                      <div className="text-[9px] tabular-nums leading-none text-muted sm:text-[10px]">
+                      <button
+                        type="button"
+                        onClick={() => toggleTest(test)}
+                        className="text-left text-[9px] tabular-nums leading-none text-muted sm:text-[10px]"
+                      >
                         {test.athleteCount > 0
                           ? `${test.recordedCount}/${test.athleteCount} tested`
                           : "Test"}
-                      </div>
-                    </button>
+                      </button>
+                    </div>
                   ))}
                   {attendanceByDate.get(date) ? (
                     <button
@@ -470,29 +539,42 @@ export function ProgramsWeekCalendar({
         >
           <div className="space-y-3">
             {actionError && <p className="text-sm text-sport-red">{actionError}</p>}
-            <label className="block text-sm">
-              Workout
-              <select
-                value={editTemplateId}
-                onChange={(e) => setEditTemplateId(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-card-border bg-background px-3 py-2"
-              >
-                {templates.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="block text-sm">
-              Date
-              <input
-                type="date"
-                value={editDate}
-                onChange={(e) => setEditDate(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-card-border bg-background px-3 py-2"
-              />
-            </label>
+            {editing.kind === "test" ? (
+              <label className="block text-sm">
+                Test name
+                <input
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-card-border bg-background px-3 py-2"
+                />
+              </label>
+            ) : (
+              <>
+                <label className="block text-sm">
+                  Workout
+                  <select
+                    value={editTemplateId}
+                    onChange={(e) => setEditTemplateId(e.target.value)}
+                    className="mt-1 w-full rounded-lg border border-card-border bg-background px-3 py-2"
+                  >
+                    {templates.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="block text-sm">
+                  Date
+                  <input
+                    type="date"
+                    value={editDate}
+                    onChange={(e) => setEditDate(e.target.value)}
+                    className="mt-1 w-full rounded-lg border border-card-border bg-background px-3 py-2"
+                  />
+                </label>
+              </>
+            )}
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"
@@ -501,7 +583,7 @@ export function ProgramsWeekCalendar({
                 className="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-background disabled:opacity-50"
               >
                 <Pencil className="h-4 w-4" />
-                {actionPending ? "Saving…" : "Save changes"}
+                {actionPending ? "Saving…" : editing.kind === "test" ? "Save name" : "Save changes"}
               </button>
               <button
                 type="button"
@@ -510,7 +592,7 @@ export function ProgramsWeekCalendar({
                 className="inline-flex items-center gap-2 rounded-lg border border-sport-red/40 px-4 py-2 text-sm font-medium text-sport-red hover:bg-sport-red/10 disabled:opacity-50"
               >
                 <Trash2 className="h-4 w-4" />
-                Remove
+                {editing.kind === "test" ? "Delete test and data" : "Remove"}
               </button>
             </div>
           </div>

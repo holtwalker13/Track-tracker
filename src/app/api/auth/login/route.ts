@@ -6,6 +6,8 @@ import { SESSION_COOKIE, sessionCookieOptions, relativeRedirect } from "@/lib/au
 import { loginDestination } from "@/lib/auth/login-destination";
 import { studentUsesBlockedSharedDemoPassword } from "@/lib/auth/demo-login-guard";
 import { signSessionToken } from "@/lib/auth/session";
+import { checkRateLimit, rateLimitKey } from "@/lib/security/rate-limit";
+import { clientIpHint, writeAuditLog } from "@/lib/security/audit-log";
 
 async function readCredentials(request: Request): Promise<{
   email: string;
@@ -36,12 +38,39 @@ function safeNext(next: string | undefined, role: string): string {
 export async function POST(request: Request) {
   const { email: credential, password, next } = await readCredentials(request);
   const wantsJson = (request.headers.get("content-type") ?? "").includes("application/json");
+  const ip = clientIpHint(request) ?? "unknown";
+  const limit = checkRateLimit(rateLimitKey("login", `${ip}:${credential.toLowerCase().slice(0, 64)}`), 20, 15 * 60 * 1000);
+  if (!limit.allowed) {
+    if (wantsJson) {
+      return NextResponse.json({ error: "Too many login attempts. Try again later." }, { status: 429 });
+    }
+    return relativeRedirect("/login?error=rate");
+  }
 
   const user = await findUserByCredential(credential);
 
   if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
+    await writeAuditLog({
+      action: "AUTH_LOGIN_FAILED",
+      outcome: "FAILURE",
+      ipHint: ip,
+      metadata: { credentialHint: credential.includes("@") ? "email" : "username" },
+    });
     if (wantsJson) {
       return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
+    }
+    return relativeRedirect("/login?error=1");
+  }
+  if (user.disabledAt) {
+    await writeAuditLog({
+      actorUserId: user.id,
+      actorRole: user.role,
+      action: "AUTH_LOGIN_DISABLED",
+      outcome: "DENIED",
+      ipHint: ip,
+    });
+    if (wantsJson) {
+      return NextResponse.json({ error: "Account disabled" }, { status: 403 });
     }
     return relativeRedirect("/login?error=1");
   }
@@ -81,6 +110,14 @@ export async function POST(request: Request) {
   jar.set(SESSION_COOKIE, token, opts);
 
   const destination = safeNext(next, user.role);
+  await writeAuditLog({
+    actorUserId: user.id,
+    actorRole: user.role,
+    schoolId: schoolId ?? undefined,
+    action: "AUTH_LOGIN_SUCCESS",
+    outcome: "SUCCESS",
+    ipHint: ip,
+  });
   if (wantsJson) {
     const res = NextResponse.json({ ok: true, redirect: destination });
     res.cookies.set(SESSION_COOKIE, token, opts);

@@ -45,6 +45,7 @@ export const SCHOOL_HUB_TABS = [
   { href: "/coach/school/roster", label: "Roster" },
   { href: "/coach/school/classes", label: "Classes" },
   { href: "/coach/school/coaches", label: "Coaches" },
+  { href: "/coach/school/privacy", label: "Privacy" },
 ] as const;
 
 export const COMPETE_HUB_TABS = [

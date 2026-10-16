@@ -3,6 +3,8 @@ import { requireSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { isClassYear } from "@/lib/grades";
 import { buildStudentUsernameBase, pickUniqueUsername } from "@/lib/services/student-username";
+import { coachAssignedClassIds, ensureUnder13CollectionAllowed } from "@/lib/auth/tenant-access";
+
 export async function GET(request: Request) {
   const session = await requireSession(["COACH", "ADMIN"]);
   if (!session?.schoolId) {
@@ -12,10 +14,24 @@ export async function GET(request: Request) {
   const officialOnly = new URL(request.url).searchParams.get("official") === "1";
   const tokens = q.split(/\s+/).filter(Boolean);
   if (tokens.length < 1) return NextResponse.json({ students: [] });
+
+  let classScopeFilter: { classEnrollments: { some: { classId: { in: string[] } } } } | undefined;
+  if (session.role === "COACH") {
+    const profile = await prisma.coachProfile.findFirst({
+      where: { userId: session.userId, schoolId: session.schoolId },
+      select: { id: true },
+    });
+    if (!profile) return NextResponse.json({ students: [] });
+    const classIds = [...(await coachAssignedClassIds(profile.id, session.schoolId))];
+    if (classIds.length === 0) return NextResponse.json({ students: [] });
+    classScopeFilter = { classEnrollments: { some: { classId: { in: classIds } } } };
+  }
+
   const students = await prisma.studentProfile.findMany({
     where: {
       schoolId: session.schoolId,
       ...(officialOnly ? { provisional: false } : {}),
+      ...(classScopeFilter ?? {}),
       AND: tokens.map((token) => ({
         OR: [
           { firstName: { contains: token, mode: "insensitive" as const } },
@@ -96,6 +112,12 @@ export async function POST(request: Request) {
     }
   }
 
+  const dob = body.dateOfBirth ? new Date(String(body.dateOfBirth)) : new Date(2010, 0, 1);
+  const coppa = await ensureUnder13CollectionAllowed(session.schoolId, dob);
+  if (!coppa.ok) {
+    return NextResponse.json({ error: coppa.error }, { status: 403 });
+  }
+
   const username = await pickUniqueUsername(
     session.schoolId,
     buildStudentUsernameBase(firstName, lastName, classYear)
@@ -108,7 +130,7 @@ export async function POST(request: Request) {
       username,
       firstName,
       lastName,
-      dateOfBirth: new Date(2010, 0, 1),
+      dateOfBirth: dob,
       gender,
       sports,
       participationType,

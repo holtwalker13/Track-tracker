@@ -2,20 +2,24 @@ import { SessionPayload } from "./session";
 
 export function canViewStudentIdentity(
   session: SessionPayload,
-  studentSchoolId: string
+  studentSchoolId: string,
+  studentId?: string
 ): boolean {
-  if (session.role === "ADMIN") return true;
+  if (session.role === "ADMIN") return session.schoolId === studentSchoolId;
   if (session.role === "COACH") return session.schoolId === studentSchoolId;
-  if (session.role === "STUDENT") return session.studentId !== undefined;
+  if (session.role === "STUDENT") {
+    return session.schoolId === studentSchoolId && (!studentId || session.studentId === studentId);
+  }
   return false;
 }
 
+/** Synchronous guard for same-school checks. Use tenant-access.coachCanAccessStudent for coach class scope. */
 export function canAccessStudentRecord(
   session: SessionPayload,
   studentId: string,
   studentSchoolId: string
 ): boolean {
-  if (session.role === "ADMIN") return true;
+  if (session.role === "ADMIN") return session.schoolId === studentSchoolId;
   if (session.role === "COACH" && session.schoolId === studentSchoolId) return true;
   if (session.role === "STUDENT" && session.studentId === studentId) return true;
   return false;

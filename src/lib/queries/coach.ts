@@ -196,6 +196,7 @@ export async function getLeaderboard(
       role: "ADMIN" | "COACH" | "STUDENT";
       studentId?: string;
       schoolId: string;
+      studentLeaderboardDisplayMode?: "PSEUDONYM" | "LEGAL_NAME";
     };
   } = {}
 ) {
@@ -348,19 +349,24 @@ export function leaderboardEntryName(
     lastName: string;
     schoolId: string;
     nameHidden: boolean;
+    anonymousId?: string;
   },
   viewer?: {
     role: "ADMIN" | "COACH" | "STUDENT";
     studentId?: string;
     schoolId: string;
+    studentLeaderboardDisplayMode?: "PSEUDONYM" | "LEGAL_NAME";
   }
 ) {
-  if (!viewer) return `${student.firstName} ${student.lastName}`;
+  if (!viewer) return `Student ${student.anonymousId ?? "—"}`;
   if (viewer.role === "COACH" || viewer.role === "ADMIN") {
     if (student.schoolId !== viewer.schoolId) return "Other school";
     return `${student.firstName} ${student.lastName}`;
   }
   if (viewer.studentId === student.id) return "You";
   if (student.schoolId !== viewer.schoolId || student.nameHidden) return "Hidden";
-  return `${student.firstName} ${student.lastName}`;
+  if (viewer.studentLeaderboardDisplayMode === "LEGAL_NAME") {
+    return `${student.firstName} ${student.lastName}`;
+  }
+  return `Student ${student.anonymousId ?? student.id.slice(-4)}`;
 }

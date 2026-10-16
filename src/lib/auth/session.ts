@@ -86,6 +86,9 @@ export async function requireSession(roles?: UserRole[]) {
     console.error("[auth] session user missing from DB:", session.userId);
     return null;
   }
+  if (user.disabledAt) {
+    return null;
+  }
 
   let schoolId =
     user.role === "ADMIN"

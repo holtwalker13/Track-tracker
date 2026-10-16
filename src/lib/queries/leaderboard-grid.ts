@@ -108,6 +108,7 @@ export async function getLeaderboardGrid(
     role: "ADMIN" | "COACH" | "STUDENT";
     studentId?: string;
     schoolId: string;
+    studentLeaderboardDisplayMode?: "PSEUDONYM" | "LEGAL_NAME";
   },
   classId?: string,
   period: LeaderboardPeriod = DEFAULT_LEADERBOARD_PERIOD,

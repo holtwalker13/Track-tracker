@@ -135,6 +135,7 @@ export function KpiTargetsEditor({
   const [bracket, setBracket] = useState<AgeBracketId>(DEFAULT_AGE_BRACKET);
   const [gender, setGender] = useState<"F" | "M">("F");
   const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [builderOpen, setBuilderOpen] = useState(false);
   const [kpiBuilderDefaults, setKpiBuilderDefaults] = useState<KpiBuilderDefaults | undefined>();
   const [liftBuilderOpen, setLiftBuilderOpen] = useState(false);
@@ -225,8 +226,13 @@ export function KpiTargetsEditor({
   }
 
   async function save() {
-    if (!activeSetId || !activeSet || activeSet.id !== activeSetId) return;
+    if (!activeSetId || !activeSet || activeSet.id !== activeSetId) {
+      setSaveError("This KPI set is not ready to save. Refresh and try again.");
+      setStatus("error");
+      return;
+    }
     setStatus("saving");
+    setSaveError(null);
     const metricsPayload = metricList.map((m, index) => ({
       metricSlug: m.slug,
       ranked: Boolean(rankedBySlug[m.slug]),
@@ -242,6 +248,10 @@ export function KpiTargetsEditor({
       }),
     });
     if (!res.ok) {
+      const errBody = await res.json().catch(() => ({}));
+      setSaveError(
+        typeof errBody.error === "string" ? errBody.error : "Could not save. Try again."
+      );
       setStatus("error");
       return;
     }
@@ -718,7 +728,9 @@ export function KpiTargetsEditor({
         >
           {status === "saving" ? "Saving…" : "Save KPI set"}
         </button>
-        {status === "error" && <p className="text-sm text-sport-red">Could not save. Try again.</p>}
+        {status === "error" && (
+          <p className="text-sm text-sport-red">{saveError ?? "Could not save. Try again."}</p>
+        )}
         <p className="text-xs text-muted">
           Programs on{" "}
           <Link href="/coach/programs" className="text-accent hover:underline">

@@ -100,7 +100,7 @@ export async function getClassRoster(
   gender: AthleteGender,
   opts?: { classId?: string; participationType?: string; columns?: { slug: string; label: string }[] }
 ): Promise<RosterAthlete[]> {
-  const columns = opts?.columns ?? ROSTER_COLUMNS;
+  const columns = opts?.columns ?? [];
   const currentYear = await prisma.schoolYear.findFirst({
     where: { schoolId, isCurrent: true },
   });
@@ -138,13 +138,19 @@ export async function getClassRoster(
     orderBy: [{ gradeLevel: "asc" }, { student: { lastName: "asc" } }, { student: { firstName: "asc" } }],
   });
 
-  const activities = await prisma.activity.findMany({
-    where: { slug: { in: columns.map((c) => c.slug) } },
-    select: { id: true, slug: true, unit: true },
-  });
+  const activities =
+    columns.length === 0
+      ? []
+      : await prisma.activity.findMany({
+          where: { slug: { in: columns.map((c) => c.slug) } },
+          select: { id: true, slug: true, unit: true },
+        });
   const actById = new Map(activities.map((a) => [a.id, a]));
 
-  const results = await prisma.performanceResult.findMany({
+  const results =
+    activities.length === 0
+      ? []
+      : await prisma.performanceResult.findMany({
     where: {
       schoolId,
       schoolYearId: currentYear.id,

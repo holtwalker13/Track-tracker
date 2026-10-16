@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { UserPlus } from "lucide-react";
 import { CoachModal } from "@/components/ui/coach-modal";
 
 type TempStudent = { id: string; firstName: string; lastName: string };
@@ -26,6 +25,8 @@ export function TemporaryStudentsPanel({
   const [linkingId, setLinkingId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [matches, setMatches] = useState<Match[]>([]);
+  const [addToWorkout, setAddToWorkout] = useState(true);
+  const [addToTest, setAddToTest] = useState(false);
 
   async function createTemp(event: React.FormEvent) {
     event.preventDefault();
@@ -34,7 +35,14 @@ export function TemporaryStudentsPanel({
     const res = await fetch("/api/students/provisional", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ classId, date, firstName, lastName }),
+      body: JSON.stringify({
+        classId,
+        date,
+        firstName,
+        lastName,
+        addToWorkout,
+        addToTest,
+      }),
     });
     const data = await res.json().catch(() => ({}));
     setPending(false);
@@ -84,11 +92,9 @@ export function TemporaryStudentsPanel({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="relative inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-card-border bg-background text-muted hover:border-amber-400/40 hover:text-amber-200"
-        aria-label="Add temporary student"
-        title="Add temporary student"
+        className="relative inline-flex h-10 shrink-0 items-center justify-center rounded-lg border border-card-border bg-background px-3 text-xs font-semibold text-muted hover:border-amber-400/40 hover:text-amber-200"
       >
-        <UserPlus className="h-4 w-4" aria-hidden />
+        + add temporary student
         {students.length > 0 ? (
           <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-400 px-1 text-[10px] font-semibold text-background">
             {students.length}
@@ -103,30 +109,52 @@ export function TemporaryStudentsPanel({
           maxWidth="max-w-md"
         >
           <p className="mb-3 text-xs text-muted">
-            Add someone who is not on the roster for this workout. Connect them to a real student later.
+            They always join this class for attendance. Choose whether they also join today’s workout,
+            today’s performance test, or both. Connect them to a roster student later.
           </p>
           {error ? <p className="mb-3 text-sm text-sport-red">{error}</p> : null}
-          <form onSubmit={createTemp} className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
-            <input
-              value={firstName}
-              onChange={(e) => setFirstName(e.target.value)}
-              placeholder="First name"
-              required
-              className="rounded-lg border border-card-border bg-background px-3 py-2 text-sm"
-            />
-            <input
-              value={lastName}
-              onChange={(e) => setLastName(e.target.value)}
-              placeholder="Last name"
-              required
-              className="rounded-lg border border-card-border bg-background px-3 py-2 text-sm"
-            />
+          <form onSubmit={createTemp} className="space-y-3">
+            <div className="grid gap-2 sm:grid-cols-2">
+              <input
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                placeholder="First name"
+                required
+                className="rounded-lg border border-card-border bg-background px-3 py-2 text-sm"
+              />
+              <input
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                placeholder="Last name"
+                required
+                className="rounded-lg border border-card-border bg-background px-3 py-2 text-sm"
+              />
+            </div>
+            <p className="text-xs text-muted">Always added to this class for attendance.</p>
+            <div className="flex flex-wrap gap-4 text-sm">
+              <label className="inline-flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={addToWorkout}
+                  onChange={(e) => setAddToWorkout(e.target.checked)}
+                />
+                Add to today’s workout
+              </label>
+              <label className="inline-flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={addToTest}
+                  onChange={(e) => setAddToTest(e.target.checked)}
+                />
+                Add to today’s performance test
+              </label>
+            </div>
             <button
               type="submit"
               disabled={pending}
               className="rounded-lg bg-accent px-3 py-2 text-sm font-semibold text-background disabled:opacity-50"
             >
-              {pending ? "Adding…" : "Add"}
+              {pending ? "Adding…" : "Add student"}
             </button>
           </form>
           {students.length > 0 ? (

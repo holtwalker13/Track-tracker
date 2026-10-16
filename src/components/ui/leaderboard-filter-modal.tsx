@@ -13,11 +13,14 @@ function LeaderboardFilterModalInner({
   classes,
   showGender = true,
   lockGenderLabel,
+  schoolWideClassId,
 }: {
   classes: ClassOption[];
   showGender?: boolean;
   /** When gender is locked (student), show as read-only hint. */
   lockGenderLabel?: string;
+  /** URL value that means school-wide events. Omit to clear `classId`. */
+  schoolWideClassId?: string;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -29,6 +32,7 @@ function LeaderboardFilterModalInner({
   const gender = searchParams.get("gender") === "M" ? "M" : searchParams.get("gender") === "F" ? "F" : "F";
   const scope = searchParams.get("scope") === "global" ? "global" : "school";
   const classId = searchParams.get("classId") ?? "";
+  const schoolWide = Boolean(schoolWideClassId) && classId === schoolWideClassId;
 
   const activeCount =
     (grades.length < GRADE_LEVELS.length ? 1 : 0) +
@@ -181,11 +185,11 @@ function LeaderboardFilterModalInner({
                   <div className="mt-2 flex flex-wrap gap-2">
                     <button
                       type="button"
-                      aria-pressed={!classId}
-                      onClick={() => push({ classId: null })}
+                      aria-pressed={schoolWideClassId ? schoolWide : !classId}
+                      onClick={() => push({ classId: schoolWideClassId ?? null })}
                       className={cn(
                         "rounded-full px-3 py-1.5 text-sm",
-                        !classId
+                        (schoolWideClassId ? schoolWide : !classId)
                           ? "bg-sky-400/20 text-sky-300 ring-1 ring-sky-400/55"
                           : "border border-card-border text-muted"
                       )}
@@ -287,6 +291,7 @@ export function LeaderboardFilterModal(props: {
   classes: ClassOption[];
   showGender?: boolean;
   lockGenderLabel?: string;
+  schoolWideClassId?: string;
 }) {
   return (
     <Suspense fallback={<div className="h-9 w-24 animate-pulse rounded-full bg-card/40" />}>

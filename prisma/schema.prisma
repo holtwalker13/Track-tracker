@@ -371,6 +371,9 @@ model StudentProfile {
   nameHidden    Boolean  @default(false)
   // Walk-up athlete for a workout. Logs stay until a coach connects them to a roster student.
   provisional   Boolean  @default(false)
+  // Provisional placement. Official students ignore these. Attendance is class enrollment.
+  provisionalInWorkouts Boolean @default(true)
+  provisionalInTests    Boolean @default(false)
   createdAt     DateTime @default(now())
 
   @@unique([schoolId, rosterEmail])

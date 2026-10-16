@@ -28,15 +28,20 @@ export default async function CompeteLeaderboardsPage({
 }) {
   const session = await requireSchoolSession();
   const sp = await searchParams;
-  const scopeCtx = await resolveCoachClassScopeFromParams(session, {
-    coachId: sp.coachId,
-    classId: sp.classId,
-    subgroupId: sp.subgroupId,
-  });
+  const allClasses = sp.classId === "all";
+  const scopeCtx = await resolveCoachClassScopeFromParams(
+    session,
+    {
+      coachId: sp.coachId,
+      classId: allClasses ? undefined : sp.classId,
+      subgroupId: sp.subgroupId,
+    },
+    { defaultClassId: !allClasses }
+  );
   const grades = gradesFromSearch(sp);
   const gender = parseGenderParam(sp.gender);
   const scope = sp.scope === "global" ? "global" : "school";
-  const classId = scopeCtx.classId || undefined;
+  const classId = allClasses ? undefined : scopeCtx.classId || undefined;
   const period = parseLeaderboardPeriod(sp.period);
 
   const classes = scopeCtx.classes.filter((c) => !isGraduatingClassName(c.name));
@@ -60,7 +65,7 @@ export default async function CompeteLeaderboardsPage({
     classId,
     period,
     undefined,
-    scopeCtx.subgroupId
+    allClasses ? null : scopeCtx.subgroupId
   );
 
   return (
@@ -71,13 +76,14 @@ export default async function CompeteLeaderboardsPage({
           classes={scopeCtx.classes}
           subgroups={scopeCtx.subgroups}
           coachId={scopeCtx.coachId}
-          classId={scopeCtx.classId}
+          classId={allClasses ? "all" : scopeCtx.classId}
           subgroupId={scopeCtx.subgroupId ?? ""}
           showCoach={session.role === "ADMIN"}
           showSubgroup
+          allClassesLabel="All classes"
         />
       </div>
-      <LeaderboardToolbar classes={classes} />
+      <LeaderboardToolbar classes={classes} schoolWideClassId="all" />
       <LeaderboardGrid
         boards={boards}
         subtitle={`${periodLabel(period)} · ${scope === "global" ? "Global" : "School"} · ${classLabel ?? gradesLabel(grades)} · ${genderFullLabel(gender).toLowerCase()}`}

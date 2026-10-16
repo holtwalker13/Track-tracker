@@ -267,7 +267,7 @@ export function ProgramsActions({
             className="inline-flex items-center gap-1.5 rounded-lg bg-sky-400/15 px-3 py-1.5 text-xs font-semibold text-sky-300 ring-1 ring-sky-400/35 disabled:opacity-50"
           >
             <Plus className="h-3.5 w-3.5" />
-            New
+            Create
           </button>
         </div>
         {templates.length === 0 ? (

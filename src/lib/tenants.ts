@@ -20,6 +20,10 @@ export type TenantConfig = {
   studentEmail: string | null;
   /** Email domains that resolve sign-ins to this school (lowercase, no @). */
   loginEmailDomains: string[];
+  /** When set, student sign-in emails must use one of these domains unless an admin adds an exception. */
+  studentLoginDomains?: string[];
+  /** When set, coach sign-in emails must use one of these domains unless an admin adds an exception. */
+  facultyLoginDomains?: string[];
   emptyRoster: boolean;
 };
 
@@ -41,7 +45,9 @@ export const TENANTS: TenantConfig[] = [
     description: "Live school with weightlifting periods. Demo student: Kendall Leland.",
     coachEmail: "coach1@jhs.demo",
     studentEmail: "student1@jhs.demo",
-    loginEmailDomains: ["jhs.demo"],
+    loginEmailDomains: ["jacksonindians.us", "jackson.k12.mo.us", "jhs.demo"],
+    studentLoginDomains: ["jacksonindians.us"],
+    facultyLoginDomains: ["jackson.k12.mo.us"],
     emptyRoster: false,
   },
   {

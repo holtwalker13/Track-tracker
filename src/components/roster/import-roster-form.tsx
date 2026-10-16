@@ -22,8 +22,11 @@ export function ImportRosterForm({ compact = false }: { compact?: boolean }) {
       setError(data.error ?? "Import failed");
       return;
     }
+    const skipped = Number(data.skippedEmails ?? 0);
     setMsg(
-      `Created ${data.createdStudents} student(s), updated ${data.existingStudents}, ${data.classes} class(es), ${data.enrolled} enrollment(s).`
+      `Created ${data.createdStudents} student(s), updated ${data.existingStudents}, added email on ${data.emailsAdded ?? 0}.${
+        skipped > 0 ? ` Skipped ${skipped} email(s) that are not an allowed school address.` : ""
+      }`
     );
     router.refresh();
   }
@@ -39,9 +42,9 @@ export function ImportRosterForm({ compact = false }: { compact?: boolean }) {
         <code className="text-xs">
           firstName,lastName,email,gender,classYear,studentNumber,className,period
         </code>
-        . Optional <code className="text-xs">email</code> is stored for sign-in when it differs from
-        the school domain. Missing students are created. Weightlifting classes are created from{" "}
-        <code className="text-xs">className</code>.
+        . An <code className="text-xs">email</code> column fills the roster email. Rows that match an
+        existing student by ID, username, or first and last name keep that student and add the email.
+        New names are added. Jackson students need <code className="text-xs">@jacksonindians.us</code>.
       </p>
       <a
         href="/templates/roster-import.csv"

@@ -9,6 +9,8 @@ import { ImportRosterForm } from "@/components/roster/import-roster-form";
 import Link from "next/link";
 import { EnterSchoolButton } from "@/components/admin/enter-school-button";
 import { tenantBySlug } from "@/lib/tenants";
+import { loginPolicyForSlug } from "@/lib/school-login-email";
+import { LoginEmailExceptions } from "@/components/admin/login-email-exceptions";
 
 export default async function AdminPage() {
   const session = await requireSession(["ADMIN"]);
@@ -20,6 +22,17 @@ export default async function AdminPage() {
     },
     orderBy: { createdAt: "asc" },
   });
+
+  const activeSchool = schools.find((school) => school.id === session.schoolId) ?? null;
+  const loginPolicy = loginPolicyForSlug(activeSchool?.slug);
+  const loginExceptions =
+    session.schoolId && loginPolicy
+      ? await prisma.schoolLoginEmailException.findMany({
+          where: { schoolId: session.schoolId },
+          orderBy: [{ role: "asc" }, { email: "asc" }],
+          select: { id: true, email: true, role: true, note: true },
+        })
+      : [];
 
   const classes = session.schoolId
     ? await prisma.class.findMany({
@@ -95,6 +108,13 @@ export default async function AdminPage() {
           <div className="lg:col-span-2">
             <ImportRosterForm />
           </div>
+          {loginPolicy ? (
+            <LoginEmailExceptions
+              studentDomains={loginPolicy.studentDomains}
+              facultyDomains={loginPolicy.facultyDomains}
+              exceptions={loginExceptions}
+            />
+          ) : null}
         </div>
       ) : (
         <p className="text-sm text-muted">Enter a school above to add classes or students.</p>

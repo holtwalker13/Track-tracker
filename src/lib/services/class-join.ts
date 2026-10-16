@@ -6,6 +6,12 @@ import { credentialMatchesRosterStudent } from "@/lib/services/class-join-match"
 import { studentLoginEmailForNumber } from "@/lib/services/student-login-invite";
 import { validateAccountPassword } from "@/lib/services/login-invite-token";
 import { ensureStudentUsername } from "@/lib/services/student-username";
+import {
+  emailAllowedByPolicy,
+  loginPolicyForSlug,
+  normalizeLoginEmail,
+  schoolEmailHint,
+} from "@/lib/school-login-email";
 
 const BCRYPT_ROUNDS = 12;
 
@@ -26,6 +32,8 @@ type RosterMatch = {
   schoolId: string;
   userId: string | null;
   passwordSetAt: Date | null;
+  rosterEmail: string | null;
+  schoolSlug: string | null;
 };
 
 export async function previewClassJoin(token: string): Promise<ClassJoinPreview | null> {
@@ -108,7 +116,27 @@ export async function findClassStudentByCredential(
     schoolId: match.student.schoolId,
     userId: match.student.userId,
     passwordSetAt: match.student.user?.passwordSetAt ?? null,
+    rosterEmail: match.student.rosterEmail,
+    schoolSlug: slug,
   };
+}
+
+async function newAccountEmailError(student: RosterMatch, credential: string): Promise<string | null> {
+  const policy = loginPolicyForSlug(student.schoolSlug);
+  if (!policy || student.passwordSetAt) return null;
+  const email = normalizeLoginEmail(credential);
+  const roster = student.rosterEmail ? normalizeLoginEmail(student.rosterEmail) : null;
+  if (!email.includes("@") || !roster) {
+    return `${schoolEmailHint(policy, "student")} Your coach needs that email on the roster before you can create an account.`;
+  }
+  const exceptions = await prisma.schoolLoginEmailException.findMany({
+    where: { schoolId: student.schoolId, role: "STUDENT" },
+    select: { email: true, role: true },
+  });
+  if (!emailAllowedByPolicy({ email, audience: "student", policy, exceptions }) || email !== roster) {
+    return `${schoolEmailHint(policy, "student")} Use the email on your roster.`;
+  }
+  return null;
 }
 
 export async function identifyClassStudent(token: string, credential: string) {
@@ -120,6 +148,10 @@ export async function identifyClassStudent(token: string, credential: string) {
       ok: false as const,
       error: "That email is not on this class roster. Use the email or username your coach has for you.",
     };
+  }
+  const emailError = await newAccountEmailError(student, credential);
+  if (emailError && !student.passwordSetAt) {
+    return { ok: false as const, error: emailError };
   }
   const username =
     student.username ??
@@ -153,6 +185,8 @@ export async function createAccountFromClassJoin(input: {
   if (student.passwordSetAt) {
     return { ok: false, error: "This account already exists. Sign in with your password." };
   }
+  const emailError = await newAccountEmailError(student, input.credential);
+  if (emailError) return { ok: false, error: emailError };
 
   const profile = await prisma.studentProfile.findUnique({
     where: { id: student.id },
@@ -167,7 +201,12 @@ export async function createAccountFromClassJoin(input: {
     where: { id: student.schoolId },
     select: { slug: true },
   });
-  const email = studentLoginEmailForNumber(student.studentNumber, school?.slug ?? "school");
+  const policy = loginPolicyForSlug(school?.slug ?? student.schoolSlug);
+  const typed = normalizeLoginEmail(input.credential);
+  const email = policy
+    ? typed
+    : studentLoginEmailForNumber(student.studentNumber, school?.slug ?? "school");
+  const confirmedAt = policy ? new Date() : null;
   const taken = await prisma.user.findUnique({
     where: { email },
     select: { id: true, studentProfile: { select: { id: true } } },
@@ -187,6 +226,7 @@ export async function createAccountFromClassJoin(input: {
           email,
           passwordHash,
           passwordSetAt: now,
+          schoolEmailConfirmedAt: confirmedAt,
           firstName: student.firstName,
           lastName: student.lastName,
         },
@@ -199,6 +239,7 @@ export async function createAccountFromClassJoin(input: {
           email,
           passwordHash,
           passwordSetAt: now,
+          schoolEmailConfirmedAt: confirmedAt,
           role: "STUDENT",
           firstName: student.firstName,
           lastName: student.lastName,
@@ -217,6 +258,7 @@ export async function createAccountFromClassJoin(input: {
           firstName: student.firstName,
           lastName: student.lastName,
           passwordSetAt: now,
+          schoolEmailConfirmedAt: confirmedAt,
         },
       });
       linked = created.id;

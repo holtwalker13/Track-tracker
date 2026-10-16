@@ -1,6 +1,6 @@
 /**
  * Railway keeps existing Postgres across deploys. Ensures tenant schools exist
- * without rewriting live JHS/CHS rosters or student-chosen passwords.
+ * without rewriting Demo, JHS, or Cape rosters, names, or student-chosen passwords.
  */
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
@@ -8,7 +8,6 @@ import { ALL_KPI_BANDS, KPI_METRIC_META } from "../src/lib/kpi-targets";
 import { DEFAULT_AGE_BRACKET } from "../src/lib/age-brackets";
 import { backfillAllStudentUsernames } from "../src/lib/services/student-username";
 import { ADMIN_LOGIN, DEMO_PASSWORD, TENANTS } from "../src/lib/tenants";
-import { isSyntheticName, syntheticName } from "../src/lib/synthetic-names";
 
 const prisma = new PrismaClient();
 
@@ -17,39 +16,6 @@ const SCHOOL_YEAR = {
   startDate: new Date("2025-08-12"),
   endDate: new Date("2026-06-05"),
 };
-
-async function anonymizeDemoSchoolOnly(schoolId: string): Promise<number> {
-  const students = await prisma.studentProfile.findMany({
-    where: { schoolId },
-    orderBy: [{ gender: "asc" }, { createdAt: "asc" }, { studentNumber: "asc" }],
-    select: { id: true, userId: true, firstName: true, lastName: true, gender: true },
-  });
-  if (students.length === 0) return 0;
-  const dirty = students.filter((s) => !isSyntheticName(s.firstName, s.lastName, s.gender));
-  if (dirty.length === 0) return 0;
-
-  let femaleIdx = 0;
-  let maleIdx = 0;
-  let updated = 0;
-  for (const student of students) {
-    const gender = student.gender === "M" ? "M" : "F";
-    const index = gender === "M" ? maleIdx++ : femaleIdx++;
-    const { firstName, lastName } = syntheticName(gender, index);
-    if (student.firstName === firstName && student.lastName === lastName) continue;
-    await prisma.studentProfile.update({
-      where: { id: student.id },
-      data: { firstName, lastName },
-    });
-    if (student.userId) {
-      await prisma.user.update({
-        where: { id: student.userId },
-        data: { firstName, lastName },
-      });
-    }
-    updated += 1;
-  }
-  return updated;
-}
 
 async function retargetEmails(schoolId: string, fromDomain: string, toDomain: string) {
   const coaches = await prisma.coachProfile.findMany({
@@ -85,23 +51,6 @@ async function ensureKpiTargets(schoolId: string) {
       }))
     ),
   });
-}
-
-async function hideSomeDemoNames(schoolId: string) {
-  const students = await prisma.studentProfile.findMany({
-    where: { schoolId },
-    orderBy: { studentNumber: "asc" },
-    select: { id: true, nameHidden: true },
-  });
-  if (students.length < 20) return;
-  if (students.some((s) => s.nameHidden)) return;
-  const ids = students.filter((_, i) => i % 4 === 0).map((s) => s.id);
-  if (ids.length === 0) return;
-  await prisma.studentProfile.updateMany({
-    where: { id: { in: ids } },
-    data: { nameHidden: true },
-  });
-  console.log(`Hid ${ids.length} student name(s) on student leaderboards for demo.`);
 }
 
 async function ensureSchoolYear(schoolId: string) {
@@ -207,15 +156,6 @@ async function main() {
     return;
   }
 
-  const demoSchool = schools.find((s) => s.slug === "demo");
-  if (demoSchool) {
-    const n = await anonymizeDemoSchoolOnly(demoSchool.id);
-    if (n > 0) {
-      console.log(`Anonymized ${n} student name(s) on Demo High School only.`);
-    }
-    await hideSomeDemoNames(demoSchool.id);
-  }
-
   const populated = [...schools].sort(
     (a, b) => b._count.studentProfiles - a._count.studentProfiles
   )[0]!;
@@ -303,6 +243,15 @@ async function main() {
     where: { slug: "jhs" },
     include: { _count: { select: { studentProfiles: true } } },
   });
+  const demo = await prisma.school.findUnique({
+    where: { slug: "demo" },
+    include: { _count: { select: { studentProfiles: true, classes: true, coachProfiles: true } } },
+  });
+  if (demo) {
+    console.log(
+      `Demo has ${demo._count.studentProfiles} student(s), ${demo._count.classes} class(es), ${demo._count.coachProfiles} coach(es) (names and added records preserved).`
+    );
+  }
   if (jhs && jhs._count.studentProfiles > 0) {
     console.log(`JHS has ${jhs._count.studentProfiles} student(s) (live roster — names preserved).`);
   } else if (jhs) {

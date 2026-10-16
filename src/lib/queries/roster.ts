@@ -61,6 +61,7 @@ export type RosterAthlete = {
   studentNumber: string;
   username: string | null;
   usernameHint: string;
+  rosterEmail: string | null;
   firstName: string;
   lastName: string;
   fullName: string;
@@ -187,6 +188,7 @@ export async function getClassRoster(
       studentId: e.studentId,
       studentNumber: e.student.studentNumber,
       username: e.student.username,
+      rosterEmail: e.student.rosterEmail,
       usernameHint: usernamePlaceholderHint(
         e.student.firstName,
         e.student.lastName,

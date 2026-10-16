@@ -26,9 +26,10 @@ export async function ensureStudentLoginUser(
   if (profile.userId) {
     const existing = await prisma.user.findUnique({
       where: { id: profile.userId },
-      select: { email: true },
+      select: { email: true, schoolEmailConfirmedAt: true },
     });
     if (existing) {
+      if (existing.schoolEmailConfirmedAt) return existing.email;
       if (existing.email !== canonicalEmail) {
         const taken = await prisma.user.findUnique({
           where: { email: canonicalEmail },

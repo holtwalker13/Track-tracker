@@ -19,5 +19,5 @@ export async function authenticateLogin(credential: string, password: string, ne
     redirect("/login?error=setup");
   }
 
-  await establishSessionFromUser(user, nextRaw);
+  await establishSessionFromUser(user, nextRaw, credential);
 }

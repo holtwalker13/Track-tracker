@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { emailAllowedByPolicy, loginPolicyForSlug, normalizeLoginEmail, schoolEmailHint } from "@/lib/school-login-email";
 import {
   coachLoginStatusFromRow,
   createOrRefreshCoachLoginInvite,
@@ -20,8 +21,29 @@ export async function createSchoolCoach(input: CreateSchoolCoachInput) {
   if (!email.includes("@")) throw new Error("Valid email is required");
   if (!firstName || !lastName) throw new Error("First and last name are required");
 
-  const school = await prisma.school.findUnique({ where: { id: input.schoolId }, select: { id: true } });
+  const school = await prisma.school.findUnique({
+    where: { id: input.schoolId },
+    select: { id: true, slug: true },
+  });
   if (!school) throw new Error("School not found");
+
+  const policy = loginPolicyForSlug(school.slug);
+  if (policy) {
+    const exceptions = await prisma.schoolLoginEmailException.findMany({
+      where: { schoolId: school.id, role: "FACULTY" },
+      select: { email: true, role: true },
+    });
+    if (
+      !emailAllowedByPolicy({
+        email: normalizeLoginEmail(email),
+        audience: "faculty",
+        policy,
+        exceptions,
+      })
+    ) {
+      throw new Error(schoolEmailHint(policy, "faculty"));
+    }
+  }
 
   const existing = await prisma.user.findUnique({ where: { email }, select: { id: true } });
   if (existing) throw new Error("Email is already in use");

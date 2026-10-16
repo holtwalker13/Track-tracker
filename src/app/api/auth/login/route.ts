@@ -4,6 +4,10 @@ import { cookies } from "next/headers";
 import { findUserByCredential } from "@/lib/auth/credentials-login";
 import { SESSION_COOKIE, sessionCookieOptions, relativeRedirect } from "@/lib/auth/cookie";
 import { loginDestination } from "@/lib/auth/login-destination";
+import {
+  schoolEmailPromptPath,
+  settleSchoolEmailOnLogin,
+} from "@/lib/auth/school-email-claim";
 import { studentUsesBlockedSharedDemoPassword } from "@/lib/auth/demo-login-guard";
 import { signSessionToken } from "@/lib/auth/session";
 import { checkRateLimit, rateLimitKey } from "@/lib/security/rate-limit";
@@ -109,7 +113,8 @@ export async function POST(request: Request) {
   const jar = await cookies();
   jar.set(SESSION_COOKIE, token, opts);
 
-  const destination = safeNext(next, user.role);
+  const claim = await settleSchoolEmailOnLogin(user.id, credential);
+  const destination = claim ? schoolEmailPromptPath(user.role, next) : safeNext(next, user.role);
   await writeAuditLog({
     actorUserId: user.id,
     actorRole: user.role,

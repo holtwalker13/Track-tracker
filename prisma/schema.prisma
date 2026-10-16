@@ -165,12 +165,28 @@ model School {
   privacySettings    SchoolPrivacySettings?
   authorizations     SchoolAuthorization[]
   privacyRequests    PrivacyDataRequest[]
+  loginEmailExceptions SchoolLoginEmailException[]
 
   @@index([organizationId])
   @@index([districtId])
 }
 
 // Built-in lifts a coach removed from their school's lift library (workouts + testing presets).
+// Admin override so a person can sign in with an email outside the school's required domain.
+model SchoolLoginEmailException {
+  id        String   @id @default(cuid())
+  schoolId  String
+  school    School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  email     String
+  // STUDENT or FACULTY
+  role      String
+  note      String?
+  createdAt DateTime @default(now())
+
+  @@unique([schoolId, email])
+  @@index([schoolId])
+}
+
 model SchoolHiddenLift {
   id           String @id @default(cuid())
   schoolId     String
@@ -235,6 +251,8 @@ model User {
   // Set when the student chooses their password (invite flow). Demo/backfill accounts set this immediately.
   passwordSetAt DateTime?
   disabledAt   DateTime?
+  // Set when a Jackson (or other policy) user confirms the school email they will sign in with.
+  schoolEmailConfirmedAt DateTime?
   createdAt    DateTime @default(now())
 
   coachProfile   CoachProfile?

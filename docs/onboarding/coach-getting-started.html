@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Track Tracker — Coach Getting Started</title>
+  <style>
+    @page { size: letter; margin: 0.75in; }
+    * { box-sizing: border-box; }
+    body {
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      font-size: 10.5pt;
+      line-height: 1.45;
+      color: #1a1d21;
+      margin: 0;
+    }
+    .header {
+      background: linear-gradient(135deg, #101214 0%, #1e2226 100%);
+      color: #f5f7f8;
+      padding: 28px 32px 24px;
+      margin: -0.75in -0.75in 24px -0.75in;
+      padding-left: calc(0.75in + 8px);
+      padding-right: calc(0.75in + 8px);
+      border-bottom: 4px solid #c6f54a;
+    }
+    .header h1 { margin: 0 0 6px; font-size: 22pt; font-weight: 700; }
+    .header .subtitle { margin: 0; font-size: 11pt; color: #a3abb3; }
+    .header .product {
+      display: inline-block;
+      margin-bottom: 10px;
+      font-size: 9pt;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #c6f54a;
+    }
+    .intro {
+      margin-bottom: 20px;
+      padding: 14px 16px;
+      background: #f4f6f8;
+      border-radius: 8px;
+      border-left: 4px solid #c6f54a;
+    }
+    .intro p { margin: 0; }
+    h2 {
+      font-size: 13pt;
+      font-weight: 700;
+      margin: 24px 0 8px;
+      color: #101214;
+      page-break-after: avoid;
+      border-bottom: 2px solid #e8ecef;
+      padding-bottom: 4px;
+    }
+    h3 { font-size: 10.5pt; font-weight: 700; margin: 14px 0 6px; }
+    ol.steps { margin: 0 0 12px; padding-left: 22px; }
+    ol.steps li { margin-bottom: 8px; page-break-inside: avoid; }
+    ol.steps li strong { color: #101214; }
+    .nav-pill {
+      display: inline-block;
+      background: #e8ecef;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 9.5pt;
+      font-weight: 600;
+    }
+    .tip {
+      font-size: 9.5pt;
+      color: #4a5560;
+      background: #fafbfc;
+      border: 1px solid #e8ecef;
+      border-radius: 6px;
+      padding: 10px 12px;
+      margin: 10px 0 16px;
+      page-break-inside: avoid;
+    }
+    .tip strong { color: #101214; }
+    ul.bullets { margin: 6px 0 12px; padding-left: 20px; }
+    ul.bullets li { margin-bottom: 4px; }
+    .footer {
+      margin-top: 24px;
+      padding-top: 12px;
+      border-top: 1px solid #e8ecef;
+      font-size: 9pt;
+      color: #5c6570;
+    }
+    @media print {
+      .header, .intro, .tip { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      h2 { page-break-before: auto; }
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="product">Track Tracker</div>
+    <h1>Coach Getting Started</h1>
+    <p class="subtitle">Your first week: KPIs, programs, and live testing</p>
+  </header>
+
+  <div class="intro">
+    <p>
+      Track Tracker helps you <strong>measure</strong> performance in class, <strong>compare</strong> athletes,
+      <strong>improve</strong> with progress charts and workout logs, and <strong>compete</strong> on leaderboards.
+      Your school administrator verifies roster and classes before you begin; this guide covers coach workflows on day one.
+    </p>
+  </div>
+
+  <h2>1. Sign in and learn the layout</h2>
+  <ol class="steps">
+    <li>Open your school’s Track Tracker URL and sign in with the email and password from your welcome message (or complete the invite link if this is your first login).</li>
+    <li>Use the top navigation:
+      <span class="nav-pill">School</span>
+      <span class="nav-pill">Programs</span>
+      <span class="nav-pill">KPIs</span>
+      <span class="nav-pill">Compete</span>
+    </li>
+    <li>On most coach screens, use the <strong>class scope bar</strong> to pick yourself (if you coach multiple classes) and the <strong>class/period</strong> you are working with. Many actions apply to the selected class only.</li>
+    <li>Under <strong>School</strong>, skim <strong>Roster</strong>, <strong>Classes</strong>, and your class enrollments so you recognize your students before testing or assigning workouts.</li>
+  </ol>
+
+  <h2>2. Build your first KPI set</h2>
+  <p>KPIs are the metrics you test and track (sprints, jumps, strength standards, and custom school activities). Medal targets (Gold / Silver / Bronze) drive leaderboards and student goals.</p>
+  <ol class="steps">
+    <li>Go to <strong>KPIs</strong> in the top nav.</li>
+    <li>If you need a new pack, click <strong>New set</strong>, name it (e.g., “Track &amp; Field — Fall”), and choose the sport context.</li>
+    <li>Add metrics from the school KPI library. Mark important tests as <strong>ranked</strong> (they appear first when you create a test and on leaderboards). Others can stay <strong>unranked</strong> for tracking only.</li>
+    <li>Tap a metric to set <strong>Gold, Silver, and Bronze</strong> targets for each age/gender band you use.</li>
+    <li>Click <strong>Save KPI set</strong>. Optionally duplicate a <strong>public set</strong> from another coach at your school to save time.</li>
+    <li>Link the set to your class if your school uses class-scoped KPIs (your admin or lead coach may have already done this).</li>
+  </ol>
+  <div class="tip">
+    <strong>Strength / weight room:</strong> Custom lifts live under <strong>Programs → School lift library → Build lift</strong>. Those lifts can also appear in KPI targets and testing presets for weightlifting classes.
+  </div>
+
+  <h2>3. Build your first workout program</h2>
+  <p>Programs are daily training templates (sets, reps, and lifts) you assign to a class on the calendar.</p>
+  <ol class="steps">
+    <li>Go to <strong>Programs</strong>. The week view shows scheduled workouts and testing days for your selected class.</li>
+    <li>Open the program builder (create a new template). Name the program (e.g., “Week 1 — Intro strength”).</li>
+    <li>Select lifts from your school’s lift library and configure sets/reps (use the set builder grid for per-set detail).</li>
+    <li>Save the template, then <strong>assign</strong> it: choose the template, class, and date. Students see the workout under <strong>Log workout</strong> on their devices.</li>
+    <li>Optional: use <strong>Auto-generate block</strong> for a multi-week linear plan (e.g., 5×5 with a deload week) instead of building each day by hand.</li>
+    <li>Review completion under <strong>Programs → Workout logs</strong> or export CSV for your records.</li>
+  </ol>
+
+  <h2>4. Administer a live test</h2>
+  <p>Testing sessions capture official marks, attempts, PRs, and absences for a class on a given date.</p>
+  <ol class="steps">
+    <li>From <strong>Programs</strong>, select the class and date, then click <strong>Create test</strong>.</li>
+    <li>In <strong>New live testing session</strong>, pick the class, test date, and session name. Ranked KPIs from the class’s KPI set are pre-selected; add or remove events as needed.</li>
+    <li>Start the session to open the <strong>live testing grid</strong>. Enter marks attempt-by-attempt for each student and activity. The grid saves progress as you go.</li>
+    <li>For large groups or station work, open <strong>Student station</strong> mode so athletes enter their own attempts on phones (you stay in control of the session).</li>
+    <li>Mark students <strong>absent, injured, or DNP</strong> when applicable so reports stay accurate.</li>
+    <li>When finished, review results from the session page or student profiles under <strong>School → Roster</strong>.</li>
+  </ol>
+  <div class="tip">
+    <strong>Weight room classes:</strong> Sessions for classes named like “Weights” may pre-select strength events—adjust before starting if you are running a mixed test day.
+  </div>
+
+  <h2>5. Day-one tasks checklist</h2>
+  <ul class="bullets">
+    <li><strong>Compete → Leaderboards:</strong> Preview how ranks look for your class; confirm privacy settings meet school policy.</li>
+    <li><strong>Compete → Compare:</strong> Line up head-to-head views before parent meetings or team meetings.</li>
+    <li><strong>KPIs → Import marks:</strong> Upload CSV historical data if your admin provided a file from prior seasons.</li>
+    <li><strong>School → Roster:</strong> Add late enrollments or issue student login invites when your school allows self-sign-up.</li>
+    <li><strong>Programs:</strong> Schedule the first week of workouts <em>or</em> your first testing session so students see activity on login.</li>
+  </ul>
+
+  <h2>6. Getting help</h2>
+  <p>Contact your athletic director or Track Tracker onboarding lead for roster fixes, new coach accounts, or school-wide settings. For in-app behavior, note the class you had selected and the screen URL when reporting an issue.</p>
+
+  <div class="footer">
+    <p>Track Tracker · Measure · Compare · Improve · Compete · Project</p>
+  </div>
+</body>
+</html>

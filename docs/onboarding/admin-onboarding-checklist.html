@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Track Tracker — School Administrator Onboarding Checklist</title>
+  <style>
+    @page { size: letter; margin: 0.75in; }
+    * { box-sizing: border-box; }
+    body {
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      font-size: 10.5pt;
+      line-height: 1.45;
+      color: #1a1d21;
+      margin: 0;
+      padding: 0;
+    }
+    .header {
+      background: linear-gradient(135deg, #101214 0%, #1e2226 100%);
+      color: #f5f7f8;
+      padding: 28px 32px 24px;
+      margin: -0.75in -0.75in 24px -0.75in;
+      padding-left: calc(0.75in + 8px);
+      padding-right: calc(0.75in + 8px);
+      border-bottom: 4px solid #c6f54a;
+    }
+    .header h1 {
+      margin: 0 0 6px;
+      font-size: 22pt;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+    .header .subtitle {
+      margin: 0;
+      font-size: 11pt;
+      color: #a3abb3;
+      font-weight: 500;
+    }
+    .header .product {
+      display: inline-block;
+      margin-bottom: 10px;
+      font-size: 9pt;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #c6f54a;
+    }
+    .intro {
+      margin-bottom: 22px;
+      padding: 14px 16px;
+      background: #f4f6f8;
+      border-radius: 8px;
+      border-left: 4px solid #c6f54a;
+    }
+    .intro p { margin: 0 0 8px; }
+    .intro p:last-child { margin-bottom: 0; }
+    h2 {
+      font-size: 12pt;
+      font-weight: 700;
+      margin: 22px 0 10px;
+      color: #101214;
+      page-break-after: avoid;
+    }
+    .legend {
+      font-size: 9pt;
+      color: #5c6570;
+      margin-bottom: 16px;
+    }
+    .checklist { list-style: none; padding: 0; margin: 0; }
+    .checklist li {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      padding: 10px 0;
+      border-bottom: 1px solid #e8ecef;
+      page-break-inside: avoid;
+    }
+    .checklist li:last-child { border-bottom: none; }
+    .box {
+      flex-shrink: 0;
+      width: 16px;
+      height: 16px;
+      border: 2px solid #2a2f34;
+      border-radius: 3px;
+      margin-top: 2px;
+    }
+    .item-title { font-weight: 600; margin: 0 0 2px; }
+    .item-desc { margin: 0; font-size: 9.5pt; color: #4a5560; }
+    .section-note {
+      font-size: 9pt;
+      color: #5c6570;
+      font-style: italic;
+      margin: -4px 0 8px;
+    }
+    .footer {
+      margin-top: 28px;
+      padding-top: 12px;
+      border-top: 1px solid #e8ecef;
+      font-size: 9pt;
+      color: #5c6570;
+    }
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 24px; }
+    @media print {
+      .header { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .intro { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="product">Track Tracker</div>
+    <h1>School Administrator Onboarding Checklist</h1>
+    <p class="subtitle">What we need from you to launch your school</p>
+  </header>
+
+  <div class="intro">
+    <p>
+      Welcome to <strong>Track Tracker</strong> — your school’s platform for measuring athletic and PE performance,
+      running live testing days, programming workouts, and sharing progress with students.
+    </p>
+    <p>
+      <strong>Our team handles the heavy setup.</strong> Before you sign in, we build your school’s roster, classes (periods/sections),
+      and coach accounts so every user already has a login. Your role is to complete first-time access, verify that the data matches
+      your school, and finish the items below so coaches and students can start on day one.
+    </p>
+  </div>
+
+  <p class="legend">Check each box as you complete it. Estimated admin time: 30–90 minutes, depending on roster size and corrections needed.</p>
+
+  <h2>Phase 1 — First login &amp; access</h2>
+  <ul class="checklist">
+    <li>
+      <span class="box" aria-hidden="true"></span>
+      <div>
+        <p class="item-title">Sign in with your administrator credentials</p>
+        <p class="item-desc">Use the email and temporary password from your welcome email. Open the school URL we provided (bookmark it for staff).</p>
+      </div>
+    </li>
+    <li>
+      <span class="box" aria-hidden="true"></span>
+      <div>
+        <p class="item-title">Set a personal password (if prompted)</p>
+        <p class="item-desc">Complete any first-login or invite flow so your account is secure before sharing access with others.</p>
+      </div>
+    </li>
+    <li>
+      <span class="box" aria-hidden="true"></span>
+      <div>
+        <p class="item-title">Confirm school name and current school year</p>
+        <p class="item-desc">From the coach dashboard, open <strong>School</strong> and verify the active academic year matches your calendar.</p>
+      </div>
+    </li>
+  </ul>
+
+  <h2>Phase 2 — Verify what we pre-built</h2>
+  <p class="section-note">We imported roster, classes, and coaches from the materials you sent. Please spot-check and flag gaps.</p>
+  <ul class="checklist">
+    <li>
+      <span class="box" aria-hidden="true"></span>
+      <div>
+        <p class="item-title">Review the student roster</p>
+        <p class="item-desc"><strong>School → Roster:</strong> Confirm names, graduating class years, and gender filters look correct. Note any missing students, duplicates, or spelling fixes.</p>
+      </div>
+    </li>
+    <li>
+      <span class="box" aria-hidden="true"></span>
+      <div>
+        <p class="item-title">Review classes (periods / sections)</p>
+        <p class="item-desc"><strong>School → Classes:</strong> Match period names and rosters to your master schedule (e.g., “Period 3 Weights”, “Track &amp; Field”).</p>
+      </div>
+    </li>
+    <li>
+      <span class="box" aria-hidden="true"></span>
+      <div>
+        <p class="item-title">Review coach accounts and assignments</p>
+        <p class="item-desc"><strong>School → Coaches:</strong> Confirm each PE/athletics staff member is listed and assigned to the correct classes.</p>
+      </div>
+    </li>
+    <li>
+      <span class="box" aria-hidden="true"></span>
+      <div>
+        <p class="item-title">Send us a correction list (if needed)</p>
+        <p class="item-desc">Reply to your onboarding contact with roster/class/coach changes. Small edits can be done in-app; bulk fixes we can handle for you.</p>
+      </div>
+    </li>
+  </ul>
+
+  <h2>Phase 3 — Policies &amp; launch readiness</h2>
+  <ul class="checklist">
+    <li>
+      <span class="box" aria-hidden="true"></span>
+      <div>
+        <p class="item-title">Confirm student privacy preferences</p>
+        <p class="item-desc">Decide how names appear on leaderboards (full name vs. hidden/anonymous for peers). Coaches always see real names.</p>
+      </div>
+    </li>
+    <li>
+      <span class="box" aria-hidden="true"></span>
+      <div>
+        <p class="item-title">Identify your primary Track Tracker contact</p>
+        <p class="item-desc">One administrator or athletic director we can reach for roster updates, new hires, and end-of-year rollover.</p>
+      </div>
+    </li>
+    <li>
+      <span class="box" aria-hidden="true"></span>
+      <div>
+        <p class="item-title">Share historical marks (optional)</p>
+        <p class="item-desc">If you have prior-season CSV or spreadsheet data, send it to the onboarding team or use in-app import tools your coaches can access under <strong>KPIs</strong>.</p>
+      </div>
+    </li>
+    <li>
+      <span class="box" aria-hidden="true"></span>
+      <div>
+        <p class="item-title">Approve the coach rollout plan</p>
+        <p class="item-desc">Distribute the Coach Getting Started guide (PDF) and each coach’s login email. Coaches should not reset student passwords without your policy.</p>
+      </div>
+    </li>
+    <li>
+      <span class="box" aria-hidden="true"></span>
+      <div>
+        <p class="item-title">Plan student access</p>
+        <p class="item-desc">Decide whether students log in with school-issued credentials or class join links/QR codes from coaches. Confirm acceptable-use expectations with your IT department if required.</p>
+      </div>
+    </li>
+  </ul>
+
+  <h2>Phase 4 — Go-live sign-off</h2>
+  <ul class="checklist">
+    <li>
+      <span class="box" aria-hidden="true"></span>
+      <div>
+        <p class="item-title">Attend a 15-minute launch call (optional)</p>
+        <p class="item-desc">Walk through School navigation with our team or your lead coach; ask questions before the first testing day.</p>
+      </div>
+    </li>
+    <li>
+      <span class="box" aria-hidden="true"></span>
+      <div>
+        <p class="item-title">Sign off that roster and classes are accurate</p>
+        <p class="item-desc">Email your onboarding contact: “Roster and classes verified — coaches may begin KPI setup and testing.”</p>
+      </div>
+    </li>
+  </ul>
+
+  <div class="footer">
+    <p><strong>Questions?</strong> Reply to your Track Tracker onboarding email. Coaches should use the separate <em>Coach Getting Started</em> guide for day-to-day workflows.</p>
+    <p>Track Tracker · Measure · Compare · Improve · Compete · Project</p>
+  </div>
+</body>
+</html>

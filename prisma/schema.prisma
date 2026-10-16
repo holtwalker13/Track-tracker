@@ -251,6 +251,8 @@ model StudentProfile {
   schoolId      String
   school        School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   studentNumber String
+  // Email from roster upload / SIS — used for sign-in and class join when it differs from User.email.
+  rosterEmail   String?
   // Sign-in handle: first initial + last name + grad year (e.g. jsmith2028).
   username      String?
   firstName     String
@@ -268,6 +270,9 @@ model StudentProfile {
   // Walk-up athlete for a workout. Logs stay until a coach connects them to a roster student.
   provisional   Boolean  @default(false)
   createdAt     DateTime @default(now())
+
+  @@unique([schoolId, rosterEmail])
+  @@index([rosterEmail])
 
   enrollments        StudentEnrollment[]
   classEnrollments   ClassEnrollment[]

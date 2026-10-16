@@ -1,5 +1,9 @@
 import { prisma } from "@/lib/db";
 import { DEFAULT_CLASS_YEAR } from "@/lib/grades";
+import {
+  findStudentProfileByRosterEmail,
+  resolveSchoolIdFromLoginEmail,
+} from "@/lib/school-login-email";
 import { buildStudentUsernameBase } from "@/lib/services/student-username";
 
 const userInclude = { coachProfile: true, studentProfile: true } as const;
@@ -51,11 +55,29 @@ export async function findUserByCredential(credential: string): Promise<Credenti
   if (!raw) return null;
   const lower = raw.toLowerCase();
 
-  const byEmail = await prisma.user.findUnique({
-    where: { email: lower },
-    include: userInclude,
-  });
-  if (byEmail) return byEmail;
+  if (raw.includes("@")) {
+    const byEmail = await prisma.user.findUnique({
+      where: { email: lower },
+      include: userInclude,
+    });
+    if (byEmail) return byEmail;
+
+    const schoolId = await resolveSchoolIdFromLoginEmail(lower);
+    const rosterStudent = await findStudentProfileByRosterEmail(lower, { schoolId });
+    if (rosterStudent?.userId) {
+      const byRoster = await prisma.user.findUnique({
+        where: { id: rosterStudent.userId },
+        include: userInclude,
+      });
+      if (byRoster) return byRoster;
+    }
+  } else {
+    const byEmail = await prisma.user.findUnique({
+      where: { email: lower },
+      include: userInclude,
+    });
+    if (byEmail) return byEmail;
+  }
 
   const byUsername = await prisma.studentProfile.findFirst({
     where: { username: { equals: lower, mode: "insensitive" } },

@@ -670,13 +670,6 @@ async function main() {
   const females = loadFemaleAthletes();
   const males = makeMaleAthletes(females);
   const demoRoster = [...females, ...males];
-  const chsFemales = females.filter((_, i) => i % 7 === 0).slice(0, 18);
-  const chsMales = makeMaleAthletes(chsFemales, 80);
-  const chsRoster = [
-    ...chsFemales.map((row, i) => ({ ...row, ...syntheticName("F", i, 80) })),
-    ...chsMales,
-  ];
-
   const schoolYearData = {
     label: "2025–2026",
     startDate: new Date("2025-08-12"),
@@ -826,7 +819,14 @@ async function main() {
       continue;
     }
 
-    const roster = tenant.slug === "chs" ? chsRoster : demoRoster;
+    if (tenant.slug === "chs") {
+      console.log(
+        `Cape High ready (empty roster): ${tenant.coachEmail} / ${DEMO_PASSWORD}. Upload rosters from admin.`
+      );
+      continue;
+    }
+
+    const roster = demoRoster;
     const sample = await seedRoster({
       schoolId: school.id,
       orgId: org.id,
@@ -834,7 +834,7 @@ async function main() {
       coaches,
       roster,
       studentEmailDomain: tenant.studentEmail!.split("@")[1]!,
-      sessionName: tenant.slug === "chs" ? "CHS KPI Testing 2026" : "Demo KPI Testing 2026",
+      sessionName: "Demo KPI Testing 2026",
       hash,
       hourClasses: tenant.slug === "demo",
       extraClasses: tenant.slug === "demo",

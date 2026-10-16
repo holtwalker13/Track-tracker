@@ -6,6 +6,7 @@ export function credentialMatchesRosterStudent(input: {
   studentNumber: string;
   username: string | null;
   userEmail: string | null;
+  rosterEmail: string | null;
   schoolSlug: string;
 }): boolean {
   const raw = input.credential.trim();
@@ -14,5 +15,6 @@ export function credentialMatchesRosterStudent(input: {
   if (input.username && input.username.toLowerCase() === lower) return true;
   if (input.studentNumber.toLowerCase() === lower) return true;
   if (input.userEmail && input.userEmail.toLowerCase() === lower) return true;
+  if (input.rosterEmail && input.rosterEmail.toLowerCase() === lower) return true;
   return studentLoginEmailForNumber(input.studentNumber, input.schoolSlug).toLowerCase() === lower;
 }

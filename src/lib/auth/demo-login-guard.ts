@@ -4,7 +4,7 @@ import { DEMO_CLASS_LOGIN, DEMO_PASSWORD } from "@/lib/tenants";
 export function isSandboxStudentEmail(email: string): boolean {
   const lower = email.toLowerCase();
   if (lower === DEMO_CLASS_LOGIN.email) return true;
-  return /@(?:demo\.local|jhs\.demo|chs\.demo)$/i.test(lower);
+  return /@(?:demo\.local|jhs\.demo|chs\.demo|capehigh\.placeholder)$/i.test(lower);
 }
 
 /** True when a student still uses the shared demo password outside sandbox domains. */

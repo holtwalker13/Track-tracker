@@ -9,6 +9,7 @@ import {
   inviteJoinPath,
   validateAccountPassword,
 } from "@/lib/services/login-invite-token";
+import { ensureUnder13CollectionAllowed } from "@/lib/auth/tenant-access";
 
 const BCRYPT_ROUNDS = 12;
 
@@ -137,6 +138,15 @@ export async function completeStudentLoginInvite(input: {
 
   const student = invite.student;
   const alreadyActive = Boolean(student.user?.passwordSetAt);
+
+  const profile = await prisma.studentProfile.findUnique({
+    where: { id: student.id },
+    select: { dateOfBirth: true, schoolId: true },
+  });
+  if (profile && !alreadyActive) {
+    const coppa = await ensureUnder13CollectionAllowed(profile.schoolId, profile.dateOfBirth);
+    if (!coppa.ok) return { ok: false, error: coppa.error };
+  }
 
   if (!alreadyActive && invite.usedAt) {
     return { ok: false, error: "This link has already been used." };

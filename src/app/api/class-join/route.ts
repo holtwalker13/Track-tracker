@@ -11,7 +11,9 @@ import {
   identifyClassStudent,
   previewClassJoin,
 } from "@/lib/services/class-join";
-import { classIdFromJoinToken } from "@/lib/services/class-join-link";
+import { resolveClassIdFromJoinToken } from "@/lib/services/class-join-link";
+import { checkRateLimit, rateLimitKey } from "@/lib/security/rate-limit";
+import { clientIpHint, writeAuditLog } from "@/lib/security/audit-log";
 
 export async function GET(request: Request) {
   const token = new URL(request.url).searchParams.get("token")?.trim() ?? "";
@@ -21,10 +23,19 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const ip = clientIpHint(request) ?? "unknown";
   const body = await request.json();
   const token = String(body.token ?? "").trim();
   const credential = String(body.credential ?? "").trim();
   const action = String(body.action ?? "identify");
+
+  const limit = checkRateLimit(rateLimitKey("class-join", `${ip}:${token.slice(0, 8)}`), 30, 15 * 60 * 1000);
+  if (!limit.allowed) {
+    return NextResponse.json(
+      { error: "Too many attempts. Try again later." },
+      { status: 429, headers: { "Retry-After": String(limit.retryAfterSec) } }
+    );
+  }
 
   if (!token || !credential) {
     return NextResponse.json({ error: "Enter the email on your roster." }, { status: 400 });
@@ -48,7 +59,7 @@ export async function POST(request: Request) {
   }
 
   if (action === "login") {
-    const classId = classIdFromJoinToken(token);
+    const classId = await resolveClassIdFromJoinToken(token);
     if (!classId) return NextResponse.json({ error: "This class link is not valid." }, { status: 400 });
     const student = await findClassStudentByCredential(classId, credential);
     if (!student?.passwordSetAt) {
@@ -63,8 +74,22 @@ export async function POST(request: Request) {
     }
     const password = String(body.password ?? "");
     if (!(await bcrypt.compare(password, user.passwordHash))) {
+      await writeAuditLog({
+        action: "CLASS_JOIN_LOGIN_FAILED",
+        targetType: "StudentProfile",
+        targetId: student.id,
+        outcome: "FAILURE",
+        ipHint: ip,
+      });
       return NextResponse.json({ error: "That password does not match." }, { status: 401 });
     }
+    await writeAuditLog({
+      action: "CLASS_JOIN_LOGIN",
+      targetType: "StudentProfile",
+      targetId: student.id,
+      outcome: "SUCCESS",
+      ipHint: ip,
+    });
     return sessionResponse(user.id, student.id, student.schoolId, student.username ?? student.studentNumber);
   }
 

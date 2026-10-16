@@ -10,6 +10,7 @@ export type CredentialUser = {
   email: string;
   passwordHash: string;
   passwordSetAt: Date | null;
+  disabledAt: Date | null;
   coachProfile: { schoolId: string } | null;
   studentProfile: { id: string; schoolId: string } | null;
 };

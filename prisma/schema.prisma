@@ -29,6 +29,104 @@ model OrganizationSettings {
   showNamesOnLeaderboardsForStudents Boolean @default(false)
 }
 
+/// Per-school privacy controls (defaults are privacy-protective).
+model SchoolPrivacySettings {
+  id        String @id @default(cuid())
+  schoolId  String @unique
+  school    School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  /// When false, student-facing leaderboard pages show a disabled message.
+  leaderboardsEnabledForStudents Boolean @default(true)
+  /// When false, coaches may still see rankings; students cannot see peer leaderboards.
+  peerLeaderboardsEnabled Boolean @default(true)
+  /// PSEUDONYM (anonymousId) or LEGAL_NAME for student-visible leaderboards.
+  studentLeaderboardDisplayMode String @default("PSEUDONYM")
+  /// Optional contract-based retention; null = follow school agreement / manual review.
+  dataRetentionYears Int?
+  updatedAt DateTime @updatedAt
+  updatedByUserId String?
+}
+
+/// School-authorized educational use (COPPA school consent pathway). Not created by coach self-signup alone.
+model SchoolAuthorization {
+  id             String   @id @default(cuid())
+  schoolId       String
+  school         School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  organizationId String
+  status         String   @default("PENDING") // PENDING | ACTIVE | REVOKED
+  authorizingOfficialName String
+  authorizingOfficialRole   String
+  authorizationDate DateTime?
+  privacyNoticeVersion String?
+  agreementVersion     String?
+  authorizedPurposes   String?
+  studentGroupsScope   String?
+  thirdPartyDisclosure String?
+  evidenceNote         String?
+  createdByUserId      String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  revokedAt            DateTime?
+  revokedReason        String?
+
+  @@index([schoolId, status])
+  @@index([organizationId])
+}
+
+/// Revocable, expiring class enrollment credentials (preferred over legacy signed classId tokens).
+model ClassJoinLink {
+  id              String   @id @default(cuid())
+  classId         String
+  class           Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
+  tokenHash       String   @unique
+  expiresAt       DateTime
+  revokedAt       DateTime?
+  createdByUserId String?
+  createdAt       DateTime @default(now())
+
+  @@index([classId])
+  @@index([expiresAt])
+}
+
+model SecurityAuditLog {
+  id            String   @id @default(cuid())
+  organizationId String?
+  schoolId      String?
+  districtId    String?
+  actorUserId   String?
+  actorRole     String?
+  action        String
+  targetType    String?
+  targetId      String?
+  outcome       String   @default("SUCCESS") // SUCCESS | FAILURE | DENIED
+  correlationId String?
+  ipHint        String?
+  metadata      Json?
+  createdAt     DateTime @default(now())
+
+  @@index([schoolId, createdAt])
+  @@index([actorUserId, createdAt])
+  @@index([action, createdAt])
+}
+
+/// School-admin privacy request queue (access, export, correction, deletion).
+model PrivacyDataRequest {
+  id              String   @id @default(cuid())
+  schoolId        String
+  school          School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  studentId       String?
+  requestType     String   // ACCESS | EXPORT | CORRECTION | DELETION
+  status          String   @default("OPEN") // OPEN | IN_PROGRESS | COMPLETED | REJECTED
+  requestedByUserId String
+  notes           String?
+  resolutionNotes String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  resolvedAt      DateTime?
+
+  @@index([schoolId, status])
+  @@index([studentId])
+}
+
 model District {
   id             String       @id @default(cuid())
   organizationId String
@@ -64,6 +162,9 @@ model School {
   workoutAssignments WorkoutAssignment[]
   hiddenLifts        SchoolHiddenLift[]
   classAttendance    ClassAttendance[]
+  privacySettings    SchoolPrivacySettings?
+  authorizations     SchoolAuthorization[]
+  privacyRequests    PrivacyDataRequest[]
 
   @@index([organizationId])
   @@index([districtId])
@@ -133,6 +234,7 @@ model User {
   lastName     String
   // Set when the student chooses their password (invite flow). Demo/backfill accounts set this immediately.
   passwordSetAt DateTime?
+  disabledAt   DateTime?
   createdAt    DateTime @default(now())
 
   coachProfile   CoachProfile?
@@ -340,6 +442,7 @@ model Class {
   workoutTemplates   WorkoutTemplate[]
   kpiSets            KpiSet[]
   attendance         ClassAttendance[]
+  joinLinks          ClassJoinLink[]
 
   @@index([schoolId])
   @@index([coachId])

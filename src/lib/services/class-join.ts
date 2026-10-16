@@ -1,6 +1,7 @@
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/db";
-import { classIdFromJoinToken } from "@/lib/services/class-join-link";
+import { resolveClassIdFromJoinToken } from "@/lib/services/class-join-link";
+import { ensureUnder13CollectionAllowed } from "@/lib/auth/tenant-access";
 import { credentialMatchesRosterStudent } from "@/lib/services/class-join-match";
 import { studentLoginEmailForNumber } from "@/lib/services/student-login-invite";
 import { validateAccountPassword } from "@/lib/services/login-invite-token";
@@ -28,7 +29,7 @@ type RosterMatch = {
 };
 
 export async function previewClassJoin(token: string): Promise<ClassJoinPreview | null> {
-  const classId = classIdFromJoinToken(token);
+  const classId = await resolveClassIdFromJoinToken(token);
   if (!classId) return null;
   const cls = await prisma.class.findUnique({
     where: { id: classId },
@@ -109,7 +110,7 @@ export async function findClassStudentByCredential(
 }
 
 export async function identifyClassStudent(token: string, credential: string) {
-  const classId = classIdFromJoinToken(token);
+  const classId = await resolveClassIdFromJoinToken(token);
   if (!classId) return { ok: false as const, error: "This class link is not valid." };
   const student = await findClassStudentByCredential(classId, credential);
   if (!student) {
@@ -141,7 +142,7 @@ export async function createAccountFromClassJoin(input: {
   const passwordError = validateAccountPassword(input.password);
   if (passwordError) return { ok: false, error: passwordError };
 
-  const classId = classIdFromJoinToken(input.token);
+  const classId = await resolveClassIdFromJoinToken(input.token);
   if (!classId) return { ok: false, error: "This class link is not valid." };
   const student = await findClassStudentByCredential(classId, input.credential);
   if (!student) {
@@ -149,6 +150,15 @@ export async function createAccountFromClassJoin(input: {
   }
   if (student.passwordSetAt) {
     return { ok: false, error: "This account already exists. Sign in with your password." };
+  }
+
+  const profile = await prisma.studentProfile.findUnique({
+    where: { id: student.id },
+    select: { dateOfBirth: true, schoolId: true },
+  });
+  if (profile) {
+    const coppa = await ensureUnder13CollectionAllowed(profile.schoolId, profile.dateOfBirth);
+    if (!coppa.ok) return { ok: false, error: coppa.error };
   }
 
   const school = await prisma.school.findUnique({

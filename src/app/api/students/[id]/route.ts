@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { requireSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { isClassYear } from "@/lib/grades";
+import { assertCoachOrAdminStudentAccess } from "@/lib/auth/tenant-access";
+import { writeAuditLog } from "@/lib/security/audit-log";
+
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -12,6 +15,10 @@ export async function PATCH(
   }
 
   const { id } = await params;
+  const access = await assertCoachOrAdminStudentAccess(session, id);
+  if (!access.ok) {
+    return NextResponse.json({ error: access.status === 404 ? "Not found" : "Forbidden" }, { status: access.status });
+  }
   const student = await prisma.studentProfile.findUnique({ where: { id } });
   if (!student || student.schoolId !== session.schoolId) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -61,6 +68,15 @@ export async function PATCH(
   }
 
   await prisma.studentProfile.update({ where: { id }, data });
+  await writeAuditLog({
+    actorUserId: session.userId,
+    actorRole: session.role,
+    schoolId: session.schoolId,
+    action: "STUDENT_RECORD_UPDATE",
+    targetType: "StudentProfile",
+    targetId: id,
+    metadata: { fields: Object.keys(data) },
+  });
 
   if (body.classYear != null) {
     const classYear = Number(body.classYear);

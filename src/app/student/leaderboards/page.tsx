@@ -16,6 +16,7 @@ import {
   periodLabel,
 } from "@/lib/leaderboard-periods";
 import { XpLeaderboardCard } from "@/components/gamification/xp-leaderboard-card";
+import { getSchoolPrivacySnapshot } from "@/lib/queries/school-privacy";
 
 export default async function StudentLeaderboardsPage({
   searchParams,
@@ -32,6 +33,17 @@ export default async function StudentLeaderboardsPage({
   if (!session?.studentId) redirect("/login");
 
   const { student, currentGrade } = await getStudentContext(session.studentId);
+  const privacy = await getSchoolPrivacySnapshot(student.schoolId);
+  if (!privacy.leaderboardsEnabledForStudents || !privacy.peerLeaderboardsEnabled) {
+    return (
+      <AppShell title="Leaderboards" nav={STUDENT_NAV}>
+        <p className="text-sm text-muted max-w-lg">
+          Leaderboards are turned off for your school. Your coach or school administrator can enable peer rankings
+          when appropriate for your program.
+        </p>
+      </AppShell>
+    );
+  }
   const sp = await searchParams;
   const scope = sp.scope === "global" ? "global" : "school";
   const grades = gradesFromSearch(sp);
@@ -59,6 +71,7 @@ export default async function StudentLeaderboardsPage({
       role: "STUDENT",
       studentId: session.studentId,
       schoolId: student.schoolId,
+      studentLeaderboardDisplayMode: privacy.studentLeaderboardDisplayMode,
     },
     classId,
     period

@@ -6,6 +6,8 @@ import {
 } from "@/lib/services/student-login-invite";
 import { SESSION_COOKIE, sessionCookieOptions } from "@/lib/auth/cookie";
 import { signSessionToken } from "@/lib/auth/session";
+import { checkRateLimit, rateLimitKey } from "@/lib/security/rate-limit";
+import { clientIpHint } from "@/lib/security/audit-log";
 
 export async function GET(request: Request) {
   const token = new URL(request.url).searchParams.get("token")?.trim();
@@ -28,6 +30,11 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const ip = clientIpHint(request) ?? "unknown";
+  const limit = checkRateLimit(rateLimitKey("student-invite", ip), 25, 15 * 60 * 1000);
+  if (!limit.allowed) {
+    return NextResponse.json({ error: "Too many attempts. Try again later." }, { status: 429 });
+  }
   const body = await request.json();
   const token = String(body.token ?? "").trim();
   const password = String(body.password ?? "");

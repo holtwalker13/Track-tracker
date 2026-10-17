@@ -153,29 +153,25 @@ export default async function BenchmarksPage({
     ? `${classSectionLabel(classRow)}${subgroupName ? ` · ${subgroupName}` : ""}`
     : null;
 
+  const school = await prisma.school.findUnique({
+    where: { id: session.schoolId },
+    select: { name: true },
+  });
+
   return (
-    <AppShell title="KPI Targets" nav={COACH_NAV} navCompact>
-      <div className="mb-4 lg:mb-4">
-        <CoachClassScopeBar
-          coaches={scope.coaches}
-          classes={scope.classes}
-          subgroups={scope.subgroups}
-          coachId={scope.coachId}
-          classId={scope.classId}
-          subgroupId={scope.subgroupId ?? ""}
-          showCoach={session.role === "ADMIN"}
-          showSubgroup
-        />
-      </div>
-      {scopeLabel ? (
-        <p className="mb-4 hidden text-sm text-muted lg:block">
-          Medal targets and ranked KPIs for{" "}
-          <span className="font-medium text-foreground">{scopeLabel}</span>. Change class or
-          subgroup above to edit a different group.
-        </p>
-      ) : (
-        <p className="mb-4 hidden text-sm text-muted lg:block">Select a class to configure KPI targets.</p>
-      )}
+    <AppShell title="KPI Targets" nav={COACH_NAV} navCompact mobileCoachChrome>
+      <CoachClassScopeBar
+        coaches={scope.coaches}
+        classes={scope.classes}
+        subgroups={scope.subgroups}
+        coachId={scope.coachId}
+        classId={scope.classId}
+        subgroupId={scope.subgroupId ?? ""}
+        showCoach={session.role === "ADMIN"}
+        showSubgroup
+        schoolName={school?.name ?? null}
+        applyLabel="Apply group"
+      />
       <KpiTargetsEditor
         key={`${scope.classId ?? "none"}-${scope.subgroupId ?? "class"}`}
         initial={initial}

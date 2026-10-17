@@ -284,7 +284,7 @@ export default async function StudentProfilePage({
   }));
 
   return (
-    <AppShell title="Athlete" nav={COACH_NAV}>
+    <AppShell title="Athlete" nav={COACH_NAV} navCompact mobileCoachChrome>
       <AthleteProfileCard
         name={fullName}
         studentNumber={student.studentNumber}

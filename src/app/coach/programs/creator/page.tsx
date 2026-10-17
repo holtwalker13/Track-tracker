@@ -9,6 +9,7 @@ import { COACH_NAV } from "@/lib/navigation";
 import { requireSchoolSession } from "@/lib/auth/session";
 import { resolveCoachClassScopeFromParams } from "@/lib/queries/coach-scope-params";
 import { liftsForWorkoutPrograms, listSchoolLifts } from "@/lib/queries/lifts";
+import { prisma } from "@/lib/db";
 import { listClassesForCoach, listSchoolCoaches } from "@/lib/queries/programs-hub";
 import { listClassSavedWorkouts, savedWorkoutCreatorName } from "@/lib/queries/class-saved-workouts";
 import { todayDateString } from "@/lib/services/workouts";
@@ -26,6 +27,10 @@ export default async function ProgramCreatorPage({
   const session = await requireSchoolSession();
   const sp = await searchParams;
   const today = todayDateString();
+  const school = await prisma.school.findUnique({
+    where: { id: session.schoolId },
+    select: { name: true },
+  });
 
   const scope = await resolveCoachClassScopeFromParams(session, {
     coachId: sp.coachId,
@@ -45,7 +50,7 @@ export default async function ProgramCreatorPage({
   const workoutLifts = liftsForWorkoutPrograms(schoolLifts);
 
   return (
-    <AppShell nav={COACH_NAV} title="Program Creator">
+    <AppShell nav={COACH_NAV} title="Program Creator" navCompact mobileCoachChrome>
       <div className="space-y-5">
         <p className="text-sm text-muted">
           Build saved workouts and browse the lift library. Schedule them from the{" "}
@@ -62,6 +67,7 @@ export default async function ProgramCreatorPage({
             coachId={coachId}
             classId={classId}
             subgroupId={subgroupId ?? ""}
+            schoolName={school?.name ?? null}
           />
         </Suspense>
 

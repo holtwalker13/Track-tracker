@@ -60,6 +60,23 @@ export const COACH_NAV: NavItem[] = [
   { href: "/coach/compete", label: "Compete", icon: "trophy" },
 ];
 
+/** Primary destinations shown in mobile bottom navigation. */
+export const COACH_MOBILE_PRIMARY_NAV = [
+  { href: "/coach/school/roster", label: "School" as const },
+  { href: "/coach/programs", label: "Programs" as const },
+  { href: "/coach/benchmarks", label: "KPIs" as const },
+  { href: "/coach/compete/leaderboards", label: "Compete" as const },
+] as const;
+
+/** Secondary coach destinations surfaced in the More sheet (not duplicated in bottom nav). */
+export const COACH_MORE_NAV: NavItem[] = [
+  { href: "/coach/analytics", label: "Analytics", icon: "chart" },
+  { href: "/coach/programs/lifts", label: "Lift library", icon: "workout" },
+  { href: "/coach/programs/logs", label: "Workout logs", icon: "clipboard" },
+  { href: "/coach/compete/compare", label: "Compare", icon: "compare" },
+  { href: "/coach/school/overview", label: "School overview", icon: "classes" },
+];
+
 export const ADMIN_NAV: NavItem[] = [
   { href: "/admin", label: "Admin", icon: "admin" },
   ...COACH_NAV,

@@ -16,6 +16,7 @@ export async function AppShell({
   density = "default",
   navCompact = false,
   competeMobileChrome = false,
+  mobileCoachChrome,
 }: {
   title: string;
   nav: NavItem[];
@@ -24,9 +25,12 @@ export async function AppShell({
   density?: "default" | "compact";
   /** Smaller icon-first nav on mobile. */
   navCompact?: boolean;
-  /** Compete mobile: hide AppShell header on small screens (in-page Pro Gradus bar + menu). */
+  /** Hide desktop-style AppShell header on phone; bottom nav lives in coach layout. */
+  mobileCoachChrome?: boolean;
+  /** @deprecated Use mobileCoachChrome */
   competeMobileChrome?: boolean;
 }) {
+  const phoneChrome = mobileCoachChrome ?? competeMobileChrome;
   const session = await getSession();
   if (
     session &&
@@ -66,7 +70,7 @@ export async function AppShell({
         className={cn(
           "sticky top-0 z-40 border-b border-card-border bg-background/90 backdrop-blur",
           compact && "border-card-border/70",
-          competeMobileChrome && "hidden md:block"
+          phoneChrome && "hidden md:block"
         )}
       >
         <div
@@ -118,7 +122,7 @@ export async function AppShell({
             <div
               className={cn(
                 "flex min-w-0 items-center gap-2",
-                competeMobileChrome && "hidden md:flex"
+                phoneChrome && "hidden md:flex"
               )}
             >
               <ThemeToggle className="hidden sm:inline-flex" />
@@ -126,7 +130,7 @@ export async function AppShell({
             </div>
           </div>
           <ThemeToggle className="sm:hidden" />
-          {showSchoolSwitcher && !competeMobileChrome ? (
+          {showSchoolSwitcher && !phoneChrome ? (
             <div className="mt-2 border-t border-card-border/60 pt-2 sm:hidden">
               <SchoolSwitcher
                 schools={schools}
@@ -141,7 +145,7 @@ export async function AppShell({
         className={cn(
           "mx-auto max-w-7xl",
           compact ? "px-3 py-3 sm:px-4 sm:py-4" : "px-3 py-4 sm:px-4 sm:py-6",
-          competeMobileChrome && "px-0 py-0 md:px-4 md:py-6"
+          phoneChrome && "px-0 py-0 md:px-4 md:py-6"
         )}
       >
         {children}

@@ -34,7 +34,7 @@ export default async function TestingLogPage({
   const grid = sessionId ? await getTestingLogGrid(sessionId, session.schoolId) : null;
 
   return (
-    <AppShell title="Testing log" nav={COACH_NAV}>
+    <AppShell title="Testing log" nav={COACH_NAV} navCompact mobileCoachChrome>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <Link href="/coach/programs" className="text-sm text-muted hover:text-foreground">
           ← Programs

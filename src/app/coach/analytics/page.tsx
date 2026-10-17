@@ -114,7 +114,7 @@ export default async function AnalyticsPage({
   const boxScores = await getGradeBoxScores(session.schoolId, grades, gender);
 
   return (
-    <AppShell title="Analytics" nav={COACH_NAV}>
+    <AppShell title="Analytics" nav={COACH_NAV} navCompact mobileCoachChrome>
       <div className="mb-8 space-y-5">
         <div>
           <p className="mb-2 text-center text-[11px] font-semibold uppercase tracking-[0.2em] text-muted">

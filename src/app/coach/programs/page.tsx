@@ -45,6 +45,10 @@ export default async function CoachProgramsPage({
   const session = await requireSchoolSession();
   const sp = await searchParams;
   const today = todayDateString();
+  const school = await prisma.school.findUnique({
+    where: { id: session.schoolId },
+    select: { name: true },
+  });
 
   const scope = await resolveCoachClassScopeFromParams(session, {
     coachId: sp.coachId,
@@ -126,7 +130,7 @@ export default async function CoachProgramsPage({
     : [];
 
   return (
-    <AppShell nav={COACH_NAV} title="Programs">
+    <AppShell nav={COACH_NAV} title="Programs" navCompact mobileCoachChrome>
       <div className="space-y-5">
         <Suspense fallback={null}>
           <ProgramsScopeBar
@@ -136,6 +140,7 @@ export default async function CoachProgramsPage({
             coachId={coachId}
             classId={classId}
             subgroupId={subgroupId ?? ""}
+            schoolName={school?.name ?? null}
             trailing={
               classId ? (
                 <TemporaryStudentsPanel

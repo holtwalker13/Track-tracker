@@ -7,6 +7,7 @@ import { listClassSubgroups } from "@/lib/queries/class-subgroups";
 export const COACH_CLASS_CONTEXT_COOKIE = "sap_coach_class";
 
 export type CoachClassContextValue = {
+  coachId: string | null;
   classId: string | null;
   subgroupId: string | null;
 };
@@ -23,16 +24,17 @@ export type CoachClassContextResolved = CoachClassContextValue & {
   subgroups: { id: string; name: string; memberIds: string[] }[];
 };
 
-function parseContextCookie(raw: string | undefined): CoachClassContextValue {
-  if (!raw) return { classId: null, subgroupId: null };
+export function parseCoachClassContextCookie(raw: string | undefined): CoachClassContextValue {
+  if (!raw) return { coachId: null, classId: null, subgroupId: null };
   try {
     const parsed = JSON.parse(raw) as Partial<CoachClassContextValue>;
     return {
+      coachId: typeof parsed.coachId === "string" ? parsed.coachId : null,
       classId: typeof parsed.classId === "string" ? parsed.classId : null,
       subgroupId: typeof parsed.subgroupId === "string" ? parsed.subgroupId : null,
     };
   } catch {
-    return { classId: null, subgroupId: null };
+    return { coachId: null, classId: null, subgroupId: null };
   }
 }
 
@@ -77,7 +79,7 @@ export async function resolveCoachClassContext(
   const allowedClassIds = new Set(classes.map((c) => c.id));
 
   const jar = await cookies();
-  const fromCookie = parseContextCookie(jar.get(COACH_CLASS_CONTEXT_COOKIE)?.value);
+  const fromCookie = parseCoachClassContextCookie(jar.get(COACH_CLASS_CONTEXT_COOKIE)?.value);
 
   let classId =
     overrides.classId !== undefined
@@ -109,6 +111,7 @@ export async function resolveCoachClassContext(
   }
 
   return {
+    coachId: fromCookie.coachId,
     classId: classId ?? null,
     subgroupId: subgroupId ?? null,
     classes,
@@ -118,7 +121,14 @@ export async function resolveCoachClassContext(
 
 export function serializeCoachClassContext(value: CoachClassContextValue): string {
   return JSON.stringify({
+    coachId: value.coachId,
     classId: value.classId,
     subgroupId: value.subgroupId,
   });
+}
+
+/** Read persisted coach/class/subgroup IDs from the context cookie (server). */
+export async function readCoachClassContextCookie(): Promise<CoachClassContextValue> {
+  const jar = await cookies();
+  return parseCoachClassContextCookie(jar.get(COACH_CLASS_CONTEXT_COOKIE)?.value);
 }

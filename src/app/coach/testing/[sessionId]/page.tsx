@@ -133,7 +133,7 @@ export default async function LiveTestingPage({
   }));
 
   return (
-    <AppShell title="Fitness Testing" nav={COACH_NAV} density="compact" navCompact>
+    <AppShell title="Fitness Testing" nav={COACH_NAV} density="compact" navCompact mobileCoachChrome>
       <LiveSessionControls
         sessionId={sessionId}
         status={testingSession.status}

@@ -30,7 +30,7 @@ export default async function CoachStudentAccoladesPage({
   });
 
   return (
-    <AppShell title="Accolades" nav={COACH_NAV}>
+    <AppShell title="Accolades" nav={COACH_NAV} navCompact mobileCoachChrome>
       <p className="mb-4 text-sm">
         <Link href={`/coach/students/${student.id}`} className="font-medium text-accent hover:underline">
           {student.firstName} {student.lastName}

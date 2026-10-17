@@ -15,6 +15,7 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json().catch(() => ({}));
+  const coachIdRaw = body.coachId;
   const classIdRaw = body.classId;
   const subgroupIdRaw = body.subgroupId;
 
@@ -45,8 +46,21 @@ export async function POST(request: Request) {
     }
   }
 
-  const payload = serializeCoachClassContext({ classId, subgroupId });
-  const res = NextResponse.json({ ok: true, classId, subgroupId });
+  let coachId: string | null = null;
+  if (session.role === "ADMIN" && coachIdRaw != null && coachIdRaw !== "") {
+    const cid = String(coachIdRaw);
+    const coach = await prisma.coachProfile.findFirst({
+      where: { id: cid, schoolId: session.schoolId },
+      select: { id: true },
+    });
+    if (!coach) {
+      return NextResponse.json({ error: "Coach not available" }, { status: 403 });
+    }
+    coachId = cid;
+  }
+
+  const payload = serializeCoachClassContext({ coachId, classId, subgroupId });
+  const res = NextResponse.json({ ok: true, coachId, classId, subgroupId });
   res.cookies.set(COACH_CLASS_CONTEXT_COOKIE, payload, {
     ...sessionCookieOptions(60 * 60 * 24 * 90),
     httpOnly: true,

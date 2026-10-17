@@ -3,7 +3,8 @@
 import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, Check, Menu } from "lucide-react";
+import { ArrowLeft, Check } from "lucide-react";
+import { MobileCoachHeader } from "@/components/layout/mobile-coach-header";
 import { formatActivityValue } from "@/lib/format";
 import { filterSummaryShort, parseLeaderboardSearchParams } from "@/lib/compete/query-state";
 import type { LeaderboardBoard } from "@/lib/queries/leaderboard-grid";
@@ -11,7 +12,6 @@ import type { AthleteLineupView } from "@/lib/queries/compare";
 import { AthleteLineup } from "@/components/compare/athlete-lineup";
 import { cn } from "@/lib/utils";
 import { restoreCompeteLeaderboardScroll } from "@/components/compete/compete-leaderboard";
-import { useCompeteMenu } from "@/components/compete/compete-ui-provider";
 
 function CompareInner({
   boards,
@@ -28,7 +28,6 @@ function CompareInner({
   defaultSubgroupId: string | null;
   leaderboardHref: string;
 }) {
-  const { openMenu } = useCompeteMenu();
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
@@ -87,21 +86,9 @@ function CompareInner({
 
   return (
     <div>
-      <header className="sticky top-0 z-30 -mx-4 flex items-center justify-between border-b border-[#30373B] bg-background px-4 py-2.5 md:hidden">
-        <span className="text-xs font-bold uppercase tracking-[0.08em] text-accent">
-          Pro Gradus
-        </span>
-        <button
-          type="button"
-          onClick={openMenu}
-          className="inline-flex h-11 w-11 items-center justify-center rounded-xl"
-          aria-label="Open navigation"
-        >
-          <Menu className="h-5 w-5" aria-hidden />
-        </button>
-      </header>
+      <MobileCoachHeader title="Compare" />
 
-      <div className="mx-auto w-full max-w-3xl px-4 pb-28 pt-3 md:pb-8 lg:max-w-4xl">
+      <div className="mx-auto w-full max-w-3xl px-4 pb-4 pt-3 md:px-4 md:pb-8 md:pt-4 lg:max-w-4xl">
         <Link
           href={leaderboardHref}
           onClick={() => restoreCompeteLeaderboardScroll()}

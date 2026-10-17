@@ -11,7 +11,7 @@ export default async function CoachDashboardPage() {
   const data = await getCoachDashboard(session.schoolId);
 
   return (
-    <AppShell title="Coach Dashboard" nav={COACH_NAV}>
+    <AppShell title="Coach Dashboard" nav={COACH_NAV} navCompact mobileCoachChrome>
       <p className="mb-6 text-muted">How are my students performing?</p>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {[

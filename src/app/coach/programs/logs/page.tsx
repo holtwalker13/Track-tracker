@@ -60,7 +60,7 @@ export default async function CoachWorkoutLogsPage({
     : [];
 
   return (
-    <AppShell nav={COACH_NAV} title="Workout logs">
+    <AppShell nav={COACH_NAV} title="Workout logs" navCompact mobileCoachChrome>
       <p className="mb-4 text-sm">
         <Link href="/coach/programs" className="text-accent hover:underline">
           ← Programs

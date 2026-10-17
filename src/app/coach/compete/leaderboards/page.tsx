@@ -1,16 +1,12 @@
 import { requireSchoolSession } from "@/lib/auth/session";
-import { CoachClassScopeBar } from "@/components/coach/coach-class-scope-bar";
 import { getLeaderboardGrid } from "@/lib/queries/leaderboard-grid";
 import { resolveCoachClassScopeFromParams } from "@/lib/queries/coach-scope-params";
-import { LeaderboardToolbar } from "@/components/ui/leaderboard-toolbar";
-import { LeaderboardGrid } from "@/components/leaderboards/leaderboard-grid";
-import { gradesFromSearch, gradesLabel } from "@/lib/grades";
-import { parseGenderParam, genderFullLabel } from "@/lib/gender";
-import { isGraduatingClassName, classSectionLabel } from "@/lib/periods";
-import {
-  parseLeaderboardPeriod,
-  periodLabel,
-} from "@/lib/leaderboard-periods";
+import { gradesFromSearch } from "@/lib/grades";
+import { parseGenderParam } from "@/lib/gender";
+import { isGraduatingClassName } from "@/lib/periods";
+import { parseLeaderboardPeriod } from "@/lib/leaderboard-periods";
+import { CompeteLeaderboard } from "@/components/compete/compete-leaderboard";
+import { prisma } from "@/lib/db";
 
 export default async function CompeteLeaderboardsPage({
   searchParams,
@@ -24,6 +20,7 @@ export default async function CompeteLeaderboardsPage({
     subgroupId?: string;
     coachId?: string;
     period?: string;
+    event?: string;
   }>;
 }) {
   const session = await requireSchoolSession();
@@ -46,11 +43,8 @@ export default async function CompeteLeaderboardsPage({
 
   const classes = scopeCtx.classes.filter((c) => !isGraduatingClassName(c.name));
 
-  let classLabel: string | null = null;
-  if (classId) {
-    const cls = classes.find((c) => c.id === classId);
-    classLabel = cls ? classSectionLabel(cls) : null;
-  }
+  const needsClassChoice =
+    !allClasses && !scopeCtx.classId && session.role === "ADMIN";
 
   const { boards } = await getLeaderboardGrid(
     session.schoolId,
@@ -68,29 +62,37 @@ export default async function CompeteLeaderboardsPage({
     allClasses ? null : scopeCtx.subgroupId
   );
 
+  let schools: { id: string; name: string }[] = [];
+  if (session.role === "ADMIN") {
+    schools = await prisma.school.findMany({
+      orderBy: { createdAt: "asc" },
+      select: { id: true, name: true },
+    });
+  }
+  const school = await prisma.school.findUnique({
+    where: { id: session.schoolId },
+    select: { name: true },
+  });
+
   return (
-    <>
-      <div className="mb-4">
-        <CoachClassScopeBar
-          coaches={scopeCtx.coaches}
-          classes={scopeCtx.classes}
-          subgroups={scopeCtx.subgroups}
-          coachId={scopeCtx.coachId}
-          classId={allClasses ? "all" : scopeCtx.classId}
-          subgroupId={scopeCtx.subgroupId ?? ""}
-          showCoach={session.role === "ADMIN"}
-          showSubgroup
-          allClassesLabel="All classes"
-        />
-      </div>
-      <LeaderboardToolbar classes={classes} schoolWideClassId="all" />
-      <LeaderboardGrid
-        boards={boards}
-        subtitle={`${periodLabel(period)} · ${scope === "global" ? "Global" : "School"} · ${classLabel ?? gradesLabel(grades)} · ${genderFullLabel(gender).toLowerCase()}`}
-        athleteHrefBase="/coach/students"
-        rankScope={scope}
-        compareHref="/coach/compete/compare"
-      />
-    </>
+    <CompeteLeaderboard
+      boards={boards}
+      schoolName={school?.name ?? null}
+      coaches={scopeCtx.coaches}
+      classes={classes}
+      subgroups={scopeCtx.subgroups}
+      showCoach={session.role === "ADMIN"}
+      showSchoolSwitcher={session.role === "ADMIN" && schools.length > 1}
+      schools={schools}
+      currentSchoolId={session.schoolId}
+      defaultCoachId={scopeCtx.coachId}
+      defaultClassId={allClasses ? "all" : scopeCtx.classId}
+      defaultSubgroupId={scopeCtx.subgroupId}
+      allClassesLabel="All classes"
+      athleteHrefBase="/coach/students"
+      rankScope={scope}
+      compareHref="/coach/compete/compare"
+      needsClassChoice={needsClassChoice}
+    />
   );
 }

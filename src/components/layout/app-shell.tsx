@@ -15,6 +15,7 @@ export async function AppShell({
   children,
   density = "default",
   navCompact = false,
+  competeMobileChrome = false,
 }: {
   title: string;
   nav: NavItem[];
@@ -23,6 +24,8 @@ export async function AppShell({
   density?: "default" | "compact";
   /** Smaller icon-first nav on mobile. */
   navCompact?: boolean;
+  /** Compete mobile: hide top nav on small screens (bottom nav used instead). */
+  competeMobileChrome?: boolean;
 }) {
   const session = await getSession();
   if (
@@ -62,7 +65,8 @@ export async function AppShell({
       <header
         className={cn(
           "sticky top-0 z-40 border-b border-card-border bg-background/90 backdrop-blur",
-          compact && "border-card-border/70"
+          compact && "border-card-border/70",
+          competeMobileChrome && "hidden md:block"
         )}
       >
         <div
@@ -111,13 +115,18 @@ export async function AppShell({
                 </div>
               ) : null}
             </div>
-            <div className="flex min-w-0 items-center gap-2">
+            <div
+              className={cn(
+                "flex min-w-0 items-center gap-2",
+                competeMobileChrome && "hidden md:flex"
+              )}
+            >
               <ThemeToggle className="hidden sm:inline-flex" />
               <TopNav items={items} compact={navCompact || compact} />
             </div>
           </div>
           <ThemeToggle className="sm:hidden" />
-          {showSchoolSwitcher ? (
+          {showSchoolSwitcher && !competeMobileChrome ? (
             <div className="mt-2 border-t border-card-border/60 pt-2 sm:hidden">
               <SchoolSwitcher
                 schools={schools}
@@ -131,7 +140,8 @@ export async function AppShell({
       <main
         className={cn(
           "mx-auto max-w-7xl",
-          compact ? "px-3 py-3 sm:px-4 sm:py-4" : "px-3 py-4 sm:px-4 sm:py-6"
+          compact ? "px-3 py-3 sm:px-4 sm:py-4" : "px-3 py-4 sm:px-4 sm:py-6",
+          competeMobileChrome && "px-0 py-0 md:px-4 md:py-6"
         )}
       >
         {children}

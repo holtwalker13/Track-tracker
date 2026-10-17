@@ -3,13 +3,11 @@
 import { Suspense, useCallback, useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { ChevronDown, GitCompareArrows, Menu, SlidersHorizontal, Zap } from "lucide-react";
-import { ActivityIcon } from "@/lib/activity-icons";
+import { ChevronDown, GitCompareArrows, Menu, SlidersHorizontal } from "lucide-react";
 import type { LeaderboardBoard } from "@/lib/queries/leaderboard-grid";
 import {
   buildLeaderboardSearchParams,
   filterSummaryShort,
-  markColumnLabel,
   parseLeaderboardSearchParams,
   type CommittedLeaderboardQuery,
   type DraftFilterSelection,
@@ -22,9 +20,8 @@ import type {
   ScopeSubgroupOption,
 } from "@/components/coach/coach-class-scope-bar";
 import { GroupPickerSheet } from "@/components/compete/group-picker-sheet";
-import { EventPickerSheet } from "@/components/compete/event-picker-sheet";
 import { FiltersSheet } from "@/components/compete/filters-sheet";
-import { RankingList } from "@/components/compete/ranking-list";
+import { KpiBoardsPanel } from "@/components/compete/kpi-boards-panel";
 import { cn } from "@/lib/utils";
 import { useCompeteMenu } from "@/components/compete/compete-ui-provider";
 
@@ -73,7 +70,6 @@ function CompeteLeaderboardInner({
   const searchParams = useSearchParams();
   const [pending, startTransition] = useTransition();
   const [groupOpen, setGroupOpen] = useState(needsClassChoice);
-  const [eventOpen, setEventOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
 
   const defaultEvent = boards[0]?.activity.slug ?? "";
@@ -94,17 +90,12 @@ function CompeteLeaderboardInner({
     ]
   );
 
-  const selectedBoard =
-    boards.find((b) => b.activity.slug === committed.eventSlug) ?? boards[0] ?? null;
-
-  const effectiveEventSlug = selectedBoard?.activity.slug ?? committed.eventSlug;
-
   const pushQuery = useCallback(
     (patch: Partial<CommittedLeaderboardQuery>) => {
       const next: CommittedLeaderboardQuery = {
         ...committed,
         ...patch,
-        eventSlug: patch.eventSlug ?? committed.eventSlug ?? effectiveEventSlug,
+        eventSlug: patch.eventSlug ?? committed.eventSlug ?? defaultEvent,
       };
       const params = buildLeaderboardSearchParams(next, searchParams);
       const qs = params.toString();
@@ -112,19 +103,12 @@ function CompeteLeaderboardInner({
         router.push(qs ? `${pathname}?${qs}` : pathname);
       });
     },
-    [committed, effectiveEventSlug, pathname, router, searchParams, startTransition]
+    [committed, defaultEvent, pathname, router, searchParams, startTransition]
   );
 
   useEffect(() => {
     restoreCompeteLeaderboardScroll();
   }, []);
-
-  useEffect(() => {
-    if (boards.length === 0) return;
-    if (boards.some((b) => b.activity.slug === committed.eventSlug)) return;
-    const fallback = boards[0]?.activity.slug;
-    if (fallback) pushQuery({ eventSlug: fallback });
-  }, [boards, committed.eventSlug, pushQuery]);
 
   const coach = coaches.find((c) => c.id === committed.coachId);
   const classOption =
@@ -151,7 +135,8 @@ function CompeteLeaderboardInner({
   ].join(" · ");
 
   const filterSummary = filterSummaryShort(committed);
-  const rankedCount = selectedBoard?.entries.length ?? 0;
+  const kpiCount = boards.length;
+  const athletesRanked = boards.reduce((sum, b) => sum + b.entries.length, 0);
 
   function saveScrollForCompare() {
     try {
@@ -177,7 +162,7 @@ function CompeteLeaderboardInner({
         </button>
       </header>
 
-      <div className="mx-auto w-full max-w-3xl px-4 pb-28 pt-3 md:px-4 md:pb-8 md:pt-4 lg:max-w-4xl">
+      <div className="mx-auto w-full max-w-3xl px-4 pb-8 pt-3 md:px-4 md:pt-4 lg:max-w-4xl">
         <div className="mb-2.5 flex items-center justify-between gap-3">
           <h1 className="text-[23px] font-bold leading-tight tracking-tight">Leaderboard</h1>
           <Link
@@ -206,27 +191,6 @@ function CompeteLeaderboardInner({
           <p className="mb-3 text-sm text-muted">Choose a class to see rankings.</p>
         ) : null}
 
-        <button
-          type="button"
-          disabled={!selectedBoard}
-          onClick={() => setEventOpen(true)}
-          className="mb-3 flex min-h-11 w-full items-center gap-2 text-left text-xl font-semibold disabled:opacity-50"
-        >
-          {selectedBoard ? (
-            <ActivityIcon
-              slug={selectedBoard.activity.slug}
-              categorySlug={selectedBoard.activity.category?.slug}
-              className="h-5 w-5 shrink-0 text-accent"
-            />
-          ) : (
-            <Zap className="h-5 w-5 shrink-0 text-accent" aria-hidden />
-          )}
-          <span className="min-w-0 flex-1 truncate">
-            {selectedBoard?.activity.name ?? "Choose event"}
-          </span>
-          <ChevronDown className="h-5 w-5 shrink-0 text-muted" aria-hidden />
-        </button>
-
         <div className="mb-1 flex items-start justify-between gap-3 border-b border-[#30373B] pb-2">
           <button
             type="button"
@@ -236,24 +200,27 @@ function CompeteLeaderboardInner({
             <span className="min-w-0 break-words">{filterSummary}</span>
             <SlidersHorizontal className="h-4 w-4 shrink-0" aria-hidden />
           </button>
-          <span className="shrink-0 pt-2 text-xs text-muted">
-            {rankedCount} ranked
+          <span className="shrink-0 pt-2 text-right text-xs text-muted">
+            {kpiCount} KPI{kpiCount === 1 ? "" : "s"}
+            {!needsClassChoice && athletesRanked > 0 ? (
+              <>
+                <br />
+                <span className="text-muted/90">{athletesRanked} ranked</span>
+              </>
+            ) : null}
           </span>
         </div>
 
-        <div className="flex justify-between px-1 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">
-          <span>Athlete</span>
-          <span>{markColumnLabel()}</span>
-        </div>
+        {!needsClassChoice ? (
+          <KpiBoardsPanel
+            boards={boards}
+            athleteHrefBase={athleteHrefBase}
+            rankScope={rankScope}
+            loading={pending}
+          />
+        ) : null}
 
-        <RankingList
-          board={needsClassChoice ? null : selectedBoard}
-          athleteHrefBase={athleteHrefBase}
-          rankScope={rankScope}
-          loading={pending}
-        />
-
-        {!pending && !needsClassChoice && selectedBoard && rankedCount === 0 ? (
+        {!pending && !needsClassChoice && boards.length > 0 && athletesRanked === 0 ? (
           <button
             type="button"
             onClick={() => setFiltersOpen(true)}
@@ -291,14 +258,6 @@ function CompeteLeaderboardInner({
         }}
       />
 
-      <EventPickerSheet
-        open={eventOpen}
-        onClose={() => setEventOpen(false)}
-        boards={boards}
-        selectedSlug={effectiveEventSlug}
-        onSelect={(slug) => pushQuery({ eventSlug: slug })}
-      />
-
       <FiltersSheet
         open={filtersOpen}
         onClose={() => setFiltersOpen(false)}
@@ -325,7 +284,11 @@ function CompeteLeaderboardInner({
 
 export function CompeteLeaderboard(props: React.ComponentProps<typeof CompeteLeaderboardInner>) {
   return (
-    <Suspense fallback={<RankingList board={null} loading />}>
+    <Suspense
+      fallback={
+        <KpiBoardsPanel boards={[]} athleteHrefBase={props.athleteHrefBase} loading />
+      }
+    >
       <CompeteLeaderboardInner {...props} />
     </Suspense>
   );

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { formatActivityValue } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -18,12 +19,18 @@ export function RankingList({
   athleteHrefBase,
   rankScope = "school",
   loading,
+  initialLimit,
+  compact = false,
 }: {
   board: LeaderboardBoard | null;
   athleteHrefBase?: string;
   rankScope?: "school" | "global";
   loading?: boolean;
+  /** When set, show this many rows until the user expands. */
+  initialLimit?: number;
+  compact?: boolean;
 }) {
+  const [expanded, setExpanded] = useState(false);
   if (loading) {
     return (
       <div className="mt-1 space-y-0" aria-busy="true" aria-label="Loading rankings">
@@ -56,9 +63,16 @@ export function RankingList({
     );
   }
 
+  const limit = initialLimit && initialLimit > 0 ? initialLimit : board.entries.length;
+  const canCollapse = board.entries.length > limit;
+  const visible =
+    canCollapse && !expanded ? board.entries.slice(0, limit) : board.entries;
+  const hiddenCount = board.entries.length - limit;
+
   return (
+    <>
     <ol className="mt-1 list-none" aria-label={`${board.activity.name} rankings`}>
-      {board.entries.map((e, index) => {
+      {visible.map((e, index) => {
         const isFirst = index === 0;
         const value = formatActivityValue(
           e.value,
@@ -75,12 +89,14 @@ export function RankingList({
         const row = (
           <div
             className={cn(
-              "flex min-h-[61px] items-center gap-3 border-b border-[#30373B] py-3 pr-1"
+              "flex items-center gap-2 border-b border-[#30373B] py-2.5 pr-1",
+              compact ? "min-h-[52px] gap-1.5 px-1" : "min-h-[61px] gap-3"
             )}
           >
             <span
               className={cn(
-                "w-5 shrink-0 text-sm tabular-nums",
+                "w-5 shrink-0 tabular-nums",
+                compact ? "text-xs" : "text-sm",
                 isFirst ? "font-semibold text-accent" : "text-muted"
               )}
               aria-label={`Rank ${e.rank}`}
@@ -88,14 +104,24 @@ export function RankingList({
               {e.rank}
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block text-sm font-semibold leading-snug">{e.displayName}</span>
+              <span
+                className={cn(
+                  "block font-semibold leading-snug",
+                  compact ? "text-xs" : "text-sm"
+                )}
+              >
+                {e.displayName}
+              </span>
               {dateLabel ? (
-                <span className="block text-xs text-muted">{dateLabel}</span>
+                <span className={cn("block text-muted", compact ? "text-[10px]" : "text-xs")}>
+                  {dateLabel}
+                </span>
               ) : null}
             </span>
             <span
               className={cn(
-                "shrink-0 text-xl font-bold tabular-nums",
+                "shrink-0 font-bold tabular-nums",
+                compact ? "text-base" : "text-xl",
                 isFirst ? "text-accent" : "text-foreground"
               )}
             >
@@ -116,5 +142,19 @@ export function RankingList({
         return <li key={`${e.studentId}-${e.rank}`}>{row}</li>;
       })}
     </ol>
+    {canCollapse ? (
+      <div className="px-2 pt-1">
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className="min-h-10 w-full text-left text-sm font-medium text-accent"
+        >
+          {expanded
+            ? "Show top 10"
+            : `View all (${hiddenCount} more)`}
+        </button>
+      </div>
+    ) : null}
+    </>
   );
 }

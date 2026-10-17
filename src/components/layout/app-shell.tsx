@@ -24,7 +24,7 @@ export async function AppShell({
   density?: "default" | "compact";
   /** Smaller icon-first nav on mobile. */
   navCompact?: boolean;
-  /** Compete mobile: hide top nav on small screens (bottom nav used instead). */
+  /** Compete mobile: hide AppShell header on small screens (in-page Pro Gradus bar + menu). */
   competeMobileChrome?: boolean;
 }) {
   const session = await getSession();

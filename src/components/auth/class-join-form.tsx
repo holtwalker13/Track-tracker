@@ -17,6 +17,8 @@ type Identity = {
   hasAccount: boolean;
 };
 
+type Step = "email" | "create" | "login" | "code";
+
 export function ClassJoinForm({ token }: { token: string }) {
   const router = useRouter();
   const [preview, setPreview] = useState<Preview | null>(null);
@@ -24,6 +26,9 @@ export function ClassJoinForm({ token }: { token: string }) {
   const [error, setError] = useState<string | null>(null);
   const [credential, setCredential] = useState("");
   const [identity, setIdentity] = useState<Identity | null>(null);
+  const [step, setStep] = useState<Step>("email");
+  const [deliveryEmail, setDeliveryEmail] = useState("");
+  const [code, setCode] = useState("");
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
   const [pending, setPending] = useState(false);
@@ -72,6 +77,10 @@ export function ClassJoinForm({ token }: { token: string }) {
         username: data.username,
         hasAccount: Boolean(data.hasAccount),
       });
+      setDeliveryEmail(typeof data.email === "string" ? data.email : credential.trim());
+      if (data.needsVerification) setStep("code");
+      else if (data.hasAccount) setStep("login");
+      else setStep("create");
     } catch {
       setError("Could not check that email.");
     } finally {
@@ -81,7 +90,7 @@ export function ClassJoinForm({ token }: { token: string }) {
 
   async function finish(event: React.FormEvent) {
     event.preventDefault();
-    if (!identity) return;
+    if (!identity || (step !== "create" && step !== "login")) return;
     setPending(true);
     setError(null);
     try {
@@ -91,7 +100,7 @@ export function ClassJoinForm({ token }: { token: string }) {
         body: JSON.stringify({
           token,
           credential,
-          action: identity.hasAccount ? "login" : "create",
+          action: step === "login" ? "login" : "create",
           password,
           passwordConfirm,
         }),
@@ -101,10 +110,62 @@ export function ClassJoinForm({ token }: { token: string }) {
         setError(data.error ?? "Could not continue.");
         return;
       }
+      if (data.step === "verify") {
+        if (typeof data.email === "string") setDeliveryEmail(data.email);
+        setCode("");
+        setStep("code");
+        return;
+      }
       router.replace(data.redirect ?? "/student");
       router.refresh();
     } catch {
       setError("Something went wrong. Please try again.");
+    } finally {
+      setPending(false);
+    }
+  }
+
+  async function confirmCode(event: React.FormEvent) {
+    event.preventDefault();
+    setPending(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/class-join", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, credential, action: "verify", code }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? "That code does not match.");
+        return;
+      }
+      router.replace(data.redirect ?? "/student");
+      router.refresh();
+    } catch {
+      setError("Something went wrong. Please try again.");
+    } finally {
+      setPending(false);
+    }
+  }
+
+  async function resendCode() {
+    setPending(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/class-join", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, credential, action: "resend" }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? "Could not send a new code.");
+        return;
+      }
+      setCode("");
+    } catch {
+      setError("Could not send a new code.");
     } finally {
       setPending(false);
     }
@@ -137,7 +198,7 @@ export function ClassJoinForm({ token }: { token: string }) {
           log anything.
         </p>
 
-        {!identity ? (
+        {step === "email" ? (
           <form onSubmit={identify} className="mt-6 space-y-4">
             <label className="block text-sm">
               Student email
@@ -162,30 +223,70 @@ export function ClassJoinForm({ token }: { token: string }) {
               {pending ? "Checking…" : "Continue"}
             </button>
           </form>
+        ) : step === "code" ? (
+          <form onSubmit={confirmCode} className="mt-6 space-y-4">
+            <p className="text-sm text-muted">
+              We sent a 6-digit code to <span className="font-semibold text-foreground">{deliveryEmail}</span>.
+              Paste it here to open your class.
+            </p>
+            <label className="block text-sm">
+              Code
+              <input
+                value={code}
+                onChange={(e) => setCode(e.target.value.replace(/[^\d]/g, "").slice(0, 6))}
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                placeholder="000000"
+                required
+                className="mt-1 w-full rounded-lg border border-card-border bg-background px-3 py-3 text-center font-mono text-lg tracking-[0.4em]"
+              />
+            </label>
+            {error && <p className="text-sm text-red-400">{error}</p>}
+            <button
+              type="submit"
+              disabled={pending || code.length !== 6}
+              className="w-full rounded-lg bg-accent py-3 font-semibold text-background disabled:opacity-60"
+            >
+              {pending ? "Checking…" : "Confirm"}
+            </button>
+            <button
+              type="button"
+              disabled={pending}
+              onClick={() => void resendCode()}
+              className="text-sm text-muted hover:text-foreground"
+            >
+              Resend code
+            </button>
+          </form>
         ) : (
           <form onSubmit={finish} className="mt-6 space-y-4">
             <dl className="space-y-2 rounded-lg border border-card-border bg-background/50 px-4 py-3 text-sm">
               <div className="flex justify-between gap-4">
                 <dt className="text-muted">Student</dt>
-                <dd className="text-right font-semibold">{identity.fullName}</dd>
+                <dd className="text-right font-semibold">{identity?.fullName}</dd>
               </div>
               <div className="flex justify-between gap-4">
                 <dt className="text-muted">Username</dt>
-                <dd className="font-mono font-semibold">{identity.username}</dd>
+                <dd className="font-mono font-semibold">{identity?.username}</dd>
               </div>
             </dl>
+            {step === "create" ? (
+              <p className="text-sm text-muted">
+                This is your first time. Create a password, then confirm the code we email you.
+              </p>
+            ) : null}
             <label className="block text-sm">
-              {identity.hasAccount ? "Password" : "Create a password"}
+              Password
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                autoComplete={identity.hasAccount ? "current-password" : "new-password"}
+                autoComplete={step === "login" ? "current-password" : "new-password"}
                 required
                 className="mt-1 w-full rounded-lg border border-card-border bg-background px-3 py-3"
               />
             </label>
-            {!identity.hasAccount ? (
+            {step === "create" ? (
               <label className="block text-sm">
                 Confirm password
                 <input
@@ -204,18 +305,16 @@ export function ClassJoinForm({ token }: { token: string }) {
               disabled={pending}
               className="w-full rounded-lg bg-accent py-3 font-semibold text-background disabled:opacity-60"
             >
-              {pending
-                ? "Working…"
-                : identity.hasAccount
-                  ? "Sign in"
-                  : "Create account and sign in"}
+              {pending ? "Working…" : step === "login" ? "Sign in" : "Create account"}
             </button>
             <button
               type="button"
               onClick={() => {
                 setIdentity(null);
+                setStep("email");
                 setPassword("");
                 setPasswordConfirm("");
+                setCode("");
                 setError(null);
               }}
               className="text-sm text-muted hover:text-foreground"

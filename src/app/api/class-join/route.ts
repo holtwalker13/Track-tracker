@@ -12,6 +12,7 @@ import {
   previewClassJoin,
 } from "@/lib/services/class-join";
 import { resolveClassIdFromJoinToken } from "@/lib/services/class-join-link";
+import { issueEmailLoginCode, verifyEmailLoginCode } from "@/lib/auth/email-login-code";
 import { checkRateLimit, rateLimitKey } from "@/lib/security/rate-limit";
 import { clientIpHint, writeAuditLog } from "@/lib/security/audit-log";
 
@@ -55,7 +56,49 @@ export async function POST(request: Request) {
     }
     const created = await createAccountFromClassJoin({ token, credential, password });
     if (!created.ok) return NextResponse.json({ error: created.error }, { status: 400 });
-    return sessionResponse(created.userId, created.studentId, created.schoolId, created.username);
+    const sent = await issueEmailLoginCode(created.userId);
+    if (!sent.ok) return NextResponse.json({ error: sent.error }, { status: 503 });
+    return NextResponse.json({ ok: true, step: "verify", email: created.email });
+  }
+
+  if (action === "resend") {
+    const classId = await resolveClassIdFromJoinToken(token);
+    if (!classId) return NextResponse.json({ error: "This class link is not valid." }, { status: 400 });
+    const student = await findClassStudentByCredential(classId, credential);
+    if (!student?.userId || student.passwordSetAt) {
+      return NextResponse.json({ error: "Create your account before requesting a code." }, { status: 400 });
+    }
+    const sent = await issueEmailLoginCode(student.userId);
+    if (!sent.ok) return NextResponse.json({ error: sent.error }, { status: 503 });
+    return NextResponse.json({ ok: true, step: "verify" });
+  }
+
+  if (action === "verify") {
+    const classId = await resolveClassIdFromJoinToken(token);
+    if (!classId) return NextResponse.json({ error: "This class link is not valid." }, { status: 400 });
+    const student = await findClassStudentByCredential(classId, credential);
+    if (!student?.userId) {
+      return NextResponse.json({ error: "Create your account before entering a code." }, { status: 400 });
+    }
+    if (student.passwordSetAt) {
+      return NextResponse.json({ error: "This account is already confirmed. Sign in." }, { status: 400 });
+    }
+    const checked = await verifyEmailLoginCode(student.userId, String(body.code ?? ""));
+    if (!checked.ok) return NextResponse.json({ error: checked.error }, { status: 400 });
+    await writeAuditLog({
+      action: "CLASS_JOIN_EMAIL_CODE",
+      targetType: "StudentProfile",
+      targetId: student.id,
+      outcome: "SUCCESS",
+      ipHint: ip,
+    });
+    return sessionResponse(
+      student.userId,
+      student.id,
+      student.schoolId,
+      student.username ?? student.studentNumber,
+      classId
+    );
   }
 
   if (action === "login") {
@@ -90,13 +133,25 @@ export async function POST(request: Request) {
       outcome: "SUCCESS",
       ipHint: ip,
     });
-    return sessionResponse(user.id, student.id, student.schoolId, student.username ?? student.studentNumber);
+    return sessionResponse(
+      user.id,
+      student.id,
+      student.schoolId,
+      student.username ?? student.studentNumber,
+      classId
+    );
   }
 
   return NextResponse.json({ error: "Unknown action" }, { status: 400 });
 }
 
-async function sessionResponse(userId: string, studentId: string, schoolId: string, username: string) {
+async function sessionResponse(
+  userId: string,
+  studentId: string,
+  schoolId: string,
+  username: string,
+  classId?: string
+) {
   const token = await signSessionToken({
     userId,
     role: "STUDENT",
@@ -106,10 +161,11 @@ async function sessionResponse(userId: string, studentId: string, schoolId: stri
   const opts = sessionCookieOptions();
   const jar = await cookies();
   jar.set(SESSION_COOKIE, token, opts);
+  const next = classId ? `/student?classId=${encodeURIComponent(classId)}` : "/student";
   const res = NextResponse.json({
     ok: true,
     username,
-    redirect: loginDestination("STUDENT", "/student"),
+    redirect: loginDestination("STUDENT", next),
   });
   res.cookies.set(SESSION_COOKIE, token, opts);
   return res;

@@ -260,6 +260,21 @@ model User {
   enteredResults PerformanceResult[] @relation("EnteredBy")
   workoutTemplatesCreated WorkoutTemplate[] @relation("WorkoutTemplateCreatedBy")
   workoutAssignmentsCreated WorkoutAssignment[] @relation("WorkoutAssignmentCreatedBy")
+  emailLoginCodes EmailLoginCode[]
+}
+
+/// One-time code emailed when a student creates an account from a class link.
+model EmailLoginCode {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  codeHash   String
+  expiresAt  DateTime
+  attempts   Int       @default(0)
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([userId])
 }
 
 model CoachProfile {

@@ -1,0 +1,19 @@
+# Isolated local stack for design-updates-oct (fresh Postgres volume, distinct container names).
+# Usage: docker compose -f docker-compose.yml -f docker-compose.design-oct.yml up --build
+name: design-updates-oct
+
+services:
+  postgres:
+    container_name: design-updates-oct-postgres
+    volumes:
+      - sap-pg-design-oct:/var/lib/postgresql/data
+
+  app:
+    container_name: design-updates-oct-app
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      DATABASE_URL: "postgresql://sap:sap@host.docker.internal:5434/sap"
+
+volumes:
+  sap-pg-design-oct:

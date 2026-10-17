@@ -4,8 +4,9 @@ export function loginDestination(role: string, nextRaw: string | undefined | nul
   const relative =
     next.startsWith("/") && !next.startsWith("//") && !next.startsWith("/login");
 
+  const path = next.split("?")[0] ?? "";
   if (role === "STUDENT") {
-    if (relative && (next === "/student" || next.startsWith("/student/"))) return next;
+    if (relative && (path === "/student" || path.startsWith("/student/"))) return next;
     return "/student";
   }
 

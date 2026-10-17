@@ -6,6 +6,7 @@ import { credentialMatchesRosterStudent } from "@/lib/services/class-join-match"
 import { studentLoginEmailForNumber } from "@/lib/services/student-login-invite";
 import { validateAccountPassword } from "@/lib/services/login-invite-token";
 import { ensureStudentUsername } from "@/lib/services/student-username";
+import { hasPendingLoginCode } from "@/lib/auth/email-login-code";
 import {
   emailMatchesRoster,
   loginPolicyForSlug,
@@ -152,12 +153,21 @@ export async function identifyClassStudent(token: string, credential: string) {
   const username =
     student.username ??
     (await ensureStudentUsername(student.id).catch(() => student.studentNumber));
+  const typed = normalizeLoginEmail(credential);
+  const email = typed.includes("@")
+    ? typed
+    : student.rosterEmail?.includes("@")
+      ? normalizeLoginEmail(student.rosterEmail)
+      : null;
+  const needsVerification = !student.passwordSetAt && (await hasPendingLoginCode(student.userId));
   return {
     ok: true as const,
     studentId: student.id,
     fullName: `${student.firstName} ${student.lastName}`,
     username,
     hasAccount: Boolean(student.passwordSetAt),
+    needsVerification,
+    email,
   };
 }
 
@@ -199,10 +209,16 @@ export async function createAccountFromClassJoin(input: {
   });
   const policy = loginPolicyForSlug(school?.slug ?? student.schoolSlug);
   const typed = normalizeLoginEmail(input.credential);
-  const email = policy
+  const email = typed.includes("@")
     ? typed
-    : studentLoginEmailForNumber(student.studentNumber, school?.slug ?? "school");
-  const confirmedAt = policy ? new Date() : null;
+    : student.rosterEmail?.includes("@")
+      ? normalizeLoginEmail(student.rosterEmail)
+      : policy
+        ? ""
+        : studentLoginEmailForNumber(student.studentNumber, school?.slug ?? "school");
+  if (!email.includes("@")) {
+    return { ok: false, error: "Your coach needs an email on the roster before you can create an account." };
+  }
   const taken = await prisma.user.findUnique({
     where: { email },
     select: { id: true, studentProfile: { select: { id: true } } },
@@ -212,7 +228,6 @@ export async function createAccountFromClassJoin(input: {
   }
 
   const passwordHash = await bcrypt.hash(input.password, BCRYPT_ROUNDS);
-  const now = new Date();
   const userId = await prisma.$transaction(async (tx) => {
     let linked = student.userId;
     if (linked) {
@@ -221,8 +236,8 @@ export async function createAccountFromClassJoin(input: {
         data: {
           email,
           passwordHash,
-          passwordSetAt: now,
-          schoolEmailConfirmedAt: confirmedAt,
+          passwordSetAt: null,
+          schoolEmailConfirmedAt: null,
           firstName: student.firstName,
           lastName: student.lastName,
         },
@@ -234,8 +249,8 @@ export async function createAccountFromClassJoin(input: {
         data: {
           email,
           passwordHash,
-          passwordSetAt: now,
-          schoolEmailConfirmedAt: confirmedAt,
+          passwordSetAt: null,
+          schoolEmailConfirmedAt: null,
           role: "STUDENT",
           firstName: student.firstName,
           lastName: student.lastName,
@@ -253,8 +268,8 @@ export async function createAccountFromClassJoin(input: {
           role: "STUDENT",
           firstName: student.firstName,
           lastName: student.lastName,
-          passwordSetAt: now,
-          schoolEmailConfirmedAt: confirmedAt,
+          passwordSetAt: null,
+          schoolEmailConfirmedAt: null,
         },
       });
       linked = created.id;

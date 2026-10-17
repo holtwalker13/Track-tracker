@@ -1,7 +1,6 @@
 "use client";
 
 import { createContext, useCallback, useContext, useState } from "react";
-import { MobileBottomNav } from "@/components/compete/mobile-bottom-nav";
 import { MoreMenuSheet } from "@/components/compete/more-menu-sheet";
 
 const CompeteUiContext = createContext<{ openMenu: () => void }>({
@@ -27,7 +26,6 @@ export function CompeteUiProvider({
   return (
     <CompeteUiContext.Provider value={{ openMenu }}>
       {children}
-      <MobileBottomNav onMore={openMenu} />
       <MoreMenuSheet
         open={moreOpen}
         onClose={() => setMoreOpen(false)}

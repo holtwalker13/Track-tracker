@@ -10,6 +10,13 @@ import {
   validateAccountPassword,
 } from "@/lib/services/login-invite-token";
 import { ensureUnder13CollectionAllowed } from "@/lib/auth/tenant-access";
+import {
+  hasPendingLoginCode,
+  issueEmailLoginCode,
+  verifyClassJoinEmailCode,
+} from "@/lib/auth/email-login-code";
+import { hashPendingAccountPlaceholder } from "@/lib/auth/pending-account-password";
+import { normalizeLoginEmail } from "@/lib/school-login-email";
 
 const BCRYPT_ROUNDS = 12;
 
@@ -25,7 +32,20 @@ export type StudentInvitePreview = {
   alreadyActive: boolean;
   expired: boolean;
   used: boolean;
+  deliveryEmail?: string;
+  emailVerified?: boolean;
+  pendingCode?: boolean;
 };
+
+export function resolveStudentInviteEmail(student: {
+  studentNumber: string;
+  rosterEmail: string | null;
+  school: { slug: string | null };
+}): string {
+  const roster = student.rosterEmail ? normalizeLoginEmail(student.rosterEmail) : "";
+  if (roster.includes("@")) return roster;
+  return studentLoginEmailForNumber(student.studentNumber, student.school.slug ?? "school");
+}
 
 /** Stable login email tied to roster student ID (not shown in the invite URL). */
 export function studentLoginEmailForNumber(studentNumber: string, schoolSlug: string): string {
@@ -85,7 +105,9 @@ async function loadInviteByToken(token: string) {
     include: {
       student: {
         include: {
-          user: { select: { id: true, passwordSetAt: true } },
+          user: {
+            select: { id: true, passwordSetAt: true, schoolEmailConfirmedAt: true },
+          },
           school: { select: { name: true, slug: true } },
         },
       },
@@ -107,6 +129,11 @@ export async function previewStudentLoginInvite(token: string): Promise<StudentI
     student.username ??
     (await ensureStudentUsername(student.id).catch(() => student.studentNumber));
 
+  const deliveryEmail = resolveStudentInviteEmail(student);
+  const emailVerified = Boolean(student.user?.schoolEmailConfirmedAt);
+  const pendingCode =
+    !alreadyActive && Boolean(student.user?.id) && (await hasPendingLoginCode(student.user.id));
+
   return {
     fullName: `${student.firstName} ${student.lastName}`,
     username,
@@ -115,7 +142,169 @@ export async function previewStudentLoginInvite(token: string): Promise<StudentI
     alreadyActive,
     expired,
     used,
+    deliveryEmail: deliveryEmail.includes("@") ? deliveryEmail : undefined,
+    emailVerified: alreadyActive ? undefined : emailVerified,
+    pendingCode: alreadyActive ? undefined : pendingCode,
   };
+}
+
+async function assertInviteAvailableForSetup(
+  invite: NonNullable<Awaited<ReturnType<typeof loadInviteByToken>>>,
+  alreadyActive: boolean
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (alreadyActive) return { ok: true };
+  if (invite.usedAt) return { ok: false, error: "This link has already been used." };
+  if (invite.expiresAt.getTime() < Date.now()) {
+    return { ok: false, error: "This link has expired. Ask your coach for a new one." };
+  }
+  return { ok: true };
+}
+
+export async function stageStudentInviteAccount(
+  invite: NonNullable<Awaited<ReturnType<typeof loadInviteByToken>>>
+): Promise<{ ok: true; userId: string; email: string } | { ok: false; error: string }> {
+  const student = invite.student;
+  const alreadyActive = Boolean(student.user?.passwordSetAt);
+  const gate = await assertInviteAvailableForSetup(invite, alreadyActive);
+  if (!gate.ok) return gate;
+
+  const email = resolveStudentInviteEmail(student);
+  if (!email.includes("@")) {
+    return {
+      ok: false,
+      error: "Your coach needs an email on the roster before a verification code can be sent.",
+    };
+  }
+
+  const profile = await prisma.studentProfile.findUnique({
+    where: { id: student.id },
+    select: { dateOfBirth: true, schoolId: true },
+  });
+  if (profile && !alreadyActive) {
+    const coppa = await ensureUnder13CollectionAllowed(profile.schoolId, profile.dateOfBirth);
+    if (!coppa.ok) return { ok: false, error: coppa.error };
+  }
+
+  const existingEmail = await prisma.user.findUnique({
+    where: { email },
+    select: { id: true, studentProfile: { select: { id: true } } },
+  });
+  if (existingEmail && existingEmail.studentProfile?.id !== student.id) {
+    return { ok: false, error: "Unable to create login for this student. Contact your coach." };
+  }
+
+  const placeholderHash = await hashPendingAccountPlaceholder();
+  const userId = await prisma.$transaction(async (tx) => {
+    let linked = student.user?.id ?? null;
+    if (linked) {
+      await tx.user.update({
+        where: { id: linked },
+        data: {
+          email,
+          passwordHash: placeholderHash,
+          passwordSetAt: null,
+          schoolEmailConfirmedAt: null,
+          firstName: student.firstName,
+          lastName: student.lastName,
+        },
+      });
+    } else if (existingEmail && !existingEmail.studentProfile) {
+      linked = existingEmail.id;
+      await tx.user.update({
+        where: { id: linked },
+        data: {
+          email,
+          passwordHash: placeholderHash,
+          passwordSetAt: null,
+          schoolEmailConfirmedAt: null,
+          role: "STUDENT",
+          firstName: student.firstName,
+          lastName: student.lastName,
+        },
+      });
+      await tx.studentProfile.update({
+        where: { id: student.id },
+        data: { userId: linked },
+      });
+    } else {
+      const created = await tx.user.create({
+        data: {
+          email,
+          passwordHash: placeholderHash,
+          role: "STUDENT",
+          firstName: student.firstName,
+          lastName: student.lastName,
+          passwordSetAt: null,
+          schoolEmailConfirmedAt: null,
+        },
+      });
+      linked = created.id;
+      await tx.studentProfile.update({
+        where: { id: student.id },
+        data: { userId: linked },
+      });
+    }
+    return linked!;
+  });
+
+  await ensureStudentUsername(student.id).catch(() => undefined);
+  return { ok: true, userId, email };
+}
+
+export async function beginStudentInviteEmailVerification(
+  token: string
+): Promise<{ ok: true; email: string } | { ok: false; error: string }> {
+  const invite = await loadInviteByToken(token);
+  if (!invite) return { ok: false, error: "This link is invalid or has expired." };
+  if (invite.student.user?.passwordSetAt) {
+    return { ok: false, error: "This account already exists. Sign in with your password." };
+  }
+  if (invite.student.user?.schoolEmailConfirmedAt) {
+    const email = resolveStudentInviteEmail(invite.student);
+    return { ok: true, email };
+  }
+
+  const staged = await stageStudentInviteAccount(invite);
+  if (!staged.ok) return staged;
+  const sent = await issueEmailLoginCode(staged.userId);
+  if (!sent.ok) return sent;
+  return { ok: true, email: staged.email };
+}
+
+export async function verifyStudentInviteEmailCode(
+  token: string,
+  rawCode: string
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const invite = await loadInviteByToken(token);
+  if (!invite) return { ok: false, error: "This link is invalid or has expired." };
+  const userId = invite.student.user?.id;
+  if (!userId) {
+    return { ok: false, error: "Request a verification code first." };
+  }
+  if (invite.student.user?.passwordSetAt) {
+    return { ok: false, error: "This account is already set up. Sign in." };
+  }
+  return verifyClassJoinEmailCode(userId, rawCode);
+}
+
+export async function resendStudentInviteEmailCode(
+  token: string
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const invite = await loadInviteByToken(token);
+  if (!invite) return { ok: false, error: "This link is invalid or has expired." };
+  if (invite.student.user?.passwordSetAt) {
+    return { ok: false, error: "This account already exists. Sign in." };
+  }
+  if (invite.student.user?.schoolEmailConfirmedAt) {
+    return { ok: false, error: "Email already confirmed. Create your password below." };
+  }
+  let userId = invite.student.user?.id;
+  if (!userId) {
+    const staged = await stageStudentInviteAccount(invite);
+    if (!staged.ok) return staged;
+    userId = staged.userId;
+  }
+  return issueEmailLoginCode(userId);
 }
 
 export async function completeStudentLoginInvite(input: {
@@ -155,8 +344,11 @@ export async function completeStudentLoginInvite(input: {
     return { ok: false, error: "This link has expired. Ask your coach for a new one." };
   }
 
-  const schoolSlug = student.school.slug ?? "school";
-  const email = studentLoginEmailForNumber(student.studentNumber, schoolSlug);
+  if (!alreadyActive && !student.user?.schoolEmailConfirmedAt) {
+    return { ok: false, error: "Confirm the code we emailed you before creating a password." };
+  }
+
+  const email = resolveStudentInviteEmail(student);
 
   const existingEmail = await prisma.user.findUnique({
     where: { email },

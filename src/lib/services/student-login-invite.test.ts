@@ -2,6 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
   hashInviteToken,
+  resolveStudentInviteEmail,
   studentJoinPath,
   studentLoginEmailForNumber,
   validateStudentPassword,
@@ -21,6 +22,17 @@ describe("student-login-invite", () => {
 
   it("derives login email from student number", () => {
     assert.equal(studentLoginEmailForNumber("S0001", "jhs"), "s0001@jhs.demo");
+  });
+
+  it("prefers roster email for verification delivery", () => {
+    assert.equal(
+      resolveStudentInviteEmail({
+        studentNumber: "S0359",
+        rosterEmail: "student@school.edu",
+        school: { slug: "demo" },
+      }),
+      "student@school.edu"
+    );
   });
 
   it("validates password strength", () => {

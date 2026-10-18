@@ -14,13 +14,21 @@ type Preview = {
   alreadyActive?: boolean;
   expired?: boolean;
   used?: boolean;
+  deliveryEmail?: string;
+  emailVerified?: boolean;
+  pendingCode?: boolean;
 };
+
+type SetupStep = "code" | "password";
 
 export function StudentJoinForm({ token }: { token: string }) {
   const router = useRouter();
   const [preview, setPreview] = useState<Preview | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [setupStep, setSetupStep] = useState<SetupStep>("code");
+  const [deliveryEmail, setDeliveryEmail] = useState("");
+  const [code, setCode] = useState("");
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
   const [confirmName, setConfirmName] = useState(false);
@@ -43,6 +51,7 @@ export function StudentJoinForm({ token }: { token: string }) {
         return;
       }
       setPreview(data);
+      if (typeof data.deliveryEmail === "string") setDeliveryEmail(data.deliveryEmail);
     } catch {
       setError("Could not load this link. Check your connection and try again.");
     } finally {
@@ -54,6 +63,42 @@ export function StudentJoinForm({ token }: { token: string }) {
     void load();
   }, [load]);
 
+  const startVerification = useCallback(async () => {
+    setSubmitting(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/student-invite", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, action: "start" }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? "Could not send a verification code.");
+        return;
+      }
+      if (typeof data.email === "string") setDeliveryEmail(data.email);
+      setSetupStep("code");
+    } catch {
+      setError("Could not send a verification code.");
+    } finally {
+      setSubmitting(false);
+    }
+  }, [token]);
+
+  useEffect(() => {
+    if (!preview || preview.mode !== "CREATE" || preview.canComplete === false) return;
+    if (preview.emailVerified) {
+      setSetupStep("password");
+      return;
+    }
+    if (preview.pendingCode) {
+      setSetupStep("code");
+      return;
+    }
+    void startVerification();
+  }, [preview, startVerification]);
+
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSubmitting(true);
@@ -62,7 +107,7 @@ export function StudentJoinForm({ token }: { token: string }) {
       const res = await fetch("/api/student-invite", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, password, passwordConfirm, confirmName }),
+        body: JSON.stringify({ token, password, passwordConfirm, confirmName, action: "complete" }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -84,6 +129,52 @@ export function StudentJoinForm({ token }: { token: string }) {
       router.refresh();
     } catch {
       setError("Something went wrong. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function confirmCode(e: React.FormEvent) {
+    e.preventDefault();
+    setSubmitting(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/student-invite", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, action: "verify", code }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? "That code does not match.");
+        return;
+      }
+      setCode("");
+      setSetupStep("password");
+    } catch {
+      setError("Something went wrong. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function resendCode() {
+    setSubmitting(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/student-invite", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, action: "resend" }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? "Could not send a new code.");
+        return;
+      }
+      setCode("");
+    } catch {
+      setError("Could not send a new code.");
     } finally {
       setSubmitting(false);
     }
@@ -148,6 +239,7 @@ export function StudentJoinForm({ token }: { token: string }) {
   }
 
   const signingIn = preview.mode === "LOGIN" || preview.alreadyActive;
+  const creatingAccount = preview.mode === "CREATE" && !signingIn;
 
   async function signIn(e: React.FormEvent) {
     e.preventDefault();
@@ -232,6 +324,71 @@ export function StudentJoinForm({ token }: { token: string }) {
     );
   }
 
+  const studentCard = (
+    <dl className="mt-6 space-y-3 rounded-lg border border-card-border bg-background/50 px-4 py-3 text-sm">
+      <div className="flex justify-between gap-4">
+        <dt className="text-muted">Name</dt>
+        <dd className="text-right font-semibold">{preview.fullName}</dd>
+      </div>
+      <div className="flex justify-between gap-4">
+        <dt className="text-muted">Username</dt>
+        <dd className="font-mono font-semibold">{preview.username}</dd>
+      </div>
+    </dl>
+  );
+
+  if (creatingAccount && setupStep === "code") {
+    return (
+      <div className="flex min-h-screen items-center justify-center px-4 py-10">
+        <Card className="w-full max-w-md">
+          <p className="text-xs uppercase tracking-widest text-accent">{preview.schoolName}</p>
+          <h1 className="mt-2 text-2xl font-bold">Confirm your email</h1>
+          <p className="mt-1 text-sm text-muted">
+            We emailed a 6-digit code to the address on your roster. Enter it to continue setup.
+          </p>
+          {studentCard}
+          <form onSubmit={confirmCode} className="mt-6 space-y-4">
+            <p className="text-sm text-muted">
+              Code sent to{" "}
+              <span className="font-semibold text-foreground">{deliveryEmail || preview.deliveryEmail}</span>
+            </p>
+            <label className="block text-sm">
+              Verification code
+              <input
+                value={code}
+                onChange={(e) => setCode(e.target.value.replace(/[^\d]/g, "").slice(0, 6))}
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                placeholder="000000"
+                required
+                className="mt-1 w-full rounded-lg border border-card-border bg-background px-3 py-3 text-center font-mono text-lg tracking-[0.4em]"
+              />
+            </label>
+            {error && <p className="text-sm text-red-400">{error}</p>}
+            {submitting && !code ? (
+              <p className="text-sm text-muted">Sending verification code…</p>
+            ) : null}
+            <button
+              type="submit"
+              disabled={submitting || code.length !== 6}
+              className="w-full rounded-lg bg-accent py-3 font-semibold text-background disabled:opacity-60"
+            >
+              {submitting ? "Checking…" : "Verify email"}
+            </button>
+            <button
+              type="button"
+              disabled={submitting}
+              onClick={() => void resendCode()}
+              className="text-sm text-muted hover:text-foreground"
+            >
+              Resend code
+            </button>
+          </form>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="flex min-h-screen items-center justify-center px-4 py-10">
       <Card className="w-full max-w-md">
@@ -240,19 +397,10 @@ export function StudentJoinForm({ token }: { token: string }) {
         <p className="mt-1 text-sm text-muted">
           {signingIn
             ? "Confirm your name, then choose a new password. Your old password will stop working."
-            : "Confirm your name, then choose a password only you should know."}
+            : "Email confirmed. Confirm your name, then choose a password only you should know."}
         </p>
 
-        <dl className="mt-6 space-y-3 rounded-lg border border-card-border bg-background/50 px-4 py-3 text-sm">
-          <div className="flex justify-between gap-4">
-            <dt className="text-muted">Name</dt>
-            <dd className="font-semibold text-right">{preview.fullName}</dd>
-          </div>
-          <div className="flex justify-between gap-4">
-            <dt className="text-muted">Username</dt>
-            <dd className="font-mono font-semibold">{preview.username}</dd>
-          </div>
-        </dl>
+        {studentCard}
 
         <form onSubmit={onSubmit} className="mt-6 space-y-4">
           <label className="flex items-start gap-3 text-sm">
@@ -263,9 +411,7 @@ export function StudentJoinForm({ token }: { token: string }) {
               className="mt-1"
               required
             />
-            <span>
-              I confirm this is my name and student username on the roster.
-            </span>
+            <span>I confirm this is my name and student username on the roster.</span>
           </label>
 
           <label className="block text-sm">

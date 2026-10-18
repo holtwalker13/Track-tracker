@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import {
+  beginStudentInviteEmailVerification,
   completeStudentLoginInvite,
   previewStudentLoginInvite,
+  resendStudentInviteEmailCode,
+  verifyStudentInviteEmailCode,
 } from "@/lib/services/student-login-invite";
 import { SESSION_COOKIE, sessionCookieOptions } from "@/lib/auth/cookie";
 import { signSessionToken } from "@/lib/auth/session";
@@ -37,13 +40,39 @@ export async function POST(request: Request) {
   }
   const body = await request.json();
   const token = String(body.token ?? "").trim();
-  const password = String(body.password ?? "");
-  const passwordConfirm = String(body.passwordConfirm ?? "");
-  const confirmName = Boolean(body.confirmName);
+  const action = String(body.action ?? "complete");
 
   if (!token) {
     return NextResponse.json({ error: "Missing token" }, { status: 400 });
   }
+
+  if (action === "start") {
+    const started = await beginStudentInviteEmailVerification(token);
+    if (!started.ok) {
+      return NextResponse.json({ error: started.error }, { status: started.error.includes("email") ? 400 : 503 });
+    }
+    return NextResponse.json({ ok: true, step: "code", email: started.email });
+  }
+
+  if (action === "resend") {
+    const sent = await resendStudentInviteEmailCode(token);
+    if (!sent.ok) {
+      const status = sent.error.includes("roster") ? 400 : 503;
+      return NextResponse.json({ error: sent.error }, { status });
+    }
+    return NextResponse.json({ ok: true, step: "code" });
+  }
+
+  if (action === "verify") {
+    const checked = await verifyStudentInviteEmailCode(token, String(body.code ?? ""));
+    if (!checked.ok) return NextResponse.json({ error: checked.error }, { status: 400 });
+    return NextResponse.json({ ok: true, step: "password" });
+  }
+
+  const password = String(body.password ?? "");
+  const passwordConfirm = String(body.passwordConfirm ?? "");
+  const confirmName = Boolean(body.confirmName);
+
   if (password !== passwordConfirm) {
     return NextResponse.json({ error: "Passwords do not match." }, { status: 400 });
   }

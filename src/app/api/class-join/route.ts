@@ -6,13 +6,14 @@ import { signSessionToken } from "@/lib/auth/session";
 import { findUserByCredential } from "@/lib/auth/credentials-login";
 import { loginDestination } from "@/lib/auth/login-destination";
 import {
-  createAccountFromClassJoin,
   findClassStudentByCredential,
   identifyClassStudent,
   previewClassJoin,
+  setClassJoinPassword,
+  stageClassJoinStudent,
 } from "@/lib/services/class-join";
 import { resolveClassIdFromJoinToken } from "@/lib/services/class-join-link";
-import { issueEmailLoginCode, verifyEmailLoginCode } from "@/lib/auth/email-login-code";
+import { issueEmailLoginCode, verifyClassJoinEmailCode } from "@/lib/auth/email-login-code";
 import { checkRateLimit, rateLimitKey } from "@/lib/security/rate-limit";
 import { clientIpHint, writeAuditLog } from "@/lib/security/audit-log";
 
@@ -54,23 +55,47 @@ export async function POST(request: Request) {
     if (password !== passwordConfirm) {
       return NextResponse.json({ error: "Passwords do not match." }, { status: 400 });
     }
-    const created = await createAccountFromClassJoin({ token, credential, password });
+    const created = await setClassJoinPassword({ token, credential, password });
     if (!created.ok) return NextResponse.json({ error: created.error }, { status: 400 });
-    const sent = await issueEmailLoginCode(created.userId);
-    if (!sent.ok) return NextResponse.json({ error: sent.error }, { status: 503 });
-    return NextResponse.json({ ok: true, step: "verify", email: created.email });
+    const classId = await resolveClassIdFromJoinToken(token);
+    await writeAuditLog({
+      action: "CLASS_JOIN_PASSWORD_SET",
+      targetType: "StudentProfile",
+      targetId: created.studentId,
+      outcome: "SUCCESS",
+      ipHint: ip,
+    });
+    return sessionResponse(
+      created.userId,
+      created.studentId,
+      created.schoolId,
+      created.username,
+      classId ?? undefined
+    );
   }
 
   if (action === "resend") {
     const classId = await resolveClassIdFromJoinToken(token);
     if (!classId) return NextResponse.json({ error: "This class link is not valid." }, { status: 400 });
     const student = await findClassStudentByCredential(classId, credential);
-    if (!student?.userId || student.passwordSetAt) {
-      return NextResponse.json({ error: "Create your account before requesting a code." }, { status: 400 });
+    if (!student || student.passwordSetAt) {
+      return NextResponse.json({ error: "This account is already set up. Sign in instead." }, { status: 400 });
     }
-    const sent = await issueEmailLoginCode(student.userId);
+    if (student.schoolEmailConfirmedAt) {
+      return NextResponse.json(
+        { error: "Your email is already confirmed. Create your password below." },
+        { status: 400 }
+      );
+    }
+    let userId = student.userId;
+    if (!userId) {
+      const staged = await stageClassJoinStudent({ token, credential });
+      if (!staged.ok) return NextResponse.json({ error: staged.error }, { status: 400 });
+      userId = staged.userId;
+    }
+    const sent = await issueEmailLoginCode(userId);
     if (!sent.ok) return NextResponse.json({ error: sent.error }, { status: 503 });
-    return NextResponse.json({ ok: true, step: "verify" });
+    return NextResponse.json({ ok: true, step: "code" });
   }
 
   if (action === "verify") {
@@ -78,12 +103,12 @@ export async function POST(request: Request) {
     if (!classId) return NextResponse.json({ error: "This class link is not valid." }, { status: 400 });
     const student = await findClassStudentByCredential(classId, credential);
     if (!student?.userId) {
-      return NextResponse.json({ error: "Create your account before entering a code." }, { status: 400 });
+      return NextResponse.json({ error: "Enter your email again so we can send a code." }, { status: 400 });
     }
     if (student.passwordSetAt) {
       return NextResponse.json({ error: "This account is already confirmed. Sign in." }, { status: 400 });
     }
-    const checked = await verifyEmailLoginCode(student.userId, String(body.code ?? ""));
+    const checked = await verifyClassJoinEmailCode(student.userId, String(body.code ?? ""));
     if (!checked.ok) return NextResponse.json({ error: checked.error }, { status: 400 });
     await writeAuditLog({
       action: "CLASS_JOIN_EMAIL_CODE",
@@ -92,13 +117,7 @@ export async function POST(request: Request) {
       outcome: "SUCCESS",
       ipHint: ip,
     });
-    return sessionResponse(
-      student.userId,
-      student.id,
-      student.schoolId,
-      student.username ?? student.studentNumber,
-      classId
-    );
+    return NextResponse.json({ ok: true, step: "password" });
   }
 
   if (action === "login") {
@@ -107,7 +126,7 @@ export async function POST(request: Request) {
     const student = await findClassStudentByCredential(classId, credential);
     if (!student?.passwordSetAt) {
       return NextResponse.json(
-        { error: "Create your account before signing in." },
+        { error: "Confirm your email and create a password before signing in." },
         { status: 400 }
       );
     }

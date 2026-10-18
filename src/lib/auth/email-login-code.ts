@@ -35,7 +35,7 @@ export async function issueEmailLoginCode(
     where: { id: userId },
     select: { email: true, firstName: true, passwordSetAt: true },
   });
-  if (!user) return { ok: false, error: "Create your account before requesting a code." };
+  if (!user) return { ok: false, error: "Enter your email on the class link first." };
   if (user.passwordSetAt) return { ok: false, error: "This account is already confirmed. Sign in." };
   if (!user.email.includes("@")) {
     return { ok: false, error: "Your coach needs an email on the roster before a code can be sent." };
@@ -56,10 +56,47 @@ export async function issueEmailLoginCode(
   return { ok: true };
 }
 
+/** Confirms roster email from a class link; password is set in a later step. */
+export async function verifyClassJoinEmailCode(
+  userId: string,
+  rawCode: string
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const checked = await checkLoginCode(userId, rawCode);
+  if (!checked.ok) return checked;
+
+  const now = new Date();
+  await prisma.$transaction([
+    prisma.emailLoginCode.update({ where: { id: checked.rowId }, data: { consumedAt: now } }),
+    prisma.user.update({
+      where: { id: userId },
+      data: { schoolEmailConfirmedAt: now },
+    }),
+  ]);
+  return { ok: true };
+}
+
 export async function verifyEmailLoginCode(
   userId: string,
   rawCode: string
 ): Promise<{ ok: true } | { ok: false; error: string }> {
+  const checked = await checkLoginCode(userId, rawCode);
+  if (!checked.ok) return checked;
+
+  const now = new Date();
+  await prisma.$transaction([
+    prisma.emailLoginCode.update({ where: { id: checked.rowId }, data: { consumedAt: now } }),
+    prisma.user.update({
+      where: { id: userId },
+      data: { passwordSetAt: now, schoolEmailConfirmedAt: now },
+    }),
+  ]);
+  return { ok: true };
+}
+
+async function checkLoginCode(
+  userId: string,
+  rawCode: string
+): Promise<{ ok: true; rowId: string } | { ok: false; error: string }> {
   const code = rawCode.replace(/\s/g, "");
   if (!/^\d{6}$/.test(code)) return { ok: false, error: "Enter the 6-digit code from your email." };
 
@@ -86,13 +123,5 @@ export async function verifyEmailLoginCode(
     return { ok: false, error: "That code does not match." };
   }
 
-  const now = new Date();
-  await prisma.$transaction([
-    prisma.emailLoginCode.update({ where: { id: row.id }, data: { consumedAt: now } }),
-    prisma.user.update({
-      where: { id: userId },
-      data: { passwordSetAt: now, schoolEmailConfirmedAt: now },
-    }),
-  ]);
-  return { ok: true };
+  return { ok: true, rowId: row.id };
 }

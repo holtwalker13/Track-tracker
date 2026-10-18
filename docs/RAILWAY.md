@@ -37,10 +37,15 @@ If a previous attempt set `DATABASE_URL=file:/data/dev.db`, delete that variable
 |------|--------|
 | `SESSION_SECRET` | a long random string (16+ chars) |
 | `APP_MODE` | `production` |
+| `RESEND_API_KEY` | Resend API key — class-link signup emails a 6-digit code |
+| `EMAIL_FROM` | Optional; must use a domain verified in Resend |
+| `CLASS_JOIN_DEMO_EMAIL` | Optional; real inbox for General Demo JOINLAB student (`/login/demo/class-join`) |
 
 ```bash
 openssl rand -base64 32
 ```
+
+Test Resend after deploy: sign in as app admin → **Resend smoke test** on `/admin`, or open `/login/demo/class-join` and run the JOINLAB signup flow.
 
 **Do not set `FORCE_SEED=1` on production.** It is blocked at boot to protect beta athlete data. Seed only on local Docker or a disposable staging database.
 

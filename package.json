@@ -15,6 +15,7 @@
     "db:ensure-kendall": "tsx scripts/ensure-jhs-kendall.ts",
     "db:ensure-ty-crowden": "tsx scripts/ensure-jhs-ty-crowden.ts",
     "db:ensure-demo-class": "tsx scripts/ensure-demo-class-login.ts",
+    "db:ensure-class-join-lab": "tsx scripts/ensure-demo-class-join-lab.ts",
     "db:setup-track-fixtures": "tsx scripts/setup-demo-fixtures.ts",
     "db:sync-password": "tsx scripts/sync-demo-password.ts",
     "db:migrate-tenants": "tsx scripts/migrate-tenants.ts",

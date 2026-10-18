@@ -8,6 +8,8 @@ import { validateAccountPassword } from "@/lib/services/login-invite-token";
 import { ensureStudentUsername } from "@/lib/services/student-username";
 import { hasPendingLoginCode, issueEmailLoginCode } from "@/lib/auth/email-login-code";
 import { hashPendingAccountPlaceholder } from "@/lib/auth/pending-account-password";
+import { rosterEmailClaimConflict } from "@/lib/auth/roster-email-user-claim";
+import { releaseStaleSignupEmailHolder } from "@/lib/auth/release-stale-signup-email";
 import {
   emailMatchesRoster,
   loginPolicyForSlug,
@@ -177,21 +179,34 @@ export async function stageClassJoinStudent(input: {
     return { ok: false, error: "Your coach needs an email on the roster before you can create an account." };
   }
 
+  await releaseStaleSignupEmailHolder({
+    email,
+    studentId: student.id,
+    studentUserId: student.userId,
+    studentPasswordSetAt: student.passwordSetAt,
+  });
+
   const taken = await prisma.user.findUnique({
     where: { email },
-    select: { id: true, studentProfile: { select: { id: true } } },
+    select: {
+      id: true,
+      role: true,
+      studentProfile: { select: { id: true } },
+      coachProfile: { select: { id: true } },
+    },
   });
-  if (taken && taken.studentProfile?.id !== student.id) {
-    return {
-      ok: false,
-      error:
-        "That email is already tied to another account. Ask your coach to fix the roster email or remove the duplicate login.",
-    };
-  }
+  const freshLink = await prisma.studentProfile.findUnique({
+    where: { id: student.id },
+    select: { userId: true },
+  });
+  const studentUserId = freshLink?.userId ?? null;
+
+  const conflict = rosterEmailClaimConflict(taken, { id: student.id, userId: studentUserId });
+  if (conflict) return { ok: false, error: conflict };
 
   const placeholderHash = await hashPendingAccountPlaceholder();
   const userId = await prisma.$transaction(async (tx) => {
-    let linked = student.userId;
+    let linked = studentUserId;
     if (linked) {
       await tx.user.update({
         where: { id: linked },

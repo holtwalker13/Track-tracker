@@ -93,7 +93,7 @@ export default async function CoachWorkoutSessionPage({
   const studentName = `${workoutSession.student.firstName} ${workoutSession.student.lastName}`;
 
   return (
-    <AppShell nav={COACH_NAV} title="Athlete workout">
+    <AppShell nav={COACH_NAV} title="Athlete workout" navCompact mobileCoachChrome>
       <p className="mb-4 text-sm">
         <Link href={`/coach/programs/logs?date=${dateStr}`} className="text-accent hover:underline">
           ← Workout logs

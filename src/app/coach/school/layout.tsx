@@ -4,7 +4,7 @@ import { COACH_NAV, SCHOOL_HUB_TABS } from "@/lib/navigation";
 
 export default function SchoolHubLayout({ children }: { children: React.ReactNode }) {
   return (
-    <AppShell title="School" nav={COACH_NAV}>
+    <AppShell title="School" nav={COACH_NAV} navCompact mobileCoachChrome>
       <HubTabs tabs={[...SCHOOL_HUB_TABS]} />
       {children}
     </AppShell>

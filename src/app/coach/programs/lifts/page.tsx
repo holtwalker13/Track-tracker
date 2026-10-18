@@ -10,7 +10,7 @@ export default async function ProgramsLiftsPage() {
   const schoolLifts = await listSchoolLifts(session.schoolId);
 
   return (
-    <AppShell nav={COACH_NAV} title="Lift library">
+    <AppShell nav={COACH_NAV} title="Lift library" navCompact mobileCoachChrome>
       <p className="mb-4 text-sm">
         <Link href="/coach/programs" className="text-accent hover:underline">
           ← Programs

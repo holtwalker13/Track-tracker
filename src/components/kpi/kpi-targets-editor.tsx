@@ -1,6 +1,7 @@
 "use client";
 
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { useRegisterCoachScopeDirtyGuard } from "@/components/coach-scope/coach-scope-dirty-context";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Copy, Dumbbell, Plus, Pencil, Trash2, X, Globe, Lock } from "lucide-react";
@@ -225,11 +226,11 @@ export function KpiTargetsEditor({
     setStatus("idle");
   }
 
-  async function save() {
+  async function save(): Promise<boolean> {
     if (!activeSetId || !activeSet || activeSet.id !== activeSetId) {
       setSaveError("This KPI set is not ready to save. Refresh and try again.");
       setStatus("error");
-      return;
+      return false;
     }
     setStatus("saving");
     setSaveError(null);
@@ -253,7 +254,7 @@ export function KpiTargetsEditor({
         typeof errBody.error === "string" ? errBody.error : "Could not save. Try again."
       );
       setStatus("error");
-      return;
+      return false;
     }
     const data = await res.json();
     if (data.set) {
@@ -262,7 +263,30 @@ export function KpiTargetsEditor({
     }
     setStatus("saved");
     window.setTimeout(() => setStatus((s) => (s === "saved" ? "idle" : s)), 10000);
+    return true;
   }
+
+  const baselineRef = useRef({
+    cells: activeSet ? cellsFromSet(activeSet) : initial,
+    ranked: activeSet ? rankedMapFromSet(activeSet) : rankedBySlug,
+  });
+  useEffect(() => {
+    baselineRef.current = {
+      cells: activeSet ? cellsFromSet(activeSet) : initial,
+      ranked: activeSet ? rankedMapFromSet(activeSet) : rankedBySlug,
+    };
+  }, [initialActiveSetId, initial, activeSet]);
+
+  const scopeDirtyGuard = useMemo(
+    () => ({
+      isDirty: () =>
+        JSON.stringify(cells) !== JSON.stringify(baselineRef.current.cells) ||
+        JSON.stringify(rankedBySlug) !== JSON.stringify(baselineRef.current.ranked),
+      save,
+    }),
+    [cells, rankedBySlug, activeSetId]
+  );
+  useRegisterCoachScopeDirtyGuard(scopeDirtyGuard);
 
   async function togglePublic() {
     if (!activeSet) return;

@@ -3,7 +3,9 @@
 import { Suspense, useCallback, useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { ChevronDown, GitCompareArrows, Menu, SlidersHorizontal } from "lucide-react";
+import { GitCompareArrows, SlidersHorizontal } from "lucide-react";
+import { GroupContextButton } from "@/components/coach-scope/group-context-button";
+import { MobileCoachHeader } from "@/components/layout/mobile-coach-header";
 import type { LeaderboardBoard } from "@/lib/queries/leaderboard-grid";
 import {
   buildLeaderboardSearchParams,
@@ -13,7 +15,6 @@ import {
   type DraftFilterSelection,
   type DraftGroupSelection,
 } from "@/lib/compete/query-state";
-import { classSectionLabel } from "@/lib/periods";
 import type {
   ScopeCoachOption,
   ScopeClassOption,
@@ -22,8 +23,12 @@ import type {
 import { GroupPickerSheet } from "@/components/compete/group-picker-sheet";
 import { FiltersSheet } from "@/components/compete/filters-sheet";
 import { KpiBoardsPanel } from "@/components/compete/kpi-boards-panel";
+import {
+  groupContextPrimaryLine,
+  groupContextSecondaryLine,
+} from "@/lib/coach-scope/labels";
+import { persistCoachGroupScope } from "@/lib/coach-scope/persist";
 import { cn } from "@/lib/utils";
-import { useCompeteMenu } from "@/components/compete/compete-ui-provider";
 
 const SCROLL_KEY = "compete-leaderboard-scroll";
 
@@ -64,7 +69,6 @@ function CompeteLeaderboardInner({
   compareHref: string;
   needsClassChoice: boolean;
 }) {
-  const { openMenu } = useCompeteMenu();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -111,28 +115,18 @@ function CompeteLeaderboardInner({
   }, []);
 
   const coach = coaches.find((c) => c.id === committed.coachId);
-  const classOption =
-    committed.classId === "all"
-      ? null
-      : classes.find((c) => c.id === committed.classId) ??
-        classes.find((c) => c.id === defaultClassId);
-  const subgroupLabel =
-    committed.subgroupId && subgroups.find((s) => s.id === committed.subgroupId)
-      ? subgroups.find((s) => s.id === committed.subgroupId)!.name
-      : "All students";
 
-  const classTitle =
-    committed.classId === "all"
-      ? allClassesLabel ?? "All classes"
-      : classOption
-        ? classSectionLabel(classOption)
-        : "Choose a class";
-
-  const contextLine = [
-    schoolName ?? "School",
-    coach ? `${coach.lastName}` : "Coach",
-    subgroupLabel,
-  ].join(" · ");
+  const classTitle = groupContextPrimaryLine({
+    classId: committed.classId,
+    classes,
+    allClassesLabel,
+  });
+  const contextLine = groupContextSecondaryLine({
+    schoolName,
+    coach,
+    subgroupId: committed.subgroupId,
+    subgroups,
+  });
 
   const filterSummary = filterSummaryShort(committed);
   const kpiCount = boards.length;
@@ -148,21 +142,9 @@ function CompeteLeaderboardInner({
 
   return (
     <div className={cn(pending && "opacity-60")} aria-busy={pending}>
-      <header className="sticky top-0 z-30 -mx-4 flex items-center justify-between border-b border-[#30373B] bg-background px-4 py-2.5 md:hidden">
-        <span className="text-xs font-bold uppercase tracking-[0.08em] text-accent">
-          Pro Gradus
-        </span>
-        <button
-          type="button"
-          onClick={openMenu}
-          className="inline-flex h-11 w-11 items-center justify-center rounded-xl text-foreground"
-          aria-label="Open navigation"
-        >
-          <Menu className="h-5 w-5" aria-hidden />
-        </button>
-      </header>
+      <MobileCoachHeader title="Leaderboard" />
 
-      <div className="mx-auto w-full max-w-3xl px-4 pb-8 pt-3 md:px-4 md:pt-4 lg:max-w-4xl">
+      <div className="mx-auto w-full max-w-3xl px-4 pb-4 pt-3 md:px-4 md:pb-8 md:pt-4 lg:max-w-4xl">
         <div className="mb-2.5 flex items-center justify-between gap-3">
           <h1 className="text-[23px] font-bold leading-tight tracking-tight">Leaderboard</h1>
           <Link
@@ -175,17 +157,12 @@ function CompeteLeaderboardInner({
           </Link>
         </div>
 
-        <button
-          type="button"
+        <GroupContextButton
+          primaryLine={classTitle}
+          secondaryLine={contextLine}
           onClick={() => setGroupOpen(true)}
-          className="mb-3.5 flex w-full items-center gap-2.5 rounded-xl bg-[#1B2023] px-3 py-2 text-left"
-        >
-          <span className="min-w-0 flex-1">
-            <span className="block text-sm font-semibold">{classTitle}</span>
-            <span className="block text-xs text-muted">{contextLine}</span>
-          </span>
-          <ChevronDown className="h-5 w-5 shrink-0 text-muted" aria-hidden />
-        </button>
+          className="mb-3.5"
+        />
 
         {needsClassChoice ? (
           <p className="mb-3 text-sm text-muted">Choose a class to see rankings.</p>
@@ -248,8 +225,10 @@ function CompeteLeaderboardInner({
         currentSchoolId={currentSchoolId}
         schoolName={schoolName}
         allClassesLabel={allClassesLabel}
+        applyLabel="Show leaderboard"
         onApply={(draft: DraftGroupSelection) => {
           setGroupOpen(false);
+          void persistCoachGroupScope(draft);
           pushQuery({
             coachId: draft.coachId,
             classId: draft.classId,

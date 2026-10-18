@@ -29,6 +29,7 @@ export function GroupPickerSheet({
   currentSchoolId,
   schoolName,
   allClassesLabel,
+  applyLabel = "Show leaderboard",
 }: {
   open: boolean;
   onClose: () => void;
@@ -43,6 +44,7 @@ export function GroupPickerSheet({
   currentSchoolId?: string;
   schoolName: string | null;
   allClassesLabel?: string;
+  applyLabel?: string;
 }) {
   const allClassesValue = allClassesLabel ? "all" : undefined;
   const [draft, setDraft] = useState<DraftGroupSelection>({
@@ -141,7 +143,7 @@ export function GroupPickerSheet({
           onClick={() => onApply(draft)}
           className="btn-primary w-full rounded-[10px] py-3 text-base font-bold disabled:opacity-50"
         >
-          Show leaderboard
+          {applyLabel}
         </button>
       }
     >

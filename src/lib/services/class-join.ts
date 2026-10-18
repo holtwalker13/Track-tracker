@@ -182,7 +182,11 @@ export async function stageClassJoinStudent(input: {
     select: { id: true, studentProfile: { select: { id: true } } },
   });
   if (taken && taken.studentProfile?.id !== student.id) {
-    return { ok: false, error: "Unable to create this account. Ask your coach." };
+    return {
+      ok: false,
+      error:
+        "That email is already tied to another account. Ask your coach to fix the roster email or remove the duplicate login.",
+    };
   }
 
   const placeholderHash = await hashPendingAccountPlaceholder();
@@ -299,18 +303,6 @@ export async function identifyClassStudent(token: string, credential: string) {
       fullName: `${student.firstName} ${student.lastName}`,
       username,
       hasAccount: true,
-      email,
-    };
-  }
-
-  if (student.schoolEmailConfirmedAt) {
-    return {
-      ok: true as const,
-      step: "password" as const,
-      studentId: student.id,
-      fullName: `${student.firstName} ${student.lastName}`,
-      username,
-      hasAccount: false,
       email,
     };
   }

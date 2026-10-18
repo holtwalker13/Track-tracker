@@ -131,8 +131,9 @@ export async function previewStudentLoginInvite(token: string): Promise<StudentI
 
   const deliveryEmail = resolveStudentInviteEmail(student);
   const emailVerified = Boolean(student.user?.schoolEmailConfirmedAt);
+  const pendingUserId = student.user?.id;
   const pendingCode =
-    !alreadyActive && Boolean(student.user?.id) && (await hasPendingLoginCode(student.user.id));
+    !alreadyActive && pendingUserId != null && (await hasPendingLoginCode(pendingUserId));
 
   return {
     fullName: `${student.firstName} ${student.lastName}`,

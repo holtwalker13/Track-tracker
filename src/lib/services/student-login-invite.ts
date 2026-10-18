@@ -17,6 +17,8 @@ import {
 } from "@/lib/auth/email-login-code";
 import { hashPendingAccountPlaceholder } from "@/lib/auth/pending-account-password";
 import { normalizeLoginEmail } from "@/lib/school-login-email";
+import { rosterEmailClaimConflict } from "@/lib/auth/roster-email-user-claim";
+import { releaseStaleSignupEmailHolder } from "@/lib/auth/release-stale-signup-email";
 
 const BCRYPT_ROUNDS = 12;
 
@@ -186,17 +188,37 @@ export async function stageStudentInviteAccount(
     if (!coppa.ok) return { ok: false, error: coppa.error };
   }
 
+  await releaseStaleSignupEmailHolder({
+    email,
+    studentId: student.id,
+    studentUserId: student.user?.id ?? null,
+    studentPasswordSetAt: student.user?.passwordSetAt ?? null,
+  });
+
+  const freshStudent = await prisma.studentProfile.findUnique({
+    where: { id: student.id },
+    select: { userId: true, user: { select: { id: true, passwordSetAt: true } } },
+  });
+  const studentUserId = freshStudent?.userId ?? null;
+
   const existingEmail = await prisma.user.findUnique({
     where: { email },
-    select: { id: true, studentProfile: { select: { id: true } } },
+    select: {
+      id: true,
+      role: true,
+      studentProfile: { select: { id: true } },
+      coachProfile: { select: { id: true } },
+    },
   });
-  if (existingEmail && existingEmail.studentProfile?.id !== student.id) {
-    return { ok: false, error: "Unable to create login for this student. Contact your coach." };
-  }
+  const conflict = rosterEmailClaimConflict(existingEmail, {
+    id: student.id,
+    userId: studentUserId,
+  });
+  if (conflict) return { ok: false, error: conflict };
 
   const placeholderHash = await hashPendingAccountPlaceholder();
   const userId = await prisma.$transaction(async (tx) => {
-    let linked = student.user?.id ?? null;
+    let linked = studentUserId;
     if (linked) {
       await tx.user.update({
         where: { id: linked },
@@ -209,7 +231,7 @@ export async function stageStudentInviteAccount(
           lastName: student.lastName,
         },
       });
-    } else if (existingEmail && !existingEmail.studentProfile) {
+    } else if (existingEmail && !existingEmail.studentProfile && !existingEmail.coachProfile) {
       linked = existingEmail.id;
       await tx.user.update({
         where: { id: linked },
@@ -353,11 +375,18 @@ export async function completeStudentLoginInvite(input: {
 
   const existingEmail = await prisma.user.findUnique({
     where: { email },
-    select: { studentProfile: { select: { id: true } } },
+    select: {
+      id: true,
+      role: true,
+      studentProfile: { select: { id: true } },
+      coachProfile: { select: { id: true } },
+    },
   });
-  if (existingEmail && existingEmail.studentProfile?.id !== student.id) {
-    return { ok: false, error: "Unable to create login for this student ID. Contact your coach." };
-  }
+  const finishConflict = rosterEmailClaimConflict(existingEmail, {
+    id: student.id,
+    userId: student.user?.id ?? null,
+  });
+  if (finishConflict) return { ok: false, error: finishConflict };
 
   const passwordHash = await bcrypt.hash(input.password, BCRYPT_ROUNDS);
   const now = new Date();

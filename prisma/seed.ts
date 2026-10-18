@@ -905,6 +905,12 @@ async function main() {
       console.log(
         `Demo class login: ${DEMO_CLASS_LOGIN.username} / ${DEMO_CLASS_LOGIN.password} (${DEMO_CLASS_LOGIN.email})`
       );
+
+      const { ensureDemoClassJoinLab } = await import("../scripts/ensure-demo-class-join-lab");
+      const joinLab = await ensureDemoClassJoinLab();
+      console.log(
+        `Demo class join lab: ${joinLab.username} / ${joinLab.rosterEmail} → ${joinLab.joinPath}`
+      );
     }
   }
 

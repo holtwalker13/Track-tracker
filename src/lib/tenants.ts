@@ -9,6 +9,17 @@ export const DEMO_CLASS_LOGIN = {
   displayName: "Demo class",
 } as const;
 
+/** General Demo roster student for class-link + Resend verification (no login until signup flow). */
+export const CLASS_JOIN_LAB_DEMO = {
+  username: "joinlab2028",
+  studentNumber: "JOINLAB",
+  firstName: "Join",
+  lastName: "Lab",
+  /** Override with CLASS_JOIN_DEMO_EMAIL in seed/Railway to hit a real inbox via Resend. */
+  rosterEmail: "classjoin-lab@demo.local",
+  className: "Fall 2025 Period 1 PE",
+} as const;
+
 export type TenantSlug = "demo" | "jhs" | "chs";
 
 export type TenantConfig = {

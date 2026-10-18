@@ -11,6 +11,8 @@ import { EnterSchoolButton } from "@/components/admin/enter-school-button";
 import { tenantBySlug } from "@/lib/tenants";
 import { loginPolicyForSlug } from "@/lib/school-login-email";
 import { LoginEmailExceptions } from "@/components/admin/login-email-exceptions";
+import { ResendTestPanel } from "@/components/admin/resend-test-panel";
+import { getDemoClassJoinLab } from "@/lib/demo/class-join-lab";
 
 export default async function AdminPage() {
   const session = await requireSession(["ADMIN"]);
@@ -33,6 +35,8 @@ export default async function AdminPage() {
           select: { id: true, email: true, role: true, note: true },
         })
       : [];
+
+  const classJoinLab = await getDemoClassJoinLab();
 
   const classes = session.schoolId
     ? await prisma.class.findMany({
@@ -61,7 +65,8 @@ export default async function AdminPage() {
 
   return (
     <AppShell title="App admin" nav={ADMIN_NAV}>
-      <p className="mb-6 max-w-3xl text-sm text-muted">
+      <ResendTestPanel defaultTo={classJoinLab?.rosterEmail} />
+      <p className="mb-6 mt-8 max-w-3xl text-sm text-muted">
         Pick a school system to work in. Coach and student logins stay locked to their own school.
         From here you can add weightlifting classes, add students, or upload a roster spreadsheet.
         Add coach accounts under{" "}

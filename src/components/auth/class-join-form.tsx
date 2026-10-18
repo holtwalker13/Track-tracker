@@ -14,10 +14,9 @@ type Preview = {
 type Identity = {
   fullName: string;
   username: string;
-  hasAccount: boolean;
 };
 
-type Step = "email" | "create" | "login" | "code";
+type Step = "email" | "code" | "password" | "login";
 
 export function ClassJoinForm({ token }: { token: string }) {
   const router = useRouter();
@@ -56,6 +55,19 @@ export function ClassJoinForm({ token }: { token: string }) {
     void load();
   }, [load]);
 
+  function applyIdentity(data: {
+    fullName: string;
+    username: string;
+    email?: string;
+    step?: string;
+  }) {
+    setIdentity({ fullName: data.fullName, username: data.username });
+    if (typeof data.email === "string") setDeliveryEmail(data.email);
+    const next =
+      data.step === "login" || data.step === "password" || data.step === "code" ? data.step : "code";
+    setStep(next);
+  }
+
   async function identify(event: React.FormEvent) {
     event.preventDefault();
     setPending(true);
@@ -72,15 +84,7 @@ export function ClassJoinForm({ token }: { token: string }) {
         setError(data.error ?? "That email is not on this class.");
         return;
       }
-      setIdentity({
-        fullName: data.fullName,
-        username: data.username,
-        hasAccount: Boolean(data.hasAccount),
-      });
-      setDeliveryEmail(typeof data.email === "string" ? data.email : credential.trim());
-      if (data.needsVerification) setStep("code");
-      else if (data.hasAccount) setStep("login");
-      else setStep("create");
+      applyIdentity(data);
     } catch {
       setError("Could not check that email.");
     } finally {
@@ -90,7 +94,7 @@ export function ClassJoinForm({ token }: { token: string }) {
 
   async function finish(event: React.FormEvent) {
     event.preventDefault();
-    if (!identity || (step !== "create" && step !== "login")) return;
+    if (!identity || (step !== "password" && step !== "login")) return;
     setPending(true);
     setError(null);
     try {
@@ -108,12 +112,6 @@ export function ClassJoinForm({ token }: { token: string }) {
       const data = await res.json();
       if (!res.ok) {
         setError(data.error ?? "Could not continue.");
-        return;
-      }
-      if (data.step === "verify") {
-        if (typeof data.email === "string") setDeliveryEmail(data.email);
-        setCode("");
-        setStep("code");
         return;
       }
       router.replace(data.redirect ?? "/student");
@@ -140,8 +138,10 @@ export function ClassJoinForm({ token }: { token: string }) {
         setError(data.error ?? "That code does not match.");
         return;
       }
-      router.replace(data.redirect ?? "/student");
-      router.refresh();
+      setCode("");
+      setPassword("");
+      setPasswordConfirm("");
+      setStep("password");
     } catch {
       setError("Something went wrong. Please try again.");
     } finally {
@@ -212,7 +212,8 @@ export function ClassJoinForm({ token }: { token: string }) {
               />
             </label>
             <p className="text-xs text-muted">
-              This has to match the email or username on the class roster.
+              This has to match the email or username on the class roster. We email a 6-digit code to
+              confirm it&apos;s you.
             </p>
             {error && <p className="text-sm text-red-400">{error}</p>}
             <button
@@ -220,17 +221,30 @@ export function ClassJoinForm({ token }: { token: string }) {
               disabled={pending}
               className="w-full rounded-lg bg-accent py-3 font-semibold text-background disabled:opacity-60"
             >
-              {pending ? "Checking…" : "Continue"}
+              {pending ? "Sending code…" : "Continue"}
             </button>
           </form>
         ) : step === "code" ? (
           <form onSubmit={confirmCode} className="mt-6 space-y-4">
+            {identity ? (
+              <dl className="space-y-2 rounded-lg border border-card-border bg-background/50 px-4 py-3 text-sm">
+                <div className="flex justify-between gap-4">
+                  <dt className="text-muted">Student</dt>
+                  <dd className="text-right font-semibold">{identity.fullName}</dd>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <dt className="text-muted">Username</dt>
+                  <dd className="font-mono font-semibold">{identity.username}</dd>
+                </div>
+              </dl>
+            ) : null}
             <p className="text-sm text-muted">
-              We sent a 6-digit code to <span className="font-semibold text-foreground">{deliveryEmail}</span>.
-              Paste it here to open your class.
+              We sent a 6-digit code to{" "}
+              <span className="font-semibold text-foreground">{deliveryEmail}</span>. Enter it below
+              to confirm your email.
             </p>
             <label className="block text-sm">
-              Code
+              Verification code
               <input
                 value={code}
                 onChange={(e) => setCode(e.target.value.replace(/[^\d]/g, "").slice(0, 6))}
@@ -247,7 +261,7 @@ export function ClassJoinForm({ token }: { token: string }) {
               disabled={pending || code.length !== 6}
               className="w-full rounded-lg bg-accent py-3 font-semibold text-background disabled:opacity-60"
             >
-              {pending ? "Checking…" : "Confirm"}
+              {pending ? "Checking…" : "Verify email"}
             </button>
             <button
               type="button"
@@ -256,6 +270,18 @@ export function ClassJoinForm({ token }: { token: string }) {
               className="text-sm text-muted hover:text-foreground"
             >
               Resend code
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setIdentity(null);
+                setStep("email");
+                setCode("");
+                setError(null);
+              }}
+              className="block text-sm text-muted hover:text-foreground"
+            >
+              Use a different email
             </button>
           </form>
         ) : (
@@ -270,9 +296,9 @@ export function ClassJoinForm({ token }: { token: string }) {
                 <dd className="font-mono font-semibold">{identity?.username}</dd>
               </div>
             </dl>
-            {step === "create" ? (
+            {step === "password" ? (
               <p className="text-sm text-muted">
-                This is your first time. Create a password, then confirm the code we email you.
+                Email confirmed. Create a password to finish your account.
               </p>
             ) : null}
             <label className="block text-sm">
@@ -286,7 +312,7 @@ export function ClassJoinForm({ token }: { token: string }) {
                 className="mt-1 w-full rounded-lg border border-card-border bg-background px-3 py-3"
               />
             </label>
-            {step === "create" ? (
+            {step === "password" ? (
               <label className="block text-sm">
                 Confirm password
                 <input

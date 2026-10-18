@@ -37,6 +37,14 @@ If a previous attempt set `DATABASE_URL=file:/data/dev.db`, delete that variable
 |------|--------|
 | `SESSION_SECRET` | a long random string (16+ chars) |
 | `APP_MODE` | `production` |
+| `RESEND_API_KEY` | Resend API key (`re_…`) — **required** for class-link signup verification emails |
+| `EMAIL_FROM` | Optional. Default `Track Tracker <login@tracktracker.app>`. Use an address on a **domain verified in Resend**. |
+
+Class-link account creation emails a 6-digit code via [Resend](https://resend.com). Without `RESEND_API_KEY`, production shows: *We could not email a code right now.*
+
+1. Create a Resend account → **API Keys** → create a key with send access.
+2. **Domains** → add your school/domain and complete DNS verification (or use Resend’s sandbox and verified test recipients only).
+3. Add `RESEND_API_KEY` (and usually `EMAIL_FROM`) on the **app** service, then redeploy.
 
 ```bash
 openssl rand -base64 32

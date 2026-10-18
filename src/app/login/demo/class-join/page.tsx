@@ -3,6 +3,8 @@ import { Card } from "@/components/ui/card";
 import { getDemoClassJoinLab } from "@/lib/demo/class-join-lab";
 import { CLASS_JOIN_LAB_DEMO } from "@/lib/tenants";
 
+export const dynamic = "force-dynamic";
+
 export default async function DemoClassJoinLabPage() {
   const lab = await getDemoClassJoinLab();
 

@@ -63,8 +63,8 @@ export function ClassJoinForm({ token }: { token: string }) {
   }) {
     setIdentity({ fullName: data.fullName, username: data.username });
     if (typeof data.email === "string") setDeliveryEmail(data.email);
-    const next =
-      data.step === "login" || data.step === "password" || data.step === "code" ? data.step : "code";
+    // New signups always verify email with a code before password (never jump to password here).
+    const next = data.step === "login" ? "login" : "code";
     setStep(next);
   }
 
@@ -141,6 +141,9 @@ export function ClassJoinForm({ token }: { token: string }) {
       setCode("");
       setPassword("");
       setPasswordConfirm("");
+      if (typeof window !== "undefined") {
+        sessionStorage.setItem(`class-join-verified:${token}:${credential.trim().toLowerCase()}`, "1");
+      }
       setStep("password");
     } catch {
       setError("Something went wrong. Please try again.");

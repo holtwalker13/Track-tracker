@@ -1,7 +1,5 @@
 import { notFound } from "next/navigation";
-import { Suspense } from "react";
 import { AppShell } from "@/components/layout/app-shell";
-import { AthleteProfileClassPicker } from "@/components/athletes/athlete-profile-class-picker";
 import { Card, CardTitle } from "@/components/ui/card";
 import { COACH_NAV } from "@/lib/navigation";
 import { requireSchoolSession } from "@/lib/auth/session";
@@ -295,17 +293,14 @@ export default async function StudentProfilePage({
           classes: schoolClasses,
           enrolledClassIds: student.classEnrollments.map((e) => e.classId),
         }}
+        medalClassScope={{
+          classes: pickerClasses,
+          selectedClassId: profileClassId ?? null,
+          subgroupsByClassId,
+          selectedSubgroupId: profileSubgroupId,
+          defaultSubgroupId,
+        }}
       />
-
-      <Suspense fallback={null}>
-        <AthleteProfileClassPicker
-          classes={pickerClasses}
-          selectedClassId={profileClassId ?? null}
-          subgroupsByClassId={subgroupsByClassId}
-          selectedSubgroupId={profileSubgroupId}
-          defaultSubgroupId={defaultSubgroupId}
-        />
-      </Suspense>
 
       <GamificationSummaryCard
         level={gamification.level}

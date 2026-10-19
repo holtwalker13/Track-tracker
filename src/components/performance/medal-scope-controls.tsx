@@ -101,7 +101,7 @@ function MedalScopeControlsInner({
         </label>
       ) : null}
 
-      <div>
+      <div className="pt-4 sm:pt-5">
         <p className="text-xs font-semibold uppercase tracking-wider text-muted">Age bracket</p>
         <div className="mt-2 flex flex-wrap gap-2">
           {AGE_BRACKETS.map((b) => {

@@ -1,9 +1,13 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { Pencil } from "lucide-react";
 import { PlayerAvatar } from "@/components/athletes/player-avatar";
+import {
+  AthleteProfileClassPicker,
+  type AthleteProfileClassPickerProps,
+} from "@/components/athletes/athlete-profile-class-picker";
 import { GRADE_LEVELS } from "@/lib/grades";
 
 type EditProps = {
@@ -27,6 +31,7 @@ export function AthleteProfileCard({
   sports,
   classLabel,
   edit,
+  medalClassScope,
 }: {
   name: string;
   studentNumber?: string | null;
@@ -37,6 +42,8 @@ export function AthleteProfileCard({
   sports?: string | null;
   classLabel?: string | null;
   edit: EditProps;
+  /** Medal / KPI scope — toggles which enrolled class drives the profile below. */
+  medalClassScope?: Omit<AthleteProfileClassPickerProps, "embedded">;
 }) {
   const router = useRouter();
   const facts = [studentNumber, gender, schoolYear].filter(Boolean);
@@ -227,6 +234,12 @@ export function AthleteProfileCard({
           </div>
         </form>
       )}
+
+      {medalClassScope && medalClassScope.classes.length > 0 ? (
+        <Suspense fallback={null}>
+          <AthleteProfileClassPicker embedded {...medalClassScope} />
+        </Suspense>
+      ) : null}
     </div>
   );
 }

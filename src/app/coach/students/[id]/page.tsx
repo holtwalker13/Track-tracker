@@ -338,6 +338,7 @@ export default async function StudentProfilePage({
           ranks={ranks}
           highlightSlug={highlight?.slug}
         />
+        <AthleteResultsHistory grouped={latestGrouped} attemptLog={attemptLog} />
         <PeerLeadersCard
           leaders={peerLeaders}
           windowLabel={window === "week" ? "This week" : "All-time"}
@@ -359,8 +360,6 @@ export default async function StudentProfilePage({
         activitySlug={activitySlug}
         progress={progress}
       />
-
-      <AthleteResultsHistory grouped={latestGrouped} attemptLog={attemptLog} />
 
       <StudentCoreOneRepMaxEditor studentId={student.id} initialRows={coreOneRepMaxRows} />
     </AppShell>

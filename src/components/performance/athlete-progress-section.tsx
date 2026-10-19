@@ -18,15 +18,17 @@ export function AthleteProgressSection({
     data: { label: string; value: number; benchmark?: number }[];
   } | null;
 }) {
+  const showDateRangeSlider =
+    (progress?.data.length ?? 0) > 0 && marksWindow.dates.length > 1;
+
   return (
     <section className="mt-8 space-y-6">
-      <div>
-        <h2 className="text-lg font-semibold">Progress over time</h2>
-        <p className="mt-1 text-sm text-muted">
-          Compare averages and PRs across test dates, then drill into one event.
-        </p>
-      </div>
-      <MarksWindowCard window={marksWindow} embedded />
+      <h2 className="text-lg font-semibold">Progress over time</h2>
+      <MarksWindowCard
+        window={marksWindow}
+        embedded
+        showDateRangeSlider={showDateRangeSlider}
+      />
       <div>
         <ActivityChartPicker activities={catalog} selected={activitySlug} />
         {progress && progress.data.length > 0 ? (

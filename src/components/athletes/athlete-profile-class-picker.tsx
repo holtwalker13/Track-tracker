@@ -2,6 +2,7 @@
 
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useTransition } from "react";
+import { useMedalClassNavigation } from "@/components/athletes/medal-class-navigation";
 import { medalClassPickerLines } from "@/lib/periods";
 import { cn } from "@/lib/utils";
 
@@ -29,6 +30,7 @@ export function AthleteProfileClassPicker({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [pending, startTransition] = useTransition();
+  const { beginMedalScopeReload, pending: scopePending } = useMedalClassNavigation();
 
   if (classes.length === 0) return null;
 
@@ -50,6 +52,7 @@ export function AthleteProfileClassPicker({
     if (subgroupRaw === "__whole__") params.set("subgroupId", "");
     else if (subgroupRaw) params.set("subgroupId", subgroupRaw);
     else params.delete("subgroupId");
+    beginMedalScopeReload();
     startTransition(() => {
       router.push(params.toString() ? `${pathname}?${params.toString()}` : pathname);
     });
@@ -63,7 +66,7 @@ export function AthleteProfileClassPicker({
         embedded
           ? "mt-5 border-t border-card-border/80 pt-4"
           : "mb-4 flex flex-wrap items-end gap-4",
-        pending && "opacity-70"
+        (pending || scopePending) && "opacity-80"
       )}
     >
       <div className={cn(!embedded && "flex flex-wrap items-end gap-4", embedded && "space-y-3")}>

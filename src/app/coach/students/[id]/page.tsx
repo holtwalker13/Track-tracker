@@ -42,6 +42,10 @@ import { ageBracketForClassYear, isAgeBracketId } from "@/lib/age-brackets";
 import { classYearLabel, DEFAULT_CLASS_YEAR } from "@/lib/grades";
 import { isGraduatingClassName } from "@/lib/periods";
 import { AthleteProfileCard } from "@/components/athletes/athlete-profile-card";
+import {
+  MedalClassNavigationProvider,
+  MedalScopeLoadingShell,
+} from "@/components/athletes/medal-class-navigation";
 import { genderFullLabel } from "@/lib/gender";
 import { leaderboardHighlightFromSearch } from "@/lib/leaderboard-link";
 import { getStudentLeaderboard } from "@/lib/queries/leaderboard-student";
@@ -269,6 +273,7 @@ export default async function StudentProfilePage({
   const fullName = `${student.firstName} ${student.lastName}`;
   return (
     <AppShell title="Athlete" nav={COACH_NAV}>
+      <MedalClassNavigationProvider>
       <AthleteProfileCard
         name={fullName}
         studentNumber={student.studentNumber}
@@ -296,6 +301,7 @@ export default async function StudentProfilePage({
         }}
       />
 
+      <MedalScopeLoadingShell>
       <GamificationSummaryCard
         level={gamification.level}
         xpIntoLevel={gamification.xpIntoLevel}
@@ -356,6 +362,8 @@ export default async function StudentProfilePage({
       />
 
       <StudentCoreOneRepMaxEditor studentId={student.id} initialRows={coreOneRepMaxRows} />
+      </MedalScopeLoadingShell>
+      </MedalClassNavigationProvider>
     </AppShell>
   );
 }

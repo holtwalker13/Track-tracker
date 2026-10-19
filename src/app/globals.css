@@ -143,6 +143,31 @@ textarea {
   @apply border border-card-border text-muted hover:border-accent/40 hover:text-accent;
 }
 
+@keyframes medal-scope-loading-gradient {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.medal-scope-loading-layer {
+  background: linear-gradient(
+    120deg,
+    rgba(22, 26, 30, 0.98) 0%,
+    rgba(56, 189, 248, 0.12) 22%,
+    rgba(198, 245, 74, 0.14) 45%,
+    rgba(53, 212, 154, 0.1) 68%,
+    rgba(22, 26, 30, 0.98) 100%
+  );
+  background-size: 320% 320%;
+  animation: medal-scope-loading-gradient 6s ease-in-out infinite;
+}
+
 .filter-toggle-active {
   @apply bg-accent text-accent-foreground shadow-md shadow-accent/25;
 }

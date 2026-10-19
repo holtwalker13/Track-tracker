@@ -11,8 +11,14 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import type { DistrictPerformanceSnapshot } from "@/lib/queries/admin-coach-performance";
+import { CoachPerformanceMetricPicker } from "@/components/admin/coach-performance-metric-picker";
+import type {
+  DistrictPerformanceSnapshot,
+  DistrictReportMetricOption,
+} from "@/lib/queries/admin-coach-performance";
 import { cn } from "@/lib/utils";
+
+const TREND_BAR_COLORS = ["#c6f54a", "#35d49a", "#f5bd4f", "#56d4ff", "#c084fc", "#fb7185"];
 
 type ViewId = "scoreboard" | "heatmap" | "trends";
 
@@ -31,26 +37,39 @@ function heatColor(pctVal: number | null): string {
   return "rgba(255,104,104,0.35)";
 }
 
-export function CoachPerformanceDashboard({ data }: { data: DistrictPerformanceSnapshot }) {
+export function CoachPerformanceDashboard({
+  data,
+  metricCatalog,
+  selectedMetricSlugs,
+}: {
+  data: DistrictPerformanceSnapshot | null;
+  metricCatalog: DistrictReportMetricOption[];
+  selectedMetricSlugs: string[];
+}) {
   const [view, setView] = useState<ViewId>("scoreboard");
   const [schoolFilter, setSchoolFilter] = useState<string>("all");
 
   const schools = useMemo(() => {
     const names = new Map<string, string>();
-    for (const c of data.coaches) names.set(c.schoolId, c.schoolName);
+    for (const c of data?.coaches ?? []) names.set(c.schoolId, c.schoolName);
     return [...names.entries()].map(([id, name]) => ({ id, name }));
-  }, [data.coaches]);
+  }, [data?.coaches]);
 
   const coaches = useMemo(
     () =>
-      data.coaches.filter((c) => schoolFilter === "all" || c.schoolId === schoolFilter),
-    [data.coaches, schoolFilter]
+      (data?.coaches ?? []).filter(
+        (c) => schoolFilter === "all" || c.schoolId === schoolFilter
+      ),
+    [data?.coaches, schoolFilter]
   );
 
+  const metrics = data?.metrics ?? [];
+
   const trendChartData = useMemo(() => {
+    if (!data) return [];
     return data.semesters.map((semester) => {
       const row: Record<string, string | number> = { semester };
-      for (const m of data.metrics) {
+      for (const m of metrics) {
         const vals = coaches
           .map((c) => c.bySemester.find((s) => s.semester === semester)?.avgValueByMetric[m.slug])
           .filter((v): v is number => v != null);
@@ -58,17 +77,37 @@ export function CoachPerformanceDashboard({ data }: { data: DistrictPerformanceS
       }
       return row;
     });
-  }, [data.semesters, data.metrics, coaches]);
+  }, [data, metrics, coaches]);
+
+  if (!data || metrics.length === 0) {
+    return (
+      <div className="space-y-6">
+        <CoachPerformanceMetricPicker catalog={metricCatalog} selectedSlugs={selectedMetricSlugs} />
+        <div className="rounded-2xl border border-dashed border-card-border p-8 text-center">
+          <h2 className="text-lg font-semibold">No marks for these KPIs yet</h2>
+          <p className="mt-2 text-sm text-muted">
+            Pick different metrics above, or seed demo PE data for sit-and-reach, pull-ups, and mile
+            run.
+          </p>
+          <pre className="mx-auto mt-4 max-w-md rounded-lg bg-card p-3 text-left text-xs">
+            npm run db:seed-pe-performance
+          </pre>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
+      <CoachPerformanceMetricPicker catalog={metricCatalog} selectedSlugs={selectedMetricSlugs} />
+
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-xs uppercase tracking-widest text-muted">District overview</p>
           <h2 className="font-display text-2xl font-bold">{data.organizationName}</h2>
           <p className="mt-1 text-sm text-muted">
-            {data.schoolCount} schools · {data.coachCount} coaches · PE fitness:{" "}
-            {data.metrics.map((m) => m.name).join(", ") || "—"}
+            {data.schoolCount} schools · {data.coachCount} coaches ·{" "}
+            {metrics.map((m) => m.name).join(", ") || "—"}
           </p>
         </div>
         <label className="text-sm text-muted">
@@ -121,7 +160,7 @@ export function CoachPerformanceDashboard({ data }: { data: DistrictPerformanceS
                 <th className="px-4 py-3 text-right">Students</th>
                 <th className="px-4 py-3 text-right">Avg improvement</th>
                 <th className="px-4 py-3 text-right">Improved</th>
-                {data.metrics.map((m) => (
+                {metrics.map((m) => (
                   <th key={m.slug} className="px-4 py-3 text-right">
                     {m.name.split(" ")[0]}
                   </th>
@@ -141,7 +180,7 @@ export function CoachPerformanceDashboard({ data }: { data: DistrictPerformanceS
                   <td className="px-4 py-3 text-right tabular-nums text-muted">
                     {c.pairsCompared ? `${c.improvedPairs}/${c.pairsCompared}` : "—"}
                   </td>
-                  {data.metrics.map((m) => (
+                  {metrics.map((m) => (
                     <td key={m.slug} className="px-4 py-3 text-right tabular-nums text-muted">
                       {pct(c.byMetric[m.slug]?.avgImprovementPct ?? null)}
                     </td>
@@ -165,7 +204,7 @@ export function CoachPerformanceDashboard({ data }: { data: DistrictPerformanceS
             <thead>
               <tr>
                 <th className="pb-2 text-left text-xs uppercase text-muted">Coach</th>
-                {data.metrics.map((m) => (
+                {metrics.map((m) => (
                   <th key={m.slug} className="px-2 pb-2 text-center text-xs uppercase text-muted">
                     {m.name}
                   </th>
@@ -176,7 +215,7 @@ export function CoachPerformanceDashboard({ data }: { data: DistrictPerformanceS
               {coaches.map((c) => (
                 <tr key={c.coachId}>
                   <td className="py-2 pr-4 font-medium">{c.coachName}</td>
-                  {data.metrics.map((m) => {
+                  {metrics.map((m) => {
                     const v = c.byMetric[m.slug]?.avgImprovementPct ?? null;
                     return (
                       <td key={m.slug} className="p-1">
@@ -217,12 +256,12 @@ export function CoachPerformanceDashboard({ data }: { data: DistrictPerformanceS
                   }}
                 />
                 <Legend />
-                {data.metrics.map((m, i) => (
+                {metrics.map((m, i) => (
                   <Bar
                     key={m.slug}
                     dataKey={m.slug}
                     name={m.name}
-                    fill={i === 0 ? "#c6f54a" : i === 1 ? "#35d49a" : "#f5bd4f"}
+                    fill={TREND_BAR_COLORS[i % TREND_BAR_COLORS.length]}
                     radius={[4, 4, 0, 0]}
                   />
                 ))}

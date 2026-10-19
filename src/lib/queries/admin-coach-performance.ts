@@ -1,4 +1,8 @@
-import { PE_FITNESS_METRIC_SLUGS, semesterLabel, semesterSortKey } from "@/lib/admin/pe-fitness-metrics";
+import {
+  DEFAULT_DISTRICT_REPORT_METRIC_SLUGS,
+  semesterLabel,
+  semesterSortKey,
+} from "@/lib/admin/pe-fitness-metrics";
 import type { ScoringDirection } from "@/lib/constants";
 import { prisma } from "@/lib/db";
 import { calculateImprovement } from "@/lib/services/performance";
@@ -30,7 +34,58 @@ export type DistrictPerformanceSnapshot = {
   semesters: string[];
 };
 
-export async function getDistrictCoachPerformance(): Promise<DistrictPerformanceSnapshot | null> {
+export type DistrictReportMetricOption = {
+  slug: string;
+  name: string;
+  categoryName: string;
+};
+
+export async function getDistrictReportMetricCatalog(): Promise<DistrictReportMetricOption[]> {
+  const rows = await prisma.activity.findMany({
+    where: { slug: { notIn: ["height", "weight"] } },
+    orderBy: [{ category: { name: "asc" } }, { name: "asc" }],
+    select: {
+      slug: true,
+      name: true,
+      category: { select: { name: true } },
+    },
+  });
+  return rows.map((r) => ({
+    slug: r.slug,
+    name: r.name,
+    categoryName: r.category.name,
+  }));
+}
+
+/** Parse ?metrics=slug1,slug2 against the catalog; fall back to PE defaults. */
+export function resolveDistrictReportMetricSlugs(
+  metricsParam: string | undefined,
+  catalogSlugs: Iterable<string>
+): string[] {
+  const allowed = new Set(catalogSlugs);
+  const defaults = DEFAULT_DISTRICT_REPORT_METRIC_SLUGS.filter((s) => allowed.has(s));
+  if (!metricsParam?.trim()) {
+    if (defaults.length > 0) return [...defaults];
+    return [...allowed].slice(0, 6);
+  }
+  const picked = [
+    ...new Set(
+      metricsParam
+        .split(",")
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0 && allowed.has(s))
+    ),
+  ];
+  if (picked.length > 0) return picked;
+  if (defaults.length > 0) return [...defaults];
+  return [...allowed].slice(0, 6);
+}
+
+export async function getDistrictCoachPerformance(
+  metricSlugs: readonly string[]
+): Promise<DistrictPerformanceSnapshot | null> {
+  const slugs = [...new Set(metricSlugs)].filter(Boolean);
+  if (slugs.length === 0) return null;
   const org = await prisma.organization.findFirst({
     orderBy: { createdAt: "asc" },
     select: { id: true, name: true },
@@ -47,7 +102,7 @@ export async function getDistrictCoachPerformance(): Promise<DistrictPerformance
   const schoolIds = schools.map((s) => s.id);
 
   const activities = await prisma.activity.findMany({
-    where: { slug: { in: [...PE_FITNESS_METRIC_SLUGS] } },
+    where: { slug: { in: slugs } },
     select: { id: true, slug: true, name: true, unit: true, scoringDirection: true },
   });
   const activityBySlug = new Map(activities.map((a) => [a.slug, a]));
@@ -145,7 +200,7 @@ export async function getDistrictCoachPerformance(): Promise<DistrictPerformance
   const coachRows: CoachPerformanceRow[] = coaches.map((coach) => {
     const coachName = `${coach.user.firstName} ${coach.user.lastName}`.trim();
     const byMetric: CoachPerformanceRow["byMetric"] = {};
-    for (const slug of PE_FITNESS_METRIC_SLUGS) {
+    for (const slug of slugs) {
       byMetric[slug] = { avgImprovementPct: null, pairs: 0, improved: 0 };
     }
 
@@ -156,7 +211,7 @@ export async function getDistrictCoachPerformance(): Promise<DistrictPerformance
     const studentMap = grid.get(coach.id);
     if (studentMap) {
       for (const [, bySem] of studentMap) {
-        for (const slug of PE_FITNESS_METRIC_SLUGS) {
+        for (const slug of slugs) {
           const fall = [...bySem.entries()].find(([k]) => k.startsWith(`${slug}::Fall`));
           const spring = [...bySem.entries()]
             .filter(([k]) => k.startsWith(`${slug}::Spring`))
@@ -186,10 +241,10 @@ export async function getDistrictCoachPerformance(): Promise<DistrictPerformance
 
     const bySemester: CoachPerformanceRow["bySemester"] = semesters.map((semester) => {
       const avgValueByMetric: Record<string, number | null> = {};
-      for (const slug of PE_FITNESS_METRIC_SLUGS) avgValueByMetric[slug] = null;
+      for (const slug of slugs) avgValueByMetric[slug] = null;
       if (!studentMap) return { semester, avgValueByMetric };
 
-      for (const slug of PE_FITNESS_METRIC_SLUGS) {
+      for (const slug of slugs) {
         const vals: number[] = [];
         for (const [, bySem] of studentMap) {
           const cell = bySem.get(`${slug}::${semester}`);
@@ -226,15 +281,18 @@ export async function getDistrictCoachPerformance(): Promise<DistrictPerformance
     organizationName: org.name,
     schoolCount: schools.length,
     coachCount: coaches.length,
-    metrics: PE_FITNESS_METRIC_SLUGS.map((slug) => {
-      const a = activityBySlug.get(slug);
-      return {
-        slug,
-        name: a?.name ?? slug,
-        unit: a?.unit ?? "",
-        direction: (a?.scoringDirection ?? "HIGHER_BETTER") as ScoringDirection,
-      };
-    }).filter((m) => activityBySlug.has(m.slug)),
+    metrics: slugs
+      .map((slug) => {
+        const a = activityBySlug.get(slug);
+        if (!a) return null;
+        return {
+          slug,
+          name: a.name,
+          unit: a.unit,
+          direction: a.scoringDirection as ScoringDirection,
+        };
+      })
+      .filter((m): m is NonNullable<typeof m> => m != null),
     coaches: coachRows,
     semesters,
   };

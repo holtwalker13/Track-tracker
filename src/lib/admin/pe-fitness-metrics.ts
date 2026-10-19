@@ -1,9 +1,12 @@
-/** District PE fitness tests tracked on the admin coach performance dashboard. */
-export const PE_FITNESS_METRIC_SLUGS = [
+/** Default district report KPIs when the admin has not chosen any. */
+export const DEFAULT_DISTRICT_REPORT_METRIC_SLUGS = [
   "sit-and-reach",
   "pull-ups",
   "mile-run",
 ] as const;
+
+/** @deprecated Use DEFAULT_DISTRICT_REPORT_METRIC_SLUGS */
+export const PE_FITNESS_METRIC_SLUGS = DEFAULT_DISTRICT_REPORT_METRIC_SLUGS;
 
 export type PeFitnessMetricSlug = (typeof PE_FITNESS_METRIC_SLUGS)[number];
 

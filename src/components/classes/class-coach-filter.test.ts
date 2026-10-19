@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { classMatchesCoachFilter } from "./class-coach-filter";
+import { classMatchesCoachFilter } from "@/lib/classes/coach-filter";
 
 describe("classMatchesCoachFilter", () => {
   it("shows all when filter is all or empty", () => {

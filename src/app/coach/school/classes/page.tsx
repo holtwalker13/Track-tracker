@@ -1,7 +1,7 @@
 import { requireSchoolSession } from "@/lib/auth/session";
 import { coachProfileForSession } from "@/lib/auth/coach-scope";
 import { prisma } from "@/lib/db";
-import { classMatchesCoachFilter } from "@/components/classes/class-coach-filter";
+import { classMatchesCoachFilter } from "@/lib/classes/coach-filter";
 import { ClassesPageActions } from "@/components/classes/classes-page-actions";
 import { SchoolClassExpandableRow } from "@/components/classes/school-class-expandable-row";
 import { ensureClassCoachRowsFromLead } from "@/lib/services/class-coaches";

@@ -69,13 +69,3 @@ export function ClassCoachFilter(props: {
     </Suspense>
   );
 }
-
-export function classMatchesCoachFilter(
-  assignedCoachIds: string[],
-  filter: string | undefined
-): boolean {
-  const coach = filter?.trim() || "all";
-  if (coach === "all") return true;
-  if (coach === "unassigned") return assignedCoachIds.length === 0;
-  return assignedCoachIds.includes(coach);
-}

@@ -41,6 +41,7 @@ const ACTIVITIES: {
   { slug: "bench-press", name: "Bench Press 1RM", cat: "strength", unit: "lb", dir: "HIGHER_BETTER", min: 45, max: 400, bw: true },
   { slug: "sit-and-reach", name: "V-Sit and Reach", cat: "flexibility", unit: "inches", dir: "HIGHER_BETTER", min: 0, max: 30 },
   { slug: "pull-ups", name: "Pull-Ups", cat: "strength", unit: "reps", dir: "HIGHER_BETTER", min: 0, max: 50 },
+  { slug: "mile-run", name: "One Mile Run", cat: "speed", unit: "seconds", dir: "LOWER_BETTER", min: 360, max: 900 },
   { slug: "weight", name: "Body Weight", cat: "body", unit: "lb", dir: "HIGHER_BETTER", min: 70, max: 320 },
 ];
 

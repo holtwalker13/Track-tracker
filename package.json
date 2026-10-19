@@ -21,6 +21,7 @@
     "db:migrate-tenants": "tsx scripts/migrate-tenants.ts",
     "user-flows:scan": "tsx scripts/user-flow-explorer/generate-graph.ts",
     "user-flows:capture": "tsx scripts/user-flow-explorer/capture-screenshots.ts",
+    "db:seed-pe-performance": "tsx scripts/seed-district-pe-performance.ts",
     "postinstall": "DATABASE_URL=${DATABASE_URL:-postgresql://sap:sap@127.0.0.1:5432/sap} prisma generate"
   },
   "prisma": {

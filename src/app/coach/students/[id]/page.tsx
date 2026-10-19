@@ -46,8 +46,6 @@ import { classSectionLabel, isGraduatingClassName } from "@/lib/periods";
 import { AthleteProfileCard } from "@/components/athletes/athlete-profile-card";
 import { genderFullLabel } from "@/lib/gender";
 import { leaderboardHighlightFromSearch } from "@/lib/leaderboard-link";
-import { StudentLoginLinkButton } from "@/components/athletes/student-login-link-button";
-import { studentLoginStatusFromRow } from "@/lib/services/student-login-invite";
 import { getStudentLeaderboard } from "@/lib/queries/leaderboard-student";
 import { listStudentCoreOneRepMaxRows } from "@/lib/queries/student-core-one-rep-max";
 import { StudentCoreOneRepMaxEditor } from "@/components/athletes/student-core-one-rep-max-editor";
@@ -76,8 +74,6 @@ export default async function StudentProfilePage({
   const student = await prisma.studentProfile.findUnique({
     where: { id },
     include: {
-      user: { select: { passwordSetAt: true } },
-      loginInvite: { select: { usedAt: true, expiresAt: true } },
       enrollments: {
         where: { schoolYear: { isCurrent: true } },
         include: { schoolYear: true },
@@ -273,11 +269,6 @@ export default async function StudentProfilePage({
   const ranks = { ...activityRanks };
 
   const fullName = `${student.firstName} ${student.lastName}`;
-  const loginStatus = studentLoginStatusFromRow({
-    userId: student.userId,
-    user: student.user,
-    loginInvite: student.loginInvite,
-  });
   const sections = enrolledClasses.map((c) => ({
     id: c.id,
     label: classSectionLabel(c),
@@ -305,18 +296,6 @@ export default async function StudentProfilePage({
           enrolledClassIds: student.classEnrollments.map((e) => e.classId),
         }}
       />
-
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-card-border bg-card/40 px-4 py-3">
-        <p className="text-sm text-muted">
-          Account link for <span className="font-mono text-foreground">{student.studentNumber}</span>.
-          It creates the account the first time and signs them in after that, on the student dashboard.
-        </p>
-        <StudentLoginLinkButton
-          studentId={student.id}
-          fullName={fullName}
-          loginStatus={loginStatus}
-        />
-      </div>
 
       <Suspense fallback={null}>
         <AthleteProfileClassPicker

@@ -81,14 +81,11 @@ export function AthleteProfileCard({
   }
 
   return (
-    <div className="mb-8 rounded-2xl border border-card-border bg-gradient-to-br from-card via-card to-sky-950/30 p-5 shadow-[0_0_40px_rgba(56,189,248,0.08)] sm:p-6">
+    <div className="mb-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
         <PlayerAvatar name={name} size="lg" seed={seed} />
         <div className="min-w-0 flex-1">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-sky-300/80">
-            Athlete profile
-          </p>
-          <h1 className="mt-1 truncate text-2xl font-bold tracking-tight sm:text-3xl">{name}</h1>
+          <h1 className="truncate text-2xl font-bold tracking-tight sm:text-3xl">{name}</h1>
           {facts.length > 0 && (
             <p className="mt-1.5 text-sm text-muted">{facts.join(" · ")}</p>
           )}

@@ -81,7 +81,7 @@ export function MedalScopeLoadingShell({ children }: { children: ReactNode }) {
     <div className="relative" aria-busy={pending || undefined}>
       <div
         className={cn(
-          "space-y-6 transition-[opacity,filter] duration-500 ease-out",
+          "transition-[opacity,filter] duration-500 ease-out",
           pending && "pointer-events-none select-none opacity-[0.08] blur-[3px]"
         )}
       >

@@ -5,21 +5,27 @@ import { useState } from "react";
 import { CoachModal } from "@/components/ui/coach-modal";
 import { CreateClassForm, CreateWeightsPeriodsButton } from "@/components/classes/class-forms";
 import { ImportRosterForm } from "@/components/roster/import-roster-form";
+import { ClassCoachFilter } from "@/components/classes/class-coach-filter";
 import type { ClassCoachOption } from "@/lib/coach-display";
 
 export function ClassesPageActions({
   coaches,
   defaultCoachId,
+  totalClassCount,
+  filteredClassCount,
 }: {
   coaches: ClassCoachOption[];
   defaultCoachId: string;
+  totalClassCount: number;
+  filteredClassCount: number;
 }) {
   const [createOpen, setCreateOpen] = useState(false);
   const [uploadOpen, setUploadOpen] = useState(false);
 
   return (
     <>
-      <div className="mb-4 flex flex-wrap gap-2">
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+        <div className="flex flex-wrap gap-2">
         <button
           type="button"
           onClick={() => setCreateOpen(true)}
@@ -36,6 +42,14 @@ export function ClassesPageActions({
           <Upload className="h-4 w-4" strokeWidth={2.5} aria-hidden />
           Upload class
         </button>
+        </div>
+        {coaches.length > 0 ? (
+          <ClassCoachFilter
+            coaches={coaches}
+            totalCount={totalClassCount}
+            filteredCount={filteredClassCount}
+          />
+        ) : null}
       </div>
       {createOpen ? (
         <CoachModal title="Create a class" onClose={() => setCreateOpen(false)}>

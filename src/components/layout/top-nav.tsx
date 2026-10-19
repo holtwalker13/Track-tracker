@@ -10,7 +10,6 @@ import {
   LayoutDashboard,
   LayoutGrid,
   LineChart,
-  LogOut,
   School,
   Target,
   TrendingUp,
@@ -65,10 +64,10 @@ export function TopNav({
     <nav
       aria-label="Main"
       className={cn(
-        "flex min-w-0 snap-x snap-mandatory gap-0.5 overflow-x-auto overscroll-x-contain",
-        "-mx-3 px-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:-mx-4 sm:px-4",
-        "md:mx-0 md:flex-nowrap md:justify-end md:overflow-x-auto md:snap-none md:px-0",
-        compact ? "pt-0.5 pb-0.5" : "pt-0 pb-0"
+        "flex min-w-0 snap-x snap-mandatory gap-1 overflow-x-auto overscroll-x-contain scroll-px-1",
+        "-mx-3 px-3 py-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:-mx-4 sm:px-4",
+        "md:mx-0 md:flex-nowrap md:justify-end md:overflow-x-auto md:snap-none md:px-0 md:py-1",
+        compact ? "pt-0.5 pb-0.5" : "pt-0.5 pb-0.5"
       )}
     >
       {items.map((item) => {
@@ -84,8 +83,8 @@ export function TopNav({
               linkClassName,
               active &&
                 (compact
-                  ? "bg-accent text-accent-foreground shadow-[0_0_12px_rgba(198,245,74,0.35)]"
-                  : "bg-accent/15 text-accent ring-1 ring-accent/40")
+                  ? "bg-accent text-accent-foreground shadow-[0_0_12px_rgba(198,245,74,0.35)] ring-1 ring-inset ring-accent-foreground/20"
+                  : "bg-accent/15 text-accent ring-1 ring-inset ring-accent/50")
             )}
           >
             <Icon className={cn("shrink-0", compact ? "h-3.5 w-3.5 md:h-4 md:w-4" : "h-4 w-4")} aria-hidden />
@@ -93,12 +92,6 @@ export function TopNav({
           </Link>
         );
       })}
-      <form action="/api/auth/logout" method="POST" className="contents">
-        <button type="submit" className={linkClassName} title="Sign out">
-          <LogOut className={cn("shrink-0", compact ? "h-3.5 w-3.5 md:h-4 md:w-4" : "h-4 w-4")} aria-hidden />
-          <span className={labelClassName}>Sign out</span>
-        </button>
-      </form>
     </nav>
   );
 }

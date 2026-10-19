@@ -2,7 +2,7 @@
 
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useTransition } from "react";
-import { classSectionLabel } from "@/lib/periods";
+import { medalClassPickerLines } from "@/lib/periods";
 import { cn } from "@/lib/utils";
 
 export type AthleteProfileClassPickerProps = {
@@ -77,24 +77,41 @@ export function AthleteProfileClassPicker({
             Medal class
           </p>
           <div
-            className="mt-2 flex flex-wrap gap-2"
+            className="mt-2 flex flex-col overflow-hidden rounded-xl border border-card-border sm:inline-flex sm:flex-row"
             role="group"
             aria-label="Medal class"
           >
-            {classes.map((c) => {
+            {classes.map((c, index) => {
               const active = c.id === activeClassId;
+              const { term, detail, full } = medalClassPickerLines(c);
               return (
                 <button
                   key={c.id}
                   type="button"
                   aria-pressed={active}
+                  aria-label={full}
                   onClick={() => pick(c.id, null)}
                   className={cn(
-                    "max-w-full rounded-full px-3 py-2 text-left text-xs font-semibold leading-snug sm:max-w-[16rem] sm:text-sm",
-                    active ? "filter-chip-active" : "filter-chip-inactive"
+                    "flex min-w-[9rem] max-w-full flex-col items-start px-4 py-3 text-left transition sm:min-w-[10.5rem]",
+                    index > 0 && "border-t border-card-border sm:border-t-0 sm:border-l",
+                    active
+                      ? "bg-accent/15 text-accent"
+                      : "bg-card/35 text-muted hover:bg-card/55 hover:text-foreground"
                   )}
                 >
-                  {classSectionLabel(c)}
+                  {term ? (
+                    <span className="text-[10px] font-semibold uppercase tracking-[0.14em] opacity-90">
+                      {term}
+                    </span>
+                  ) : null}
+                  <span
+                    className={cn(
+                      "font-bold leading-snug",
+                      term ? "mt-1 text-sm sm:text-base" : "text-sm"
+                    )}
+                  >
+                    {detail}
+                  </span>
                 </button>
               );
             })}

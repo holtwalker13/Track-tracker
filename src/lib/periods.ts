@@ -43,6 +43,28 @@ export function classSectionLabel(c: { name: string; period: string | null }) {
   return c.period || c.name;
 }
 
+/** Two-line medal-class picker: term (Spring 2026) + period/class detail (Period 1 PE). */
+export function medalClassPickerLines(c: { name: string; period: string | null }) {
+  const label = classSectionLabel(c);
+  const fromName = c.name.match(/^(Fall|Spring|Summer)\s+(\d{4})\s+(.+)$/i);
+  if (fromName) {
+    return {
+      term: `${fromName[1]} ${fromName[2]}`,
+      detail: fromName[3]!,
+      full: label,
+    };
+  }
+  const fromLabel = label.match(/^(Fall|Spring|Summer)\s+(\d{4})\s+(.+)$/i);
+  if (fromLabel) {
+    return {
+      term: `${fromLabel[1]} ${fromLabel[2]}`,
+      detail: fromLabel[3]!,
+      full: label,
+    };
+  }
+  return { term: null, detail: label, full: label };
+}
+
 /** Match a class to the guessed period (Period N / Nth Hour / etc.). */
 export function findClassForPeriod<T extends { id: string; name: string; period: string | null }>(
   classes: T[],

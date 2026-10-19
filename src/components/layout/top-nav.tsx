@@ -50,8 +50,8 @@ export function TopNav({
   const linkClassName = cn(
     "flex shrink-0 snap-start flex-col items-center justify-center rounded-lg text-muted transition hover:bg-card hover:text-foreground",
     compact
-      ? "min-w-[2.75rem] max-w-[3.5rem] gap-0 px-1.5 py-1 md:min-w-0 md:max-w-none md:gap-0.5 md:px-2 md:py-1.5"
-      : "min-w-[3.75rem] max-w-[5rem] gap-0.5 px-2 py-1.5 md:min-w-0 md:max-w-none md:px-2.5 md:py-1.5"
+      ? "min-w-[2.75rem] max-w-[3.75rem] gap-0 px-2 py-1.5 md:min-w-0 md:max-w-none md:gap-0.5 md:px-2.5 md:py-1.5"
+      : "min-w-[4rem] max-w-[5.5rem] gap-0.5 px-3 py-2 md:min-w-0 md:max-w-none md:px-3.5 md:py-2"
   );
 
   const labelClassName = cn(

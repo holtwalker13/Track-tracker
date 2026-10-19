@@ -40,7 +40,7 @@ import { ensureAccoladeDefinitions } from "@/lib/gamification/seed-accolades";
 import { getRankedKpiSlugsForStudent } from "@/lib/services/kpi-sets";
 import { ageBracketForClassYear, isAgeBracketId } from "@/lib/age-brackets";
 import { classYearLabel, DEFAULT_CLASS_YEAR } from "@/lib/grades";
-import { classSectionLabel, isGraduatingClassName } from "@/lib/periods";
+import { isGraduatingClassName } from "@/lib/periods";
 import { AthleteProfileCard } from "@/components/athletes/athlete-profile-card";
 import { genderFullLabel } from "@/lib/gender";
 import { leaderboardHighlightFromSearch } from "@/lib/leaderboard-link";

@@ -267,11 +267,6 @@ export default async function StudentProfilePage({
   const ranks = { ...activityRanks };
 
   const fullName = `${student.firstName} ${student.lastName}`;
-  const sections = enrolledClasses.map((c) => ({
-    id: c.id,
-    label: classSectionLabel(c),
-  }));
-
   return (
     <AppShell title="Athlete" nav={COACH_NAV}>
       <AthleteProfileCard
@@ -279,7 +274,6 @@ export default async function StudentProfilePage({
         studentNumber={student.studentNumber}
         gender={student.gender ? genderFullLabel(student.gender) : null}
         schoolYear={enrollment?.schoolYear?.label ?? null}
-        sections={sections}
         seed={student.id}
         sports={student.sports}
         classLabel={classYearLabel(grade)}

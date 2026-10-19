@@ -26,7 +26,6 @@ export function AthleteProfileCard({
   studentNumber,
   gender,
   schoolYear,
-  sections,
   seed,
   sports,
   classLabel,
@@ -37,7 +36,6 @@ export function AthleteProfileCard({
   studentNumber?: string | null;
   gender?: string | null;
   schoolYear?: string | null;
-  sections?: { id: string; label: string }[];
   seed?: string;
   sports?: string | null;
   classLabel?: string | null;
@@ -110,18 +108,6 @@ export function AthleteProfileCard({
               </span>
             )}
           </div>
-          {sections && sections.length > 0 && (
-            <ul className="mt-2.5 flex flex-wrap gap-1.5">
-              {sections.map((section) => (
-                <li
-                  key={section.id}
-                  className="rounded-full border border-card-border px-2.5 py-1 text-xs text-muted"
-                >
-                  {section.label}
-                </li>
-              ))}
-            </ul>
-          )}
         </div>
         <button
           type="button"

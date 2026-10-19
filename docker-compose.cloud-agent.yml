@@ -1,0 +1,10 @@
+# Optional override for Cloud Agent VMs where bridge networking between
+# containers is blocked. Routes the app to Postgres via the published host port.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.cloud-agent.yml up --build
+services:
+  app:
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      DATABASE_URL: "postgresql://sap:sap@host.docker.internal:5434/sap"

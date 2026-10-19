@@ -1,0 +1,6 @@
+{
+  "name": "Track Tracker (Docker dev stack)",
+  "user": "ubuntu",
+  "install": "sudo apt-get update -qq && sudo DEBIAN_FRONTEND=noninteractive apt-get install -y docker.io docker-compose-v2 && npm ci",
+  "start": "bash /workspace/.cursor/start-docker.sh"
+}

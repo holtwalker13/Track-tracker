@@ -1,0 +1,3822 @@
+{
+  "meta": {
+    "generatedAt": "2026-10-19T01:05:06.614Z",
+    "appVersion": "0.1.0",
+    "scannerVersion": "1.0.0",
+    "routeCount": 48,
+    "edgeCount": 231,
+    "manualReviewCount": 7
+  },
+  "nodes": [
+    {
+      "id": "admin",
+      "route": "/admin",
+      "title": "Admin — select school",
+      "category": "admin",
+      "roles": [
+        "ADMIN",
+        "COACH"
+      ],
+      "componentPath": "src/app/admin/page.tsx",
+      "isDynamic": false,
+      "screenshotPath": null,
+      "screenshotStatus": "missing",
+      "sourceFiles": [
+        "src/app/admin/page.tsx"
+      ],
+      "notes": []
+    },
+    {
+      "id": "coach",
+      "route": "/coach",
+      "title": "Coach",
+      "category": "coach",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "componentPath": "src/app/coach/page.tsx",
+      "isDynamic": false,
+      "screenshotPath": null,
+      "screenshotStatus": "missing",
+      "sourceFiles": [
+        "src/app/coach/page.tsx"
+      ],
+      "notes": []
+    },
+    {
+      "id": "coach__analytics",
+      "route": "/coach/analytics",
+      "title": "Analytics",
+      "category": "coach",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "componentPath": "src/app/coach/analytics/page.tsx",
+      "isDynamic": false,
+      "screenshotPath": null,
+      "screenshotStatus": "missing",
+      "sourceFiles": [
+        "src/app/coach/analytics/page.tsx"
+      ],
+      "notes": []
+    },
+    {
+      "id": "coach__benchmarks",
+      "route": "/coach/benchmarks",
+      "title": "Benchmarks",
+      "category": "coach",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "componentPath": "src/app/coach/benchmarks/page.tsx",
+      "isDynamic": false,
+      "screenshotPath": null,
+      "screenshotStatus": "missing",
+      "sourceFiles": [
+        "src/app/coach/benchmarks/page.tsx"
+      ],
+      "notes": []
+    },
+    {
+      "id": "coach__classes",
+      "route": "/coach/classes",
+      "title": "Classes",
+      "category": "coach",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "componentPath": "src/app/coach/classes/page.tsx",
+      "isDynamic": false,
+      "screenshotPath": null,
+      "screenshotStatus": "missing",
+      "sourceFiles": [
+        "src/app/coach/classes/page.tsx"
+      ],
+      "notes": []
+    },
+    {
+      "id": "coach__classes__id",
+      "route": "/coach/classes/:id",
+      "title": "id",
+      "category": "coach",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "componentPath": "src/app/coach/classes/[id]/page.tsx",
+      "isDynamic": true,
+      "screenshotPath": null,
+      "screenshotStatus": "manual_review",
+      "sourceFiles": [
+        "src/app/coach/classes/[id]/page.tsx"
+      ],
+      "notes": [
+        "Dynamic segment — use a concrete demo URL for screenshots."
+      ]
+    },
+    {
+      "id": "coach__compare",
+      "route": "/coach/compare",
+      "title": "Compare",
+      "category": "coach",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "componentPath": "src/app/coach/compare/page.tsx",
+      "isDynamic": false,
+      "screenshotPath": null,
+      "screenshotStatus": "missing",
+      "sourceFiles": [
+        "src/app/coach/compare/page.tsx"
+      ],
+      "notes": []
+    },
+    {
+      "id": "coach__compete",
+      "route": "/coach/compete",
+      "title": "Compete",
+      "category": "coach",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "componentPath": "src/app/coach/compete/page.tsx",
+      "isDynamic": false,
+      "screenshotPath": null,
+      "screenshotStatus": "missing",
+      "sourceFiles": [
+        "src/app/coach/compete/page.tsx"
+      ],
+      "notes": []
+    },
+    {
+      "id": "coach__compete__compare",
+      "route": "/coach/compete/compare",
+      "title": "Compare",
+      "category": "coach",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "componentPath": "src/app/coach/compete/compare/page.tsx",
+      "isDynamic": false,
+      "screenshotPath": null,
+      "screenshotStatus": "missing",
+      "sourceFiles": [
+        "src/app/coach/compete/compare/page.tsx"
+      ],
+      "notes": []
+    },
+    {
+      "id": "coach__compete__leaderboards",
+      "route": "/coach/compete/leaderboards",
+      "title": "Leaderboards",
+      "category": "coach",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "componentPath": "src/app/coach/compete/leaderboards/page.tsx",
+      "isDynamic": false,
+      "screenshotPath": null,
+      "screenshotStatus": "missing",
+      "sourceFiles": [
+        "src/app/coach/compete/leaderboards/page.tsx"
+      ],
+      "notes": []
+    },
+    {
+      "id": "coach__join",
+      "route": "/coach/join",
+      "title": "Coach invite join",
+      "category": "join",
+      "roles": [
+        "PUBLIC"
+      ],
+      "componentPath": "src/app/coach/join/page.tsx",
+      "isDynamic": false,
+      "screenshotPath": null,
+      "screenshotStatus": "missing",
+      "sourceFiles": [
+        "src/app/coach/join/page.tsx"
+      ],
+      "notes": []
+    },
+    {
+      "id": "coach__leaderboards",
+      "route": "/coach/leaderboards",
+      "title": "Leaderboards",
+      "category": "coach",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "componentPath": "src/app/coach/leaderboards/page.tsx",
+      "isDynamic": false,
+      "screenshotPath": null,
+      "screenshotStatus": "missing",
+      "sourceFiles": [
+        "src/app/coach/leaderboards/page.tsx"
+      ],
+      "notes": []
+    },
+    {
+      "id": "coach__programs",
+      "route": "/coach/programs",
+      "title": "Programs",
+      "category": "coach",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "componentPath": "src/app/coach/programs/page.tsx",
+      "isDynamic": false,
+      "screenshotPath": null,
+      "screenshotStatus": "missing",
+      "sourceFiles": [
+        "src/app/coach/programs/page.tsx"
+      ],
+      "notes": []
+    },
+    {
+      "id": "coach__programs__creator",
+      "route": "/coach/programs/creator",
+      "title": "Creator",
+      "category": "coach",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "componentPath": "src/app/coach/programs/creator/page.tsx",
+      "isDynamic": false,
+      "screenshotPath": null,
+      "screenshotStatus": "missing",
+      "sourceFiles": [
+        "src/app/coach/programs/creator/page.tsx"
+      ],
+      "notes": []
+    },
+    {
+      "id": "coach__programs__lifts",
+      "route": "/coach/programs/lifts",
+      "title": "Lifts",
+      "category": "coach",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "componentPath": "src/app/coach/programs/lifts/page.tsx",
+      "isDynamic": false,
+      "screenshotPath": null,
+      "screenshotStatus": "missing",
+      "sourceFiles": [
+        "src/app/coach/programs/lifts/page.tsx"
+      ],
+      "notes": []
+    },
+    {
+      "id": "coach__programs__logs",
+      "route": "/coach/programs/logs",
+      "title": "Logs",
+      "category": "coach",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "componentPath": "src/app/coach/programs/logs/page.tsx",
+      "isDynamic": false,
+      "screenshotPath": null,
+      "screenshotStatus": "missing",
+      "sourceFiles": [
+        "src/app/coach/programs/logs/page.tsx"
+      ],
+      "notes": []
+    },
+    {
+      "id": "coach__programs__session__sessionId",
+      "route": "/coach/programs/session/:sessionId",
+      "title": "sessionId",
+      "category": "coach",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "componentPath": "src/app/coach/programs/session/[sessionId]/page.tsx",
+      "isDynamic": true,
+      "screenshotPath": null,
+      "screenshotStatus": "manual_review",
+      "sourceFiles": [
+        "src/app/coach/programs/session/[sessionId]/page.tsx"
+      ],
+      "notes": [
+        "Dynamic segment — use a concrete demo URL for screenshots."
+      ]
+    },
+    {
+      "id": "coach__school",
+      "route": "/coach/school",
+      "title": "School",
+      "category": "coach",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "componentPath": "src/app/coach/school/page.tsx",
+      "isDynamic": false,
+      "screenshotPath": null,
+      "screenshotStatus": "missing",
+      "sourceFiles": [
+        "src/app/coach/school/page.tsx"
+      ],
+      "notes": []
+    },
+    {
+      "id": "coach__school__classes",
+      "route": "/coach/school/classes",
+      "title": "Classes",
+      "category": "coach",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "componentPath": "src/app/coach/school/classes/page.tsx",
+      "isDynamic": false,
+      "screenshotPath": null,
+      "screenshotStatus": "missing",
+      "sourceFiles": [
+        "src/app/coach/school/classes/page.tsx"
+      ],
+      "notes": []
+    },
+    {
+      "id": "coach__school__classes__id",
+      "route": "/coach/school/classes/:id",
+      "title": "id",
+      "category": "coach",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "componentPath": "src/app/coach/school/classes/[id]/page.tsx",
+      "isDynamic": true,
+      "screenshotPath": null,
+      "screenshotStatus": "manual_review",
+      "sourceFiles": [
+        "src/app/coach/school/classes/[id]/page.tsx"
+      ],
+      "notes": [
+        "Dynamic segment — use a concrete demo URL for screenshots."
+      ]
+    },
+    {
+      "id": "coach__school__coaches",
+      "route": "/coach/school/coaches",
+      "title": "Coaches",
+      "category": "coach",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "componentPath": "src/app/coach/school/coaches/page.tsx",
+      "isDynamic": false,
+      "screenshotPath": null,
+      "screenshotStatus": "missing",
+      "sourceFiles": [
+        "src/app/coach/school/coaches/page.tsx"
+      ],
+      "notes": []
+    },
+    {
+      "id": "coach__school__overview",
+      "route": "/coach/school/overview",
+      "title": "Overview",
+      "category": "coach",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "componentPath": "src/app/coach/school/overview/page.tsx",
+      "isDynamic": false,
+      "screenshotPath": null,
+      "screenshotStatus": "missing",
+      "sourceFiles": [
+        "src/app/coach/school/overview/page.tsx"
+      ],
+      "notes": []
+    },
+    {
+      "id": "coach__school__privacy",
+      "route": "/coach/school/privacy",
+      "title": "Privacy",
+      "category": "coach",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "componentPath": "src/app/coach/school/privacy/page.tsx",
+      "isDynamic": false,
+      "screenshotPath": null,
+      "screenshotStatus": "missing",
+      "sourceFiles": [
+        "src/app/coach/school/privacy/page.tsx"
+      ],
+      "notes": []
+    },
+    {
+      "id": "coach__school__roster",
+      "route": "/coach/school/roster",
+      "title": "Roster",
+      "category": "coach",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "componentPath": "src/app/coach/school/roster/page.tsx",
+      "isDynamic": false,
+      "screenshotPath": null,
+      "screenshotStatus": "missing",
+      "sourceFiles": [
+        "src/app/coach/school/roster/page.tsx"
+      ],
+      "notes": []
+    },
+    {
+      "id": "coach__students",
+      "route": "/coach/students",
+      "title": "Students",
+      "category": "coach",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "componentPath": "src/app/coach/students/page.tsx",
+      "isDynamic": false,
+      "screenshotPath": null,
+      "screenshotStatus": "missing",
+      "sourceFiles": [
+        "src/app/coach/students/page.tsx"
+      ],
+      "notes": []
+    },
+    {
+      "id": "coach__students__id",
+      "route": "/coach/students/:id",
+      "title": "id",
+      "category": "coach",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "componentPath": "src/app/coach/students/[id]/page.tsx",
+      "isDynamic": true,
+      "screenshotPath": null,
+      "screenshotStatus": "manual_review",
+      "sourceFiles": [
+        "src/app/coach/students/[id]/page.tsx"
+      ],
+      "notes": [
+        "Dynamic segment — use a concrete demo URL for screenshots."
+      ]
+    },
+    {
+      "id": "coach__students__id__accolades",
+      "route": "/coach/students/:id/accolades",
+      "title": "Accolades",
+      "category": "coach",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "componentPath": "src/app/coach/students/[id]/accolades/page.tsx",
+      "isDynamic": true,
+      "screenshotPath": null,
+      "screenshotStatus": "manual_review",
+      "sourceFiles": [
+        "src/app/coach/students/[id]/accolades/page.tsx"
+      ],
+      "notes": [
+        "Dynamic segment — use a concrete demo URL for screenshots."
+      ]
+    },
+    {
+      "id": "coach__testing",
+      "route": "/coach/testing",
+      "title": "Testing",
+      "category": "coach",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "componentPath": "src/app/coach/testing/page.tsx",
+      "isDynamic": false,
+      "screenshotPath": null,
+      "screenshotStatus": "missing",
+      "sourceFiles": [
+        "src/app/coach/testing/page.tsx"
+      ],
+      "notes": []
+    },
+    {
+      "id": "coach__testing__sessionId",
+      "route": "/coach/testing/:sessionId",
+      "title": "sessionId",
+      "category": "coach",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "componentPath": "src/app/coach/testing/[sessionId]/page.tsx",
+      "isDynamic": true,
+      "screenshotPath": null,
+      "screenshotStatus": "manual_review",
+      "sourceFiles": [
+        "src/app/coach/testing/[sessionId]/page.tsx"
+      ],
+      "notes": [
+        "Dynamic segment — use a concrete demo URL for screenshots."
+      ]
+    },
+    {
+      "id": "coach__testing__sessionId__station",
+      "route": "/coach/testing/:sessionId/station",
+      "title": "Station",
+      "category": "coach",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "componentPath": "src/app/coach/testing/[sessionId]/station/page.tsx",
+      "isDynamic": true,
+      "screenshotPath": null,
+      "screenshotStatus": "manual_review",
+      "sourceFiles": [
+        "src/app/coach/testing/[sessionId]/station/page.tsx"
+      ],
+      "notes": [
+        "Dynamic segment — use a concrete demo URL for screenshots."
+      ]
+    },
+    {
+      "id": "coach__testing__log",
+      "route": "/coach/testing/log",
+      "title": "Log",
+      "category": "coach",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "componentPath": "src/app/coach/testing/log/page.tsx",
+      "isDynamic": false,
+      "screenshotPath": null,
+      "screenshotStatus": "missing",
+      "sourceFiles": [
+        "src/app/coach/testing/log/page.tsx"
+      ],
+      "notes": []
+    },
+    {
+      "id": "internal__user-flows",
+      "route": "/internal/user-flows",
+      "title": "User Flow Explorer",
+      "category": "internal",
+      "roles": [
+        "ADMIN"
+      ],
+      "componentPath": "src/app/internal/user-flows/page.tsx",
+      "isDynamic": false,
+      "screenshotPath": null,
+      "screenshotStatus": "missing",
+      "sourceFiles": [
+        "src/app/internal/user-flows/page.tsx"
+      ],
+      "notes": []
+    },
+    {
+      "id": "join__class",
+      "route": "/join/class",
+      "title": "Join class (public)",
+      "category": "join",
+      "roles": [
+        "PUBLIC"
+      ],
+      "componentPath": "src/app/join/class/page.tsx",
+      "isDynamic": false,
+      "screenshotPath": null,
+      "screenshotStatus": "missing",
+      "sourceFiles": [
+        "src/app/join/class/page.tsx"
+      ],
+      "notes": []
+    },
+    {
+      "id": "login",
+      "route": "/login",
+      "title": "Sign in",
+      "category": "auth",
+      "roles": [
+        "PUBLIC"
+      ],
+      "componentPath": "src/app/login/page.tsx",
+      "isDynamic": false,
+      "screenshotPath": null,
+      "screenshotStatus": "missing",
+      "sourceFiles": [
+        "src/app/login/page.tsx"
+      ],
+      "notes": []
+    },
+    {
+      "id": "login__demo__admin",
+      "route": "/login/demo/admin",
+      "title": "Demo login (admin)",
+      "category": "auth",
+      "roles": [
+        "PUBLIC"
+      ],
+      "componentPath": "src/app/login/demo/admin/page.tsx",
+      "isDynamic": false,
+      "screenshotPath": null,
+      "screenshotStatus": "missing",
+      "sourceFiles": [
+        "src/app/login/demo/admin/page.tsx"
+      ],
+      "notes": []
+    },
+    {
+      "id": "login__demo__class-join",
+      "route": "/login/demo/class-join",
+      "title": "Demo login (class-join)",
+      "category": "auth",
+      "roles": [
+        "PUBLIC"
+      ],
+      "componentPath": "src/app/login/demo/class-join/page.tsx",
+      "isDynamic": false,
+      "screenshotPath": null,
+      "screenshotStatus": "missing",
+      "sourceFiles": [
+        "src/app/login/demo/class-join/page.tsx"
+      ],
+      "notes": []
+    },
+    {
+      "id": "login__demo__student",
+      "route": "/login/demo/student",
+      "title": "Demo login (student)",
+      "category": "auth",
+      "roles": [
+        "PUBLIC"
+      ],
+      "componentPath": "src/app/login/demo/student/page.tsx",
+      "isDynamic": false,
+      "screenshotPath": null,
+      "screenshotStatus": "missing",
+      "sourceFiles": [
+        "src/app/login/demo/student/page.tsx"
+      ],
+      "notes": []
+    },
+    {
+      "id": "login__school-email",
+      "route": "/login/school-email",
+      "title": "Claim school email",
+      "category": "auth",
+      "roles": [
+        "PUBLIC"
+      ],
+      "componentPath": "src/app/login/school-email/page.tsx",
+      "isDynamic": false,
+      "screenshotPath": null,
+      "screenshotStatus": "missing",
+      "sourceFiles": [
+        "src/app/login/school-email/page.tsx"
+      ],
+      "notes": []
+    },
+    {
+      "id": "page.tsx",
+      "route": "/page.tsx",
+      "title": "Page.Tsx",
+      "category": "auth",
+      "roles": [
+        "PUBLIC"
+      ],
+      "componentPath": "src/app/page.tsx",
+      "isDynamic": false,
+      "screenshotPath": null,
+      "screenshotStatus": "missing",
+      "sourceFiles": [
+        "src/app/page.tsx"
+      ],
+      "notes": []
+    },
+    {
+      "id": "student",
+      "route": "/student",
+      "title": "Student",
+      "category": "student",
+      "roles": [
+        "STUDENT"
+      ],
+      "componentPath": "src/app/student/page.tsx",
+      "isDynamic": false,
+      "screenshotPath": null,
+      "screenshotStatus": "missing",
+      "sourceFiles": [
+        "src/app/student/page.tsx"
+      ],
+      "notes": []
+    },
+    {
+      "id": "student__accolades",
+      "route": "/student/accolades",
+      "title": "Accolades",
+      "category": "student",
+      "roles": [
+        "STUDENT"
+      ],
+      "componentPath": "src/app/student/accolades/page.tsx",
+      "isDynamic": false,
+      "screenshotPath": null,
+      "screenshotStatus": "missing",
+      "sourceFiles": [
+        "src/app/student/accolades/page.tsx"
+      ],
+      "notes": []
+    },
+    {
+      "id": "student__compare",
+      "route": "/student/compare",
+      "title": "Compare",
+      "category": "student",
+      "roles": [
+        "STUDENT"
+      ],
+      "componentPath": "src/app/student/compare/page.tsx",
+      "isDynamic": false,
+      "screenshotPath": null,
+      "screenshotStatus": "missing",
+      "sourceFiles": [
+        "src/app/student/compare/page.tsx"
+      ],
+      "notes": []
+    },
+    {
+      "id": "student__join",
+      "route": "/student/join",
+      "title": "Student invite join",
+      "category": "join",
+      "roles": [
+        "PUBLIC"
+      ],
+      "componentPath": "src/app/student/join/page.tsx",
+      "isDynamic": false,
+      "screenshotPath": null,
+      "screenshotStatus": "missing",
+      "sourceFiles": [
+        "src/app/student/join/page.tsx"
+      ],
+      "notes": []
+    },
+    {
+      "id": "student__leaderboards",
+      "route": "/student/leaderboards",
+      "title": "Leaderboards",
+      "category": "student",
+      "roles": [
+        "STUDENT"
+      ],
+      "componentPath": "src/app/student/leaderboards/page.tsx",
+      "isDynamic": false,
+      "screenshotPath": null,
+      "screenshotStatus": "missing",
+      "sourceFiles": [
+        "src/app/student/leaderboards/page.tsx"
+      ],
+      "notes": []
+    },
+    {
+      "id": "student__performance",
+      "route": "/student/performance",
+      "title": "Performance",
+      "category": "student",
+      "roles": [
+        "STUDENT"
+      ],
+      "componentPath": "src/app/student/performance/page.tsx",
+      "isDynamic": false,
+      "screenshotPath": null,
+      "screenshotStatus": "missing",
+      "sourceFiles": [
+        "src/app/student/performance/page.tsx"
+      ],
+      "notes": []
+    },
+    {
+      "id": "student__progress",
+      "route": "/student/progress",
+      "title": "Progress",
+      "category": "student",
+      "roles": [
+        "STUDENT"
+      ],
+      "componentPath": "src/app/student/progress/page.tsx",
+      "isDynamic": false,
+      "screenshotPath": null,
+      "screenshotStatus": "missing",
+      "sourceFiles": [
+        "src/app/student/progress/page.tsx"
+      ],
+      "notes": []
+    },
+    {
+      "id": "student__projection",
+      "route": "/student/projection",
+      "title": "Projection",
+      "category": "student",
+      "roles": [
+        "STUDENT"
+      ],
+      "componentPath": "src/app/student/projection/page.tsx",
+      "isDynamic": false,
+      "screenshotPath": null,
+      "screenshotStatus": "missing",
+      "sourceFiles": [
+        "src/app/student/projection/page.tsx"
+      ],
+      "notes": []
+    },
+    {
+      "id": "student__workout",
+      "route": "/student/workout",
+      "title": "Workout",
+      "category": "student",
+      "roles": [
+        "STUDENT"
+      ],
+      "componentPath": "src/app/student/workout/page.tsx",
+      "isDynamic": false,
+      "screenshotPath": null,
+      "screenshotStatus": "missing",
+      "sourceFiles": [
+        "src/app/student/workout/page.tsx"
+      ],
+      "notes": []
+    }
+  ],
+  "edges": [
+    {
+      "id": "admin__coach__benchmarks__nav-kpis",
+      "source": "/admin",
+      "target": "/coach/benchmarks",
+      "label": "Nav: KPIs",
+      "kind": "navigation",
+      "roles": [
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "admin__coach__compete__nav-compete",
+      "source": "/admin",
+      "target": "/coach/compete",
+      "label": "Nav: Compete",
+      "kind": "navigation",
+      "roles": [
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "admin__coach__programs__nav-programs",
+      "source": "/admin",
+      "target": "/coach/programs",
+      "label": "Nav: Programs",
+      "kind": "navigation",
+      "roles": [
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "admin__coach__school__coaches__page-link-coaches",
+      "source": "/admin",
+      "target": "/coach/school/coaches",
+      "label": "Page link → coaches",
+      "kind": "navigation",
+      "roles": [
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/app/admin/page.tsx"
+    },
+    {
+      "id": "admin__coach__school__roster__nav-school",
+      "source": "/admin",
+      "target": "/coach/school/roster",
+      "label": "Nav: School",
+      "kind": "navigation",
+      "roles": [
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "admin__login__page-link-login",
+      "source": "/admin",
+      "target": "/login",
+      "label": "Page link → login",
+      "kind": "navigation",
+      "roles": [
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/app/admin/page.tsx"
+    },
+    {
+      "id": "coach__coach__benchmarks__nav-kpis",
+      "source": "/coach",
+      "target": "/coach/benchmarks",
+      "label": "Nav: KPIs",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__coach__compete__nav-compete",
+      "source": "/coach",
+      "target": "/coach/compete",
+      "label": "Nav: Compete",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__coach__programs__nav-programs",
+      "source": "/coach",
+      "target": "/coach/programs",
+      "label": "Nav: Programs",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__coach__school__roster__nav-school",
+      "source": "/coach",
+      "target": "/coach/school/roster",
+      "label": "Nav: School",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__login__sign-out",
+      "source": "/coach",
+      "target": "/login",
+      "label": "Sign out",
+      "kind": "auth",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/components/layout/top-nav.tsx"
+    },
+    {
+      "id": "coach__analytics__coach__benchmarks__nav-kpis",
+      "source": "/coach/analytics",
+      "target": "/coach/benchmarks",
+      "label": "Nav: KPIs",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__analytics__coach__compete__nav-compete",
+      "source": "/coach/analytics",
+      "target": "/coach/compete",
+      "label": "Nav: Compete",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__analytics__coach__programs__nav-programs",
+      "source": "/coach/analytics",
+      "target": "/coach/programs",
+      "label": "Nav: Programs",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__analytics__coach__school__roster__nav-school",
+      "source": "/coach/analytics",
+      "target": "/coach/school/roster",
+      "label": "Nav: School",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__analytics__login__sign-out",
+      "source": "/coach/analytics",
+      "target": "/login",
+      "label": "Sign out",
+      "kind": "auth",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/components/layout/top-nav.tsx"
+    },
+    {
+      "id": "coach__benchmarks__coach__compete__nav-compete",
+      "source": "/coach/benchmarks",
+      "target": "/coach/compete",
+      "label": "Nav: Compete",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__benchmarks__coach__programs__nav-programs",
+      "source": "/coach/benchmarks",
+      "target": "/coach/programs",
+      "label": "Nav: Programs",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__benchmarks__coach__school__roster__nav-school",
+      "source": "/coach/benchmarks",
+      "target": "/coach/school/roster",
+      "label": "Nav: School",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__benchmarks__login__sign-out",
+      "source": "/coach/benchmarks",
+      "target": "/login",
+      "label": "Sign out",
+      "kind": "auth",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/components/layout/top-nav.tsx"
+    },
+    {
+      "id": "coach__classes__coach__benchmarks__nav-kpis",
+      "source": "/coach/classes",
+      "target": "/coach/benchmarks",
+      "label": "Nav: KPIs",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__classes__coach__compete__nav-compete",
+      "source": "/coach/classes",
+      "target": "/coach/compete",
+      "label": "Nav: Compete",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__classes__coach__programs__nav-programs",
+      "source": "/coach/classes",
+      "target": "/coach/programs",
+      "label": "Nav: Programs",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__classes__coach__school__classes__legacy-classes-url",
+      "source": "/coach/classes",
+      "target": "/coach/school/classes",
+      "label": "Legacy classes URL",
+      "kind": "redirect",
+      "roles": [
+        "PUBLIC",
+        "STUDENT",
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/app (redirect pages)"
+    },
+    {
+      "id": "coach__classes__coach__school__classes__page-link-classes",
+      "source": "/coach/classes",
+      "target": "/coach/school/classes",
+      "label": "Page link → classes",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/app/coach/classes/page.tsx"
+    },
+    {
+      "id": "coach__classes__coach__school__roster__nav-school",
+      "source": "/coach/classes",
+      "target": "/coach/school/roster",
+      "label": "Nav: School",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__classes__login__sign-out",
+      "source": "/coach/classes",
+      "target": "/login",
+      "label": "Sign out",
+      "kind": "auth",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/components/layout/top-nav.tsx"
+    },
+    {
+      "id": "coach__classes__id__coach__school__classes__id__legacy-class-detail",
+      "source": "/coach/classes/:id",
+      "target": "/coach/school/classes/:id",
+      "label": "Legacy class detail",
+      "kind": "redirect",
+      "roles": [
+        "PUBLIC",
+        "STUDENT",
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/app (redirect pages)"
+    },
+    {
+      "id": "coach__compare__coach__benchmarks__nav-kpis",
+      "source": "/coach/compare",
+      "target": "/coach/benchmarks",
+      "label": "Nav: KPIs",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__compare__coach__compete__nav-compete",
+      "source": "/coach/compare",
+      "target": "/coach/compete",
+      "label": "Nav: Compete",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__compare__coach__compete__compare__legacy-compare-url",
+      "source": "/coach/compare",
+      "target": "/coach/compete/compare",
+      "label": "Legacy compare URL",
+      "kind": "redirect",
+      "roles": [
+        "PUBLIC",
+        "STUDENT",
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/app (redirect pages)"
+    },
+    {
+      "id": "coach__compare__coach__programs__nav-programs",
+      "source": "/coach/compare",
+      "target": "/coach/programs",
+      "label": "Nav: Programs",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__compare__coach__school__roster__nav-school",
+      "source": "/coach/compare",
+      "target": "/coach/school/roster",
+      "label": "Nav: School",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__compare__login__sign-out",
+      "source": "/coach/compare",
+      "target": "/login",
+      "label": "Sign out",
+      "kind": "auth",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/components/layout/top-nav.tsx"
+    },
+    {
+      "id": "coach__compete__coach__benchmarks__nav-kpis",
+      "source": "/coach/compete",
+      "target": "/coach/benchmarks",
+      "label": "Nav: KPIs",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__compete__coach__compete__leaderboards__compete-hub-index",
+      "source": "/coach/compete",
+      "target": "/coach/compete/leaderboards",
+      "label": "Compete hub index",
+      "kind": "redirect",
+      "roles": [
+        "PUBLIC",
+        "STUDENT",
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/app (redirect pages)"
+    },
+    {
+      "id": "coach__compete__coach__compete__leaderboards__page-link-leaderboards",
+      "source": "/coach/compete",
+      "target": "/coach/compete/leaderboards",
+      "label": "Page link → leaderboards",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/app/coach/compete/page.tsx"
+    },
+    {
+      "id": "coach__compete__coach__programs__nav-programs",
+      "source": "/coach/compete",
+      "target": "/coach/programs",
+      "label": "Nav: Programs",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__compete__coach__school__roster__nav-school",
+      "source": "/coach/compete",
+      "target": "/coach/school/roster",
+      "label": "Nav: School",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__compete__login__sign-out",
+      "source": "/coach/compete",
+      "target": "/login",
+      "label": "Sign out",
+      "kind": "auth",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/components/layout/top-nav.tsx"
+    },
+    {
+      "id": "coach__compete__compare__coach__benchmarks__nav-kpis",
+      "source": "/coach/compete/compare",
+      "target": "/coach/benchmarks",
+      "label": "Nav: KPIs",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__compete__compare__coach__compete__nav-compete",
+      "source": "/coach/compete/compare",
+      "target": "/coach/compete",
+      "label": "Nav: Compete",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__compete__compare__coach__compete__leaderboards__compete-tab-leaderboards",
+      "source": "/coach/compete/compare",
+      "target": "/coach/compete/leaderboards",
+      "label": "Compete tab: Leaderboards",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__compete__compare__coach__programs__nav-programs",
+      "source": "/coach/compete/compare",
+      "target": "/coach/programs",
+      "label": "Nav: Programs",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__compete__compare__coach__school__roster__nav-school",
+      "source": "/coach/compete/compare",
+      "target": "/coach/school/roster",
+      "label": "Nav: School",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__compete__compare__login__sign-out",
+      "source": "/coach/compete/compare",
+      "target": "/login",
+      "label": "Sign out",
+      "kind": "auth",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/components/layout/top-nav.tsx"
+    },
+    {
+      "id": "coach__compete__leaderboards__coach__benchmarks__nav-kpis",
+      "source": "/coach/compete/leaderboards",
+      "target": "/coach/benchmarks",
+      "label": "Nav: KPIs",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__compete__leaderboards__coach__compete__nav-compete",
+      "source": "/coach/compete/leaderboards",
+      "target": "/coach/compete",
+      "label": "Nav: Compete",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__compete__leaderboards__coach__compete__compare__compete-tab-compare",
+      "source": "/coach/compete/leaderboards",
+      "target": "/coach/compete/compare",
+      "label": "Compete tab: Compare",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__compete__leaderboards__coach__compete__leaderboards__modal-leaderboard-filters",
+      "source": "/coach/compete/leaderboards",
+      "target": "/coach/compete/leaderboards",
+      "label": "Modal: Leaderboard filters",
+      "kind": "modal",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/components/ui/leaderboard-filter-modal.tsx"
+    },
+    {
+      "id": "coach__compete__leaderboards__coach__programs__nav-programs",
+      "source": "/coach/compete/leaderboards",
+      "target": "/coach/programs",
+      "label": "Nav: Programs",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__compete__leaderboards__coach__school__roster__nav-school",
+      "source": "/coach/compete/leaderboards",
+      "target": "/coach/school/roster",
+      "label": "Nav: School",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__compete__leaderboards__login__sign-out",
+      "source": "/coach/compete/leaderboards",
+      "target": "/login",
+      "label": "Sign out",
+      "kind": "auth",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/components/layout/top-nav.tsx"
+    },
+    {
+      "id": "coach__leaderboards__coach__benchmarks__nav-kpis",
+      "source": "/coach/leaderboards",
+      "target": "/coach/benchmarks",
+      "label": "Nav: KPIs",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__leaderboards__coach__compete__nav-compete",
+      "source": "/coach/leaderboards",
+      "target": "/coach/compete",
+      "label": "Nav: Compete",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__leaderboards__coach__compete__leaderboards__legacy-leaderboards-url",
+      "source": "/coach/leaderboards",
+      "target": "/coach/compete/leaderboards",
+      "label": "Legacy leaderboards URL",
+      "kind": "redirect",
+      "roles": [
+        "PUBLIC",
+        "STUDENT",
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/app (redirect pages)"
+    },
+    {
+      "id": "coach__leaderboards__coach__leaderboards__modal-leaderboard-filters",
+      "source": "/coach/leaderboards",
+      "target": "/coach/leaderboards",
+      "label": "Modal: Leaderboard filters",
+      "kind": "modal",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/components/ui/leaderboard-filter-modal.tsx"
+    },
+    {
+      "id": "coach__leaderboards__coach__programs__nav-programs",
+      "source": "/coach/leaderboards",
+      "target": "/coach/programs",
+      "label": "Nav: Programs",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__leaderboards__coach__school__roster__nav-school",
+      "source": "/coach/leaderboards",
+      "target": "/coach/school/roster",
+      "label": "Nav: School",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__leaderboards__login__sign-out",
+      "source": "/coach/leaderboards",
+      "target": "/login",
+      "label": "Sign out",
+      "kind": "auth",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/components/layout/top-nav.tsx"
+    },
+    {
+      "id": "coach__programs__coach__benchmarks__nav-kpis",
+      "source": "/coach/programs",
+      "target": "/coach/benchmarks",
+      "label": "Nav: KPIs",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__programs__coach__compete__nav-compete",
+      "source": "/coach/programs",
+      "target": "/coach/compete",
+      "label": "Nav: Compete",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__programs__coach__programs__modal-add-workout-testing-attendance",
+      "source": "/coach/programs",
+      "target": "/coach/programs",
+      "label": "Modal: Add workout / testing / attendance",
+      "kind": "modal",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/components/workouts/programs-day-add-dialog.tsx"
+    },
+    {
+      "id": "coach__programs__coach__school__roster__nav-school",
+      "source": "/coach/programs",
+      "target": "/coach/school/roster",
+      "label": "Nav: School",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__programs__login__sign-out",
+      "source": "/coach/programs",
+      "target": "/login",
+      "label": "Sign out",
+      "kind": "auth",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/components/layout/top-nav.tsx"
+    },
+    {
+      "id": "coach__programs__creator__coach__benchmarks__nav-kpis",
+      "source": "/coach/programs/creator",
+      "target": "/coach/benchmarks",
+      "label": "Nav: KPIs",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__programs__creator__coach__compete__nav-compete",
+      "source": "/coach/programs/creator",
+      "target": "/coach/compete",
+      "label": "Nav: Compete",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__programs__creator__coach__programs__nav-programs",
+      "source": "/coach/programs/creator",
+      "target": "/coach/programs",
+      "label": "Nav: Programs",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__programs__creator__coach__programs__page-link-programs",
+      "source": "/coach/programs/creator",
+      "target": "/coach/programs",
+      "label": "Page link → programs",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/app/coach/programs/creator/page.tsx"
+    },
+    {
+      "id": "coach__programs__creator__coach__school__roster__nav-school",
+      "source": "/coach/programs/creator",
+      "target": "/coach/school/roster",
+      "label": "Nav: School",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__programs__creator__login__sign-out",
+      "source": "/coach/programs/creator",
+      "target": "/login",
+      "label": "Sign out",
+      "kind": "auth",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/components/layout/top-nav.tsx"
+    },
+    {
+      "id": "coach__programs__lifts__coach__benchmarks__nav-kpis",
+      "source": "/coach/programs/lifts",
+      "target": "/coach/benchmarks",
+      "label": "Nav: KPIs",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__programs__lifts__coach__compete__nav-compete",
+      "source": "/coach/programs/lifts",
+      "target": "/coach/compete",
+      "label": "Nav: Compete",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__programs__lifts__coach__programs__nav-programs",
+      "source": "/coach/programs/lifts",
+      "target": "/coach/programs",
+      "label": "Nav: Programs",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__programs__lifts__coach__programs__page-link-programs",
+      "source": "/coach/programs/lifts",
+      "target": "/coach/programs",
+      "label": "Page link → programs",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/app/coach/programs/lifts/page.tsx"
+    },
+    {
+      "id": "coach__programs__lifts__coach__school__roster__nav-school",
+      "source": "/coach/programs/lifts",
+      "target": "/coach/school/roster",
+      "label": "Nav: School",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__programs__lifts__login__sign-out",
+      "source": "/coach/programs/lifts",
+      "target": "/login",
+      "label": "Sign out",
+      "kind": "auth",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/components/layout/top-nav.tsx"
+    },
+    {
+      "id": "coach__programs__logs__coach__benchmarks__nav-kpis",
+      "source": "/coach/programs/logs",
+      "target": "/coach/benchmarks",
+      "label": "Nav: KPIs",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__programs__logs__coach__compete__nav-compete",
+      "source": "/coach/programs/logs",
+      "target": "/coach/compete",
+      "label": "Nav: Compete",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__programs__logs__coach__programs__nav-programs",
+      "source": "/coach/programs/logs",
+      "target": "/coach/programs",
+      "label": "Nav: Programs",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__programs__logs__coach__programs__page-link-programs",
+      "source": "/coach/programs/logs",
+      "target": "/coach/programs",
+      "label": "Page link → programs",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/app/coach/programs/logs/page.tsx"
+    },
+    {
+      "id": "coach__programs__logs__coach__school__roster__nav-school",
+      "source": "/coach/programs/logs",
+      "target": "/coach/school/roster",
+      "label": "Nav: School",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__programs__logs__login__sign-out",
+      "source": "/coach/programs/logs",
+      "target": "/login",
+      "label": "Sign out",
+      "kind": "auth",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/components/layout/top-nav.tsx"
+    },
+    {
+      "id": "coach__school__coach__benchmarks__nav-kpis",
+      "source": "/coach/school",
+      "target": "/coach/benchmarks",
+      "label": "Nav: KPIs",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__school__coach__compete__nav-compete",
+      "source": "/coach/school",
+      "target": "/coach/compete",
+      "label": "Nav: Compete",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__school__coach__programs__nav-programs",
+      "source": "/coach/school",
+      "target": "/coach/programs",
+      "label": "Nav: Programs",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__school__coach__school__roster__nav-school",
+      "source": "/coach/school",
+      "target": "/coach/school/roster",
+      "label": "Nav: School",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__school__coach__school__roster__school-hub-index",
+      "source": "/coach/school",
+      "target": "/coach/school/roster",
+      "label": "School hub index",
+      "kind": "redirect",
+      "roles": [
+        "PUBLIC",
+        "STUDENT",
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/app (redirect pages)"
+    },
+    {
+      "id": "coach__school__coach__school__roster__page-link-roster",
+      "source": "/coach/school",
+      "target": "/coach/school/roster",
+      "label": "Page link → roster",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/app/coach/school/page.tsx"
+    },
+    {
+      "id": "coach__school__login__sign-out",
+      "source": "/coach/school",
+      "target": "/login",
+      "label": "Sign out",
+      "kind": "auth",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/components/layout/top-nav.tsx"
+    },
+    {
+      "id": "coach__school__classes__coach__benchmarks__nav-kpis",
+      "source": "/coach/school/classes",
+      "target": "/coach/benchmarks",
+      "label": "Nav: KPIs",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__school__classes__coach__compete__nav-compete",
+      "source": "/coach/school/classes",
+      "target": "/coach/compete",
+      "label": "Nav: Compete",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__school__classes__coach__programs__nav-programs",
+      "source": "/coach/school/classes",
+      "target": "/coach/programs",
+      "label": "Nav: Programs",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__school__classes__coach__school__coaches__school-tab-coaches",
+      "source": "/coach/school/classes",
+      "target": "/coach/school/coaches",
+      "label": "School tab: Coaches",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__school__classes__coach__school__privacy__school-tab-privacy",
+      "source": "/coach/school/classes",
+      "target": "/coach/school/privacy",
+      "label": "School tab: Privacy",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__school__classes__coach__school__roster__nav-school",
+      "source": "/coach/school/classes",
+      "target": "/coach/school/roster",
+      "label": "Nav: School",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__school__classes__coach__school__roster__school-tab-roster",
+      "source": "/coach/school/classes",
+      "target": "/coach/school/roster",
+      "label": "School tab: Roster",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__school__classes__login__sign-out",
+      "source": "/coach/school/classes",
+      "target": "/login",
+      "label": "Sign out",
+      "kind": "auth",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/components/layout/top-nav.tsx"
+    },
+    {
+      "id": "coach__school__classes__id__coach__school__classes__page-link-classes",
+      "source": "/coach/school/classes/:id",
+      "target": "/coach/school/classes",
+      "label": "Page link → classes",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/app/coach/school/classes/[id]/page.tsx"
+    },
+    {
+      "id": "coach__school__coaches__coach__benchmarks__nav-kpis",
+      "source": "/coach/school/coaches",
+      "target": "/coach/benchmarks",
+      "label": "Nav: KPIs",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__school__coaches__coach__compete__nav-compete",
+      "source": "/coach/school/coaches",
+      "target": "/coach/compete",
+      "label": "Nav: Compete",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__school__coaches__coach__programs__nav-programs",
+      "source": "/coach/school/coaches",
+      "target": "/coach/programs",
+      "label": "Nav: Programs",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__school__coaches__coach__school__classes__school-tab-classes",
+      "source": "/coach/school/coaches",
+      "target": "/coach/school/classes",
+      "label": "School tab: Classes",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__school__coaches__coach__school__privacy__school-tab-privacy",
+      "source": "/coach/school/coaches",
+      "target": "/coach/school/privacy",
+      "label": "School tab: Privacy",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__school__coaches__coach__school__roster__nav-school",
+      "source": "/coach/school/coaches",
+      "target": "/coach/school/roster",
+      "label": "Nav: School",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__school__coaches__coach__school__roster__school-tab-roster",
+      "source": "/coach/school/coaches",
+      "target": "/coach/school/roster",
+      "label": "School tab: Roster",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__school__coaches__login__sign-out",
+      "source": "/coach/school/coaches",
+      "target": "/login",
+      "label": "Sign out",
+      "kind": "auth",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/components/layout/top-nav.tsx"
+    },
+    {
+      "id": "coach__school__overview__coach__benchmarks__nav-kpis",
+      "source": "/coach/school/overview",
+      "target": "/coach/benchmarks",
+      "label": "Nav: KPIs",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__school__overview__coach__compete__nav-compete",
+      "source": "/coach/school/overview",
+      "target": "/coach/compete",
+      "label": "Nav: Compete",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__school__overview__coach__programs__nav-programs",
+      "source": "/coach/school/overview",
+      "target": "/coach/programs",
+      "label": "Nav: Programs",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__school__overview__coach__school__coaches__overview-redirect",
+      "source": "/coach/school/overview",
+      "target": "/coach/school/coaches",
+      "label": "Overview redirect",
+      "kind": "redirect",
+      "roles": [
+        "PUBLIC",
+        "STUDENT",
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/app (redirect pages)"
+    },
+    {
+      "id": "coach__school__overview__coach__school__coaches__page-link-coaches",
+      "source": "/coach/school/overview",
+      "target": "/coach/school/coaches",
+      "label": "Page link → coaches",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/app/coach/school/overview/page.tsx"
+    },
+    {
+      "id": "coach__school__overview__coach__school__roster__nav-school",
+      "source": "/coach/school/overview",
+      "target": "/coach/school/roster",
+      "label": "Nav: School",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__school__overview__login__sign-out",
+      "source": "/coach/school/overview",
+      "target": "/login",
+      "label": "Sign out",
+      "kind": "auth",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/components/layout/top-nav.tsx"
+    },
+    {
+      "id": "coach__school__privacy__coach__benchmarks__nav-kpis",
+      "source": "/coach/school/privacy",
+      "target": "/coach/benchmarks",
+      "label": "Nav: KPIs",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__school__privacy__coach__compete__nav-compete",
+      "source": "/coach/school/privacy",
+      "target": "/coach/compete",
+      "label": "Nav: Compete",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__school__privacy__coach__programs__nav-programs",
+      "source": "/coach/school/privacy",
+      "target": "/coach/programs",
+      "label": "Nav: Programs",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__school__privacy__coach__school__classes__school-tab-classes",
+      "source": "/coach/school/privacy",
+      "target": "/coach/school/classes",
+      "label": "School tab: Classes",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__school__privacy__coach__school__coaches__school-tab-coaches",
+      "source": "/coach/school/privacy",
+      "target": "/coach/school/coaches",
+      "label": "School tab: Coaches",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__school__privacy__coach__school__roster__nav-school",
+      "source": "/coach/school/privacy",
+      "target": "/coach/school/roster",
+      "label": "Nav: School",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__school__privacy__coach__school__roster__school-tab-roster",
+      "source": "/coach/school/privacy",
+      "target": "/coach/school/roster",
+      "label": "School tab: Roster",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__school__privacy__login__sign-out",
+      "source": "/coach/school/privacy",
+      "target": "/login",
+      "label": "Sign out",
+      "kind": "auth",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/components/layout/top-nav.tsx"
+    },
+    {
+      "id": "coach__school__roster__coach__benchmarks__nav-kpis",
+      "source": "/coach/school/roster",
+      "target": "/coach/benchmarks",
+      "label": "Nav: KPIs",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__school__roster__coach__compete__nav-compete",
+      "source": "/coach/school/roster",
+      "target": "/coach/compete",
+      "label": "Nav: Compete",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__school__roster__coach__programs__nav-programs",
+      "source": "/coach/school/roster",
+      "target": "/coach/programs",
+      "label": "Nav: Programs",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__school__roster__coach__school__classes__school-tab-classes",
+      "source": "/coach/school/roster",
+      "target": "/coach/school/classes",
+      "label": "School tab: Classes",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__school__roster__coach__school__coaches__school-tab-coaches",
+      "source": "/coach/school/roster",
+      "target": "/coach/school/coaches",
+      "label": "School tab: Coaches",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__school__roster__coach__school__privacy__school-tab-privacy",
+      "source": "/coach/school/roster",
+      "target": "/coach/school/privacy",
+      "label": "School tab: Privacy",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__school__roster__login__sign-out",
+      "source": "/coach/school/roster",
+      "target": "/login",
+      "label": "Sign out",
+      "kind": "auth",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/components/layout/top-nav.tsx"
+    },
+    {
+      "id": "coach__students__coach__benchmarks__nav-kpis",
+      "source": "/coach/students",
+      "target": "/coach/benchmarks",
+      "label": "Nav: KPIs",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__students__coach__compete__nav-compete",
+      "source": "/coach/students",
+      "target": "/coach/compete",
+      "label": "Nav: Compete",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__students__coach__programs__nav-programs",
+      "source": "/coach/students",
+      "target": "/coach/programs",
+      "label": "Nav: Programs",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__students__coach__school__roster__nav-school",
+      "source": "/coach/students",
+      "target": "/coach/school/roster",
+      "label": "Nav: School",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__students__coach__school__roster__legacy-students-url",
+      "source": "/coach/students",
+      "target": "/coach/school/roster",
+      "label": "Legacy students URL",
+      "kind": "redirect",
+      "roles": [
+        "PUBLIC",
+        "STUDENT",
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/app (redirect pages)"
+    },
+    {
+      "id": "coach__students__login__sign-out",
+      "source": "/coach/students",
+      "target": "/login",
+      "label": "Sign out",
+      "kind": "auth",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/components/layout/top-nav.tsx"
+    },
+    {
+      "id": "coach__testing__coach__benchmarks__nav-kpis",
+      "source": "/coach/testing",
+      "target": "/coach/benchmarks",
+      "label": "Nav: KPIs",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__testing__coach__compete__nav-compete",
+      "source": "/coach/testing",
+      "target": "/coach/compete",
+      "label": "Nav: Compete",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__testing__coach__programs__nav-programs",
+      "source": "/coach/testing",
+      "target": "/coach/programs",
+      "label": "Nav: Programs",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__testing__coach__programs__testing-merged-into-programs",
+      "source": "/coach/testing",
+      "target": "/coach/programs",
+      "label": "Testing merged into Programs",
+      "kind": "redirect",
+      "roles": [
+        "PUBLIC",
+        "STUDENT",
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/app (redirect pages)"
+    },
+    {
+      "id": "coach__testing__coach__school__roster__nav-school",
+      "source": "/coach/testing",
+      "target": "/coach/school/roster",
+      "label": "Nav: School",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__testing__login__sign-out",
+      "source": "/coach/testing",
+      "target": "/login",
+      "label": "Sign out",
+      "kind": "auth",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/components/layout/top-nav.tsx"
+    },
+    {
+      "id": "coach__testing__log__coach__benchmarks__nav-kpis",
+      "source": "/coach/testing/log",
+      "target": "/coach/benchmarks",
+      "label": "Nav: KPIs",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__testing__log__coach__compete__nav-compete",
+      "source": "/coach/testing/log",
+      "target": "/coach/compete",
+      "label": "Nav: Compete",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__testing__log__coach__programs__nav-programs",
+      "source": "/coach/testing/log",
+      "target": "/coach/programs",
+      "label": "Nav: Programs",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__testing__log__coach__programs__page-link-programs",
+      "source": "/coach/testing/log",
+      "target": "/coach/programs",
+      "label": "Page link → programs",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/app/coach/testing/log/page.tsx"
+    },
+    {
+      "id": "coach__testing__log__coach__school__roster__nav-school",
+      "source": "/coach/testing/log",
+      "target": "/coach/school/roster",
+      "label": "Nav: School",
+      "kind": "navigation",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "coach__testing__log__login__sign-out",
+      "source": "/coach/testing/log",
+      "target": "/login",
+      "label": "Sign out",
+      "kind": "auth",
+      "roles": [
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/components/layout/top-nav.tsx"
+    },
+    {
+      "id": "internal__user-flows__admin__page-link-admin",
+      "source": "/internal/user-flows",
+      "target": "/admin",
+      "label": "Page link → admin",
+      "kind": "navigation",
+      "roles": [
+        "PUBLIC",
+        "STUDENT",
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/app/internal/user-flows/page.tsx"
+    },
+    {
+      "id": "login__login__demo__admin__demo-admin-link",
+      "source": "/login",
+      "target": "/login/demo/admin",
+      "label": "Demo admin link",
+      "kind": "navigation",
+      "roles": [
+        "PUBLIC"
+      ],
+      "verified": true,
+      "sourceFile": "src/components/auth/login-page-footer.tsx"
+    },
+    {
+      "id": "login__login__demo__student__demo-student-link",
+      "source": "/login",
+      "target": "/login/demo/student",
+      "label": "Demo student link",
+      "kind": "navigation",
+      "roles": [
+        "PUBLIC"
+      ],
+      "verified": true,
+      "sourceFile": "src/components/auth/login-page-footer.tsx"
+    },
+    {
+      "id": "login__login__school-email__must-claim-school-email",
+      "source": "/login",
+      "target": "/login/school-email",
+      "label": "Must claim school email",
+      "kind": "conditional",
+      "roles": [
+        "STUDENT",
+        "COACH"
+      ],
+      "verified": true,
+      "sourceFile": "src/components/layout/app-shell.tsx",
+      "condition": "userMustClaimSchoolEmail"
+    },
+    {
+      "id": "login__demo__class-join__login__page-link-login",
+      "source": "/login/demo/class-join",
+      "target": "/login",
+      "label": "Page link → login",
+      "kind": "navigation",
+      "roles": [
+        "PUBLIC"
+      ],
+      "verified": true,
+      "sourceFile": "src/app/login/demo/class-join/page.tsx"
+    },
+    {
+      "id": "login__demo__class-join__login__demo__admin__page-link-admin",
+      "source": "/login/demo/class-join",
+      "target": "/login/demo/admin",
+      "label": "Page link → admin",
+      "kind": "navigation",
+      "roles": [
+        "PUBLIC"
+      ],
+      "verified": true,
+      "sourceFile": "src/app/login/demo/class-join/page.tsx"
+    },
+    {
+      "id": "login__school-email__login__page-link-login",
+      "source": "/login/school-email",
+      "target": "/login",
+      "label": "Page link → login",
+      "kind": "navigation",
+      "roles": [
+        "PUBLIC"
+      ],
+      "verified": true,
+      "sourceFile": "src/app/login/school-email/page.tsx"
+    },
+    {
+      "id": "page.tsx__admin__page-link-admin",
+      "source": "/page.tsx",
+      "target": "/admin",
+      "label": "Page link → admin",
+      "kind": "navigation",
+      "roles": [
+        "PUBLIC",
+        "STUDENT",
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/app/page.tsx"
+    },
+    {
+      "id": "page.tsx__coach__school__roster__page-link-roster",
+      "source": "/page.tsx",
+      "target": "/coach/school/roster",
+      "label": "Page link → roster",
+      "kind": "navigation",
+      "roles": [
+        "PUBLIC",
+        "STUDENT",
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/app/page.tsx"
+    },
+    {
+      "id": "page.tsx__login__page-link-login",
+      "source": "/page.tsx",
+      "target": "/login",
+      "label": "Page link → login",
+      "kind": "navigation",
+      "roles": [
+        "PUBLIC",
+        "STUDENT",
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/app/page.tsx"
+    },
+    {
+      "id": "page.tsx__student__page-link-student",
+      "source": "/page.tsx",
+      "target": "/student",
+      "label": "Page link → student",
+      "kind": "navigation",
+      "roles": [
+        "PUBLIC",
+        "STUDENT",
+        "COACH",
+        "ADMIN"
+      ],
+      "verified": true,
+      "sourceFile": "src/app/page.tsx"
+    },
+    {
+      "id": "student__login__sign-out",
+      "source": "/student",
+      "target": "/login",
+      "label": "Sign out",
+      "kind": "auth",
+      "roles": [
+        "STUDENT"
+      ],
+      "verified": true,
+      "sourceFile": "src/components/layout/top-nav.tsx"
+    },
+    {
+      "id": "student__login__page-link-login",
+      "source": "/student",
+      "target": "/login",
+      "label": "Page link → login",
+      "kind": "navigation",
+      "roles": [
+        "STUDENT"
+      ],
+      "verified": true,
+      "sourceFile": "src/app/student/page.tsx"
+    },
+    {
+      "id": "student__student__accolades__nav-accolades",
+      "source": "/student",
+      "target": "/student/accolades",
+      "label": "Nav: Accolades",
+      "kind": "navigation",
+      "roles": [
+        "STUDENT"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "student__student__compare__nav-compare",
+      "source": "/student",
+      "target": "/student/compare",
+      "label": "Nav: Compare",
+      "kind": "navigation",
+      "roles": [
+        "STUDENT"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "student__student__leaderboards__nav-leaderboards",
+      "source": "/student",
+      "target": "/student/leaderboards",
+      "label": "Nav: Leaderboards",
+      "kind": "navigation",
+      "roles": [
+        "STUDENT"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "student__student__performance__nav-my-performance",
+      "source": "/student",
+      "target": "/student/performance",
+      "label": "Nav: My Performance",
+      "kind": "navigation",
+      "roles": [
+        "STUDENT"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "student__student__progress__nav-progress",
+      "source": "/student",
+      "target": "/student/progress",
+      "label": "Nav: Progress",
+      "kind": "navigation",
+      "roles": [
+        "STUDENT"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "student__student__projection__nav-projection",
+      "source": "/student",
+      "target": "/student/projection",
+      "label": "Nav: Projection",
+      "kind": "navigation",
+      "roles": [
+        "STUDENT"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "student__student__workout__nav-log-workout",
+      "source": "/student",
+      "target": "/student/workout",
+      "label": "Nav: Log workout",
+      "kind": "navigation",
+      "roles": [
+        "STUDENT"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "student__accolades__login__sign-out",
+      "source": "/student/accolades",
+      "target": "/login",
+      "label": "Sign out",
+      "kind": "auth",
+      "roles": [
+        "STUDENT"
+      ],
+      "verified": true,
+      "sourceFile": "src/components/layout/top-nav.tsx"
+    },
+    {
+      "id": "student__accolades__login__page-link-login",
+      "source": "/student/accolades",
+      "target": "/login",
+      "label": "Page link → login",
+      "kind": "navigation",
+      "roles": [
+        "STUDENT"
+      ],
+      "verified": true,
+      "sourceFile": "src/app/student/accolades/page.tsx"
+    },
+    {
+      "id": "student__accolades__student__nav-dashboard",
+      "source": "/student/accolades",
+      "target": "/student",
+      "label": "Nav: Dashboard",
+      "kind": "navigation",
+      "roles": [
+        "STUDENT"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "student__accolades__student__compare__nav-compare",
+      "source": "/student/accolades",
+      "target": "/student/compare",
+      "label": "Nav: Compare",
+      "kind": "navigation",
+      "roles": [
+        "STUDENT"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "student__accolades__student__leaderboards__nav-leaderboards",
+      "source": "/student/accolades",
+      "target": "/student/leaderboards",
+      "label": "Nav: Leaderboards",
+      "kind": "navigation",
+      "roles": [
+        "STUDENT"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "student__accolades__student__performance__nav-my-performance",
+      "source": "/student/accolades",
+      "target": "/student/performance",
+      "label": "Nav: My Performance",
+      "kind": "navigation",
+      "roles": [
+        "STUDENT"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "student__accolades__student__progress__nav-progress",
+      "source": "/student/accolades",
+      "target": "/student/progress",
+      "label": "Nav: Progress",
+      "kind": "navigation",
+      "roles": [
+        "STUDENT"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "student__accolades__student__projection__nav-projection",
+      "source": "/student/accolades",
+      "target": "/student/projection",
+      "label": "Nav: Projection",
+      "kind": "navigation",
+      "roles": [
+        "STUDENT"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "student__accolades__student__workout__nav-log-workout",
+      "source": "/student/accolades",
+      "target": "/student/workout",
+      "label": "Nav: Log workout",
+      "kind": "navigation",
+      "roles": [
+        "STUDENT"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "student__compare__login__sign-out",
+      "source": "/student/compare",
+      "target": "/login",
+      "label": "Sign out",
+      "kind": "auth",
+      "roles": [
+        "STUDENT"
+      ],
+      "verified": true,
+      "sourceFile": "src/components/layout/top-nav.tsx"
+    },
+    {
+      "id": "student__compare__login__page-link-login",
+      "source": "/student/compare",
+      "target": "/login",
+      "label": "Page link → login",
+      "kind": "navigation",
+      "roles": [
+        "STUDENT"
+      ],
+      "verified": true,
+      "sourceFile": "src/app/student/compare/page.tsx"
+    },
+    {
+      "id": "student__compare__student__nav-dashboard",
+      "source": "/student/compare",
+      "target": "/student",
+      "label": "Nav: Dashboard",
+      "kind": "navigation",
+      "roles": [
+        "STUDENT"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "student__compare__student__accolades__nav-accolades",
+      "source": "/student/compare",
+      "target": "/student/accolades",
+      "label": "Nav: Accolades",
+      "kind": "navigation",
+      "roles": [
+        "STUDENT"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "student__compare__student__leaderboards__nav-leaderboards",
+      "source": "/student/compare",
+      "target": "/student/leaderboards",
+      "label": "Nav: Leaderboards",
+      "kind": "navigation",
+      "roles": [
+        "STUDENT"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "student__compare__student__performance__nav-my-performance",
+      "source": "/student/compare",
+      "target": "/student/performance",
+      "label": "Nav: My Performance",
+      "kind": "navigation",
+      "roles": [
+        "STUDENT"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "student__compare__student__progress__nav-progress",
+      "source": "/student/compare",
+      "target": "/student/progress",
+      "label": "Nav: Progress",
+      "kind": "navigation",
+      "roles": [
+        "STUDENT"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "student__compare__student__projection__nav-projection",
+      "source": "/student/compare",
+      "target": "/student/projection",
+      "label": "Nav: Projection",
+      "kind": "navigation",
+      "roles": [
+        "STUDENT"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "student__compare__student__workout__nav-log-workout",
+      "source": "/student/compare",
+      "target": "/student/workout",
+      "label": "Nav: Log workout",
+      "kind": "navigation",
+      "roles": [
+        "STUDENT"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "student__leaderboards__login__sign-out",
+      "source": "/student/leaderboards",
+      "target": "/login",
+      "label": "Sign out",
+      "kind": "auth",
+      "roles": [
+        "STUDENT"
+      ],
+      "verified": true,
+      "sourceFile": "src/components/layout/top-nav.tsx"
+    },
+    {
+      "id": "student__leaderboards__login__page-link-login",
+      "source": "/student/leaderboards",
+      "target": "/login",
+      "label": "Page link → login",
+      "kind": "navigation",
+      "roles": [
+        "STUDENT"
+      ],
+      "verified": true,
+      "sourceFile": "src/app/student/leaderboards/page.tsx"
+    },
+    {
+      "id": "student__leaderboards__student__nav-dashboard",
+      "source": "/student/leaderboards",
+      "target": "/student",
+      "label": "Nav: Dashboard",
+      "kind": "navigation",
+      "roles": [
+        "STUDENT"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "student__leaderboards__student__accolades__nav-accolades",
+      "source": "/student/leaderboards",
+      "target": "/student/accolades",
+      "label": "Nav: Accolades",
+      "kind": "navigation",
+      "roles": [
+        "STUDENT"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "student__leaderboards__student__compare__nav-compare",
+      "source": "/student/leaderboards",
+      "target": "/student/compare",
+      "label": "Nav: Compare",
+      "kind": "navigation",
+      "roles": [
+        "STUDENT"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "student__leaderboards__student__leaderboards__modal-leaderboard-filters",
+      "source": "/student/leaderboards",
+      "target": "/student/leaderboards",
+      "label": "Modal: Leaderboard filters",
+      "kind": "modal",
+      "roles": [
+        "STUDENT"
+      ],
+      "verified": true,
+      "sourceFile": "src/components/ui/leaderboard-filter-modal.tsx"
+    },
+    {
+      "id": "student__leaderboards__student__performance__nav-my-performance",
+      "source": "/student/leaderboards",
+      "target": "/student/performance",
+      "label": "Nav: My Performance",
+      "kind": "navigation",
+      "roles": [
+        "STUDENT"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "student__leaderboards__student__progress__nav-progress",
+      "source": "/student/leaderboards",
+      "target": "/student/progress",
+      "label": "Nav: Progress",
+      "kind": "navigation",
+      "roles": [
+        "STUDENT"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "student__leaderboards__student__projection__nav-projection",
+      "source": "/student/leaderboards",
+      "target": "/student/projection",
+      "label": "Nav: Projection",
+      "kind": "navigation",
+      "roles": [
+        "STUDENT"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "student__leaderboards__student__workout__nav-log-workout",
+      "source": "/student/leaderboards",
+      "target": "/student/workout",
+      "label": "Nav: Log workout",
+      "kind": "navigation",
+      "roles": [
+        "STUDENT"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "student__performance__login__sign-out",
+      "source": "/student/performance",
+      "target": "/login",
+      "label": "Sign out",
+      "kind": "auth",
+      "roles": [
+        "STUDENT"
+      ],
+      "verified": true,
+      "sourceFile": "src/components/layout/top-nav.tsx"
+    },
+    {
+      "id": "student__performance__login__page-link-login",
+      "source": "/student/performance",
+      "target": "/login",
+      "label": "Page link → login",
+      "kind": "navigation",
+      "roles": [
+        "STUDENT"
+      ],
+      "verified": true,
+      "sourceFile": "src/app/student/performance/page.tsx"
+    },
+    {
+      "id": "student__performance__student__nav-dashboard",
+      "source": "/student/performance",
+      "target": "/student",
+      "label": "Nav: Dashboard",
+      "kind": "navigation",
+      "roles": [
+        "STUDENT"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "student__performance__student__accolades__nav-accolades",
+      "source": "/student/performance",
+      "target": "/student/accolades",
+      "label": "Nav: Accolades",
+      "kind": "navigation",
+      "roles": [
+        "STUDENT"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "student__performance__student__compare__nav-compare",
+      "source": "/student/performance",
+      "target": "/student/compare",
+      "label": "Nav: Compare",
+      "kind": "navigation",
+      "roles": [
+        "STUDENT"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "student__performance__student__leaderboards__nav-leaderboards",
+      "source": "/student/performance",
+      "target": "/student/leaderboards",
+      "label": "Nav: Leaderboards",
+      "kind": "navigation",
+      "roles": [
+        "STUDENT"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "student__performance__student__progress__nav-progress",
+      "source": "/student/performance",
+      "target": "/student/progress",
+      "label": "Nav: Progress",
+      "kind": "navigation",
+      "roles": [
+        "STUDENT"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "student__performance__student__projection__nav-projection",
+      "source": "/student/performance",
+      "target": "/student/projection",
+      "label": "Nav: Projection",
+      "kind": "navigation",
+      "roles": [
+        "STUDENT"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "student__performance__student__workout__nav-log-workout",
+      "source": "/student/performance",
+      "target": "/student/workout",
+      "label": "Nav: Log workout",
+      "kind": "navigation",
+      "roles": [
+        "STUDENT"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "student__progress__login__sign-out",
+      "source": "/student/progress",
+      "target": "/login",
+      "label": "Sign out",
+      "kind": "auth",
+      "roles": [
+        "STUDENT"
+      ],
+      "verified": true,
+      "sourceFile": "src/components/layout/top-nav.tsx"
+    },
+    {
+      "id": "student__progress__login__page-link-login",
+      "source": "/student/progress",
+      "target": "/login",
+      "label": "Page link → login",
+      "kind": "navigation",
+      "roles": [
+        "STUDENT"
+      ],
+      "verified": true,
+      "sourceFile": "src/app/student/progress/page.tsx"
+    },
+    {
+      "id": "student__progress__student__nav-dashboard",
+      "source": "/student/progress",
+      "target": "/student",
+      "label": "Nav: Dashboard",
+      "kind": "navigation",
+      "roles": [
+        "STUDENT"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "student__progress__student__accolades__nav-accolades",
+      "source": "/student/progress",
+      "target": "/student/accolades",
+      "label": "Nav: Accolades",
+      "kind": "navigation",
+      "roles": [
+        "STUDENT"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "student__progress__student__compare__nav-compare",
+      "source": "/student/progress",
+      "target": "/student/compare",
+      "label": "Nav: Compare",
+      "kind": "navigation",
+      "roles": [
+        "STUDENT"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "student__progress__student__leaderboards__nav-leaderboards",
+      "source": "/student/progress",
+      "target": "/student/leaderboards",
+      "label": "Nav: Leaderboards",
+      "kind": "navigation",
+      "roles": [
+        "STUDENT"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "student__progress__student__performance__nav-my-performance",
+      "source": "/student/progress",
+      "target": "/student/performance",
+      "label": "Nav: My Performance",
+      "kind": "navigation",
+      "roles": [
+        "STUDENT"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "student__progress__student__projection__nav-projection",
+      "source": "/student/progress",
+      "target": "/student/projection",
+      "label": "Nav: Projection",
+      "kind": "navigation",
+      "roles": [
+        "STUDENT"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "student__progress__student__workout__nav-log-workout",
+      "source": "/student/progress",
+      "target": "/student/workout",
+      "label": "Nav: Log workout",
+      "kind": "navigation",
+      "roles": [
+        "STUDENT"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "student__projection__login__sign-out",
+      "source": "/student/projection",
+      "target": "/login",
+      "label": "Sign out",
+      "kind": "auth",
+      "roles": [
+        "STUDENT"
+      ],
+      "verified": true,
+      "sourceFile": "src/components/layout/top-nav.tsx"
+    },
+    {
+      "id": "student__projection__login__page-link-login",
+      "source": "/student/projection",
+      "target": "/login",
+      "label": "Page link → login",
+      "kind": "navigation",
+      "roles": [
+        "STUDENT"
+      ],
+      "verified": true,
+      "sourceFile": "src/app/student/projection/page.tsx"
+    },
+    {
+      "id": "student__projection__student__nav-dashboard",
+      "source": "/student/projection",
+      "target": "/student",
+      "label": "Nav: Dashboard",
+      "kind": "navigation",
+      "roles": [
+        "STUDENT"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "student__projection__student__accolades__nav-accolades",
+      "source": "/student/projection",
+      "target": "/student/accolades",
+      "label": "Nav: Accolades",
+      "kind": "navigation",
+      "roles": [
+        "STUDENT"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "student__projection__student__compare__nav-compare",
+      "source": "/student/projection",
+      "target": "/student/compare",
+      "label": "Nav: Compare",
+      "kind": "navigation",
+      "roles": [
+        "STUDENT"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "student__projection__student__leaderboards__nav-leaderboards",
+      "source": "/student/projection",
+      "target": "/student/leaderboards",
+      "label": "Nav: Leaderboards",
+      "kind": "navigation",
+      "roles": [
+        "STUDENT"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "student__projection__student__performance__nav-my-performance",
+      "source": "/student/projection",
+      "target": "/student/performance",
+      "label": "Nav: My Performance",
+      "kind": "navigation",
+      "roles": [
+        "STUDENT"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "student__projection__student__progress__nav-progress",
+      "source": "/student/projection",
+      "target": "/student/progress",
+      "label": "Nav: Progress",
+      "kind": "navigation",
+      "roles": [
+        "STUDENT"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "student__projection__student__workout__nav-log-workout",
+      "source": "/student/projection",
+      "target": "/student/workout",
+      "label": "Nav: Log workout",
+      "kind": "navigation",
+      "roles": [
+        "STUDENT"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "student__workout__login__sign-out",
+      "source": "/student/workout",
+      "target": "/login",
+      "label": "Sign out",
+      "kind": "auth",
+      "roles": [
+        "STUDENT"
+      ],
+      "verified": true,
+      "sourceFile": "src/components/layout/top-nav.tsx"
+    },
+    {
+      "id": "student__workout__login__page-link-login",
+      "source": "/student/workout",
+      "target": "/login",
+      "label": "Page link → login",
+      "kind": "navigation",
+      "roles": [
+        "STUDENT"
+      ],
+      "verified": true,
+      "sourceFile": "src/app/student/workout/page.tsx"
+    },
+    {
+      "id": "student__workout__student__nav-dashboard",
+      "source": "/student/workout",
+      "target": "/student",
+      "label": "Nav: Dashboard",
+      "kind": "navigation",
+      "roles": [
+        "STUDENT"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "student__workout__student__accolades__nav-accolades",
+      "source": "/student/workout",
+      "target": "/student/accolades",
+      "label": "Nav: Accolades",
+      "kind": "navigation",
+      "roles": [
+        "STUDENT"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "student__workout__student__compare__nav-compare",
+      "source": "/student/workout",
+      "target": "/student/compare",
+      "label": "Nav: Compare",
+      "kind": "navigation",
+      "roles": [
+        "STUDENT"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "student__workout__student__leaderboards__nav-leaderboards",
+      "source": "/student/workout",
+      "target": "/student/leaderboards",
+      "label": "Nav: Leaderboards",
+      "kind": "navigation",
+      "roles": [
+        "STUDENT"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "student__workout__student__performance__nav-my-performance",
+      "source": "/student/workout",
+      "target": "/student/performance",
+      "label": "Nav: My Performance",
+      "kind": "navigation",
+      "roles": [
+        "STUDENT"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "student__workout__student__progress__nav-progress",
+      "source": "/student/workout",
+      "target": "/student/progress",
+      "label": "Nav: Progress",
+      "kind": "navigation",
+      "roles": [
+        "STUDENT"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    },
+    {
+      "id": "student__workout__student__projection__nav-projection",
+      "source": "/student/workout",
+      "target": "/student/projection",
+      "label": "Nav: Projection",
+      "kind": "navigation",
+      "roles": [
+        "STUDENT"
+      ],
+      "verified": true,
+      "sourceFile": "src/lib/navigation.ts"
+    }
+  ]
+}

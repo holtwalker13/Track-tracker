@@ -19,6 +19,8 @@
     "db:setup-track-fixtures": "tsx scripts/setup-demo-fixtures.ts",
     "db:sync-password": "tsx scripts/sync-demo-password.ts",
     "db:migrate-tenants": "tsx scripts/migrate-tenants.ts",
+    "user-flows:scan": "tsx scripts/user-flow-explorer/generate-graph.ts",
+    "user-flows:capture": "tsx scripts/user-flow-explorer/capture-screenshots.ts",
     "postinstall": "DATABASE_URL=${DATABASE_URL:-postgresql://sap:sap@127.0.0.1:5432/sap} prisma generate"
   },
   "prisma": {
@@ -26,9 +28,11 @@
   },
   "dependencies": {
     "@prisma/client": "5.22.0",
+    "@xyflow/react": "^12.12.0",
     "bcryptjs": "^3.0.3",
     "clsx": "^2.1.1",
     "date-fns": "^4.4.0",
+    "html-to-image": "^1.11.13",
     "jose": "^6.2.12",
     "lucide-react": "^1.46.0",
     "next": "15.5.25",
@@ -49,6 +53,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "15.5.25",
+    "playwright": "^1.49.1",
     "prisma": "5.22.0",
     "tailwindcss": "^4",
     "tsx": "^4.23.13",

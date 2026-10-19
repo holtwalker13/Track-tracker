@@ -79,10 +79,10 @@ export function AddStudentForm({
           aria-label="Add student"
           className={cn(
             "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-card-border bg-card",
-            "hover:border-sky-400/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/50"
+            "hover:border-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50"
           )}
         >
-          <UserPlus className="h-5 w-5 text-sky-300" aria-hidden />
+          <UserPlus className="h-5 w-5 text-accent" aria-hidden />
         </button>
       );
     }
@@ -90,7 +90,7 @@ export function AddStudentForm({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="rounded-lg bg-sky-400/20 px-4 py-2 text-sm font-semibold text-sky-300 ring-1 ring-sky-400/40 hover:bg-sky-400/30"
+        className="btn-accent-soft px-4 py-2"
       >
         + Add student
       </button>

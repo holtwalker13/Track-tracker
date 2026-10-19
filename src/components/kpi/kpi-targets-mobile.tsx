@@ -285,7 +285,7 @@ export function KpiTargetsMobile({
                       setSheetMetric(meta);
                     }}
                     className={cn(
-                      "flex w-[8.25rem] shrink-0 snap-start flex-col rounded-2xl border bg-card p-3 text-left transition",
+                      "flex w-[11.5rem] min-w-[11.5rem] shrink-0 snap-start flex-col rounded-2xl border bg-card p-3.5 text-left transition",
                       selected ? "border-accent ring-1 ring-accent/40" : "border-card-border"
                     )}
                   >
@@ -295,7 +295,7 @@ export function KpiTargetsMobile({
                     <p className="line-clamp-2 text-sm font-semibold leading-tight">
                       {shortMetricName(meta.name)}
                     </p>
-                    <div className="mt-3 grid grid-cols-3 gap-1">
+                    <div className="mt-3 grid grid-cols-3 gap-2">
                       {MEDALS.map((medal) => {
                         const raw = value(meta.slug, medal);
                         const num = raw.trim() === "" ? null : Number(raw);
@@ -304,9 +304,11 @@ export function KpiTargetsMobile({
                             ? formatKpiTargetValue(num, meta.unit, meta.slug, meta.name)
                             : "—";
                         return (
-                          <div key={medal} className="flex flex-col items-center gap-0.5">
-                            <MedalShield medal={medal} className="h-4 w-4" />
-                            <span className="text-card-kpi text-[0.95rem] leading-none">{display}</span>
+                          <div key={medal} className="flex min-w-0 flex-col items-center gap-1 px-0.5">
+                            <MedalShield medal={medal} className="h-4 w-4 shrink-0" />
+                            <span className="w-full truncate text-center text-[11px] font-bold tabular-nums leading-tight text-foreground">
+                              {display}
+                            </span>
                           </div>
                         );
                       })}

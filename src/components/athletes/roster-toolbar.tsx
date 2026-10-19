@@ -215,14 +215,14 @@ function RosterToolbarInner({
           aria-expanded={filtersOpen}
           className={cn(
             "relative inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-card-border bg-card",
-            "hover:border-sky-400/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/50",
-            filterCount > 0 && "border-sky-400/50 bg-sky-400/10"
+            "hover:border-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50",
+            filterCount > 0 && "border-accent/50 bg-accent/10"
           )}
           aria-label={filterCount > 0 ? `Filters (${filterCount} active)` : "Filters"}
         >
           <Filter className="h-5 w-5" aria-hidden />
           {filterCount > 0 && (
-            <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-sky-500 px-1 text-[10px] font-bold text-white">
+            <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-bold text-accent-foreground">
               {filterCount}
             </span>
           )}

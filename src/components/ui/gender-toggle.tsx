@@ -56,9 +56,7 @@ function GenderToggleInner({
               className={cn(
                 "rounded-full px-3 py-1.5 text-xs font-semibold transition",
                 lockedGender && "cursor-default",
-                active
-                  ? "bg-sky-500 text-white shadow-md shadow-sky-500/25"
-                  : "text-muted hover:text-foreground",
+                active ? "filter-toggle-active" : "text-muted hover:text-foreground",
                 lockedGender && !active && "opacity-40 hover:text-muted"
               )}
             >
@@ -89,9 +87,7 @@ function GenderToggleInner({
             onClick={() => select(opt.id)}
             className={cn(
               "rounded-full px-4 py-2.5 text-sm font-bold tracking-wide transition",
-              active
-                ? "bg-sky-500 text-white shadow-lg shadow-sky-500/20"
-                : "text-muted hover:text-foreground"
+              active ? "filter-toggle-active shadow-lg" : "text-muted hover:text-foreground"
             )}
           >
             {opt.label}
@@ -117,7 +113,7 @@ function GenderToggleFallback({
           className
         )}
       >
-        <span className="rounded-full bg-sky-500 px-3 py-1.5 text-center text-xs font-semibold text-white">
+        <span className="filter-toggle-active rounded-full px-3 py-1.5 text-center text-xs font-semibold">
           Boys
         </span>
         <span className="rounded-full px-3 py-1.5 text-center text-xs font-semibold text-muted">
@@ -134,7 +130,7 @@ function GenderToggleFallback({
       )}
     >
       <span className="rounded-full px-4 py-2.5 text-center text-sm font-bold text-muted">Boys</span>
-      <span className="rounded-full bg-sky-500 px-4 py-2.5 text-center text-sm font-bold text-white">
+      <span className="filter-toggle-active rounded-full px-4 py-2.5 text-center text-sm font-bold">
         Girls
       </span>
     </div>

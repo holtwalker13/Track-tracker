@@ -1,9 +1,13 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { Pencil } from "lucide-react";
 import { PlayerAvatar } from "@/components/athletes/player-avatar";
+import {
+  AthleteProfileClassPicker,
+  type AthleteProfileClassPickerProps,
+} from "@/components/athletes/athlete-profile-class-picker";
 import { GRADE_LEVELS } from "@/lib/grades";
 
 type EditProps = {
@@ -22,21 +26,22 @@ export function AthleteProfileCard({
   studentNumber,
   gender,
   schoolYear,
-  sections,
   seed,
   sports,
   classLabel,
   edit,
+  medalClassScope,
 }: {
   name: string;
   studentNumber?: string | null;
   gender?: string | null;
   schoolYear?: string | null;
-  sections?: { id: string; label: string }[];
   seed?: string;
   sports?: string | null;
   classLabel?: string | null;
   edit: EditProps;
+  /** Medal / KPI scope — toggles which enrolled class drives the profile below. */
+  medalClassScope?: Omit<AthleteProfileClassPickerProps, "embedded">;
 }) {
   const router = useRouter();
   const facts = [studentNumber, gender, schoolYear].filter(Boolean);
@@ -76,14 +81,11 @@ export function AthleteProfileCard({
   }
 
   return (
-    <div className="mb-8 rounded-2xl border border-card-border bg-gradient-to-br from-card via-card to-sky-950/30 p-5 shadow-[0_0_40px_rgba(56,189,248,0.08)] sm:p-6">
+    <div className="mb-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
         <PlayerAvatar name={name} size="lg" seed={seed} />
         <div className="min-w-0 flex-1">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-sky-300/80">
-            Athlete profile
-          </p>
-          <h1 className="mt-1 truncate text-2xl font-bold tracking-tight sm:text-3xl">{name}</h1>
+          <h1 className="truncate text-2xl font-bold tracking-tight sm:text-3xl">{name}</h1>
           {facts.length > 0 && (
             <p className="mt-1.5 text-sm text-muted">{facts.join(" · ")}</p>
           )}
@@ -103,18 +105,6 @@ export function AthleteProfileCard({
               </span>
             )}
           </div>
-          {sections && sections.length > 0 && (
-            <ul className="mt-2.5 flex flex-wrap gap-1.5">
-              {sections.map((section) => (
-                <li
-                  key={section.id}
-                  className="rounded-full border border-card-border px-2.5 py-1 text-xs text-muted"
-                >
-                  {section.label}
-                </li>
-              ))}
-            </ul>
-          )}
         </div>
         <button
           type="button"
@@ -227,6 +217,12 @@ export function AthleteProfileCard({
           </div>
         </form>
       )}
+
+      {medalClassScope && medalClassScope.classes.length > 0 ? (
+        <Suspense fallback={null}>
+          <AthleteProfileClassPicker embedded {...medalClassScope} />
+        </Suspense>
+      ) : null}
     </div>
   );
 }

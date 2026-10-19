@@ -51,9 +51,7 @@ function ClassFilterPillsInner({
             onClick={() => select(opt.id)}
             className={cn(
               "inline-flex items-center rounded-full px-3 py-1.5 text-sm font-medium transition",
-              isActive
-                ? "bg-sky-400/20 text-sky-300 ring-1 ring-sky-400/55"
-                : "border border-card-border text-muted hover:border-sky-400/40 hover:text-sky-200"
+              isActive ? "filter-chip-active" : "filter-chip-inactive"
             )}
           >
             {opt.label}

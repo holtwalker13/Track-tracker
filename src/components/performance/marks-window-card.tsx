@@ -202,10 +202,13 @@ function DateRangeSlider({
 export function MarksWindowCard({
   window,
   embedded = false,
+  showDateRangeSlider,
 }: {
   window: MarksWindow;
   /** When true, omit outer title (parent section owns the heading). */
   embedded?: boolean;
+  /** Fine-grain date slider — only when a chart/graphic uses the window (embedded progress view). */
+  showDateRangeSlider?: boolean;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -224,6 +227,14 @@ export function MarksWindowCard({
       { id: "spring", label: "Spring", from: spring[0], to: spring[spring.length - 1] },
     ].filter((p) => p.from && p.to);
   }, [dates]);
+
+  const activePresetId = useMemo(() => {
+    const match = presets.find((p) => p.from === window.from && p.to === window.to);
+    return match?.id ?? null;
+  }, [presets, window.from, window.to]);
+
+  const dateSliderVisible =
+    showDateRangeSlider ?? (!embedded && dates.length > 1);
 
   function setParams(next: Record<string, string>) {
     const params = new URLSearchParams(searchParams.toString());
@@ -247,15 +258,21 @@ export function MarksWindowCard({
 
   return (
     <div className="rounded-2xl border border-card-border bg-card p-5">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          {!embedded && <h2 className="text-lg font-semibold">Average vs PR</h2>}
-          <p className={embedded ? "text-sm text-muted" : "mt-1 text-sm text-muted"}>
-            {embedded
-              ? "Window average vs PR for each event in range."
-              : "Dial the window to a semester or a pair of test days. Average is every mark in range; PR is the best in that same window."}
-          </p>
-        </div>
+      <div
+        className={cn(
+          "flex flex-wrap items-end gap-3",
+          embedded ? "justify-end" : "justify-between"
+        )}
+      >
+        {!embedded ? (
+          <div>
+            <h2 className="text-lg font-semibold">Average vs PR</h2>
+            <p className="mt-1 text-sm text-muted">
+              Dial the window to a semester or a pair of test days. Average is every mark in range;
+              PR is the best in that same window.
+            </p>
+          </div>
+        ) : null}
         <div className="grid grid-cols-2 rounded-lg bg-background p-1">
           {(["avg", "pr"] as const).map((id) => (
             <button
@@ -273,27 +290,45 @@ export function MarksWindowCard({
         </div>
       </div>
 
-      <div className="mt-4 flex flex-wrap gap-2">
-        {presets.map((p) => (
-          <button
-            key={p.id}
-            type="button"
-            onClick={() => setParams({ from: p.from!, to: p.to! })}
-            className="rounded-full border border-card-border px-3 py-1 text-xs font-medium text-muted hover:text-foreground"
-          >
-            {p.label}
-          </button>
-        ))}
-      </div>
+      {presets.length > 0 ? (
+        <div
+          className="mt-4 inline-flex overflow-hidden rounded-lg border border-card-border"
+          role="group"
+          aria-label="Test date range"
+        >
+          {presets.map((p, index) => {
+            const active = activePresetId === p.id;
+            return (
+              <button
+                key={p.id}
+                type="button"
+                aria-pressed={active}
+                onClick={() => setParams({ from: p.from!, to: p.to! })}
+                className={cn(
+                  "px-3 py-1.5 text-xs font-semibold transition",
+                  index > 0 && "border-l border-card-border",
+                  active
+                    ? "bg-accent/15 text-accent"
+                    : "bg-card/40 text-muted hover:bg-card/70 hover:text-foreground"
+                )}
+              >
+                {p.label}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
 
-      <DateRangeSlider
-        dates={dates}
-        fromIdx={fromIdx}
-        toIdx={toIdx}
-        onCommit={(nextFrom, nextTo) =>
-          setParams({ from: dates[nextFrom]!, to: dates[nextTo]! })
-        }
-      />
+      {dateSliderVisible ? (
+        <DateRangeSlider
+          dates={dates}
+          fromIdx={fromIdx}
+          toIdx={toIdx}
+          onCommit={(nextFrom, nextTo) =>
+            setParams({ from: dates[nextFrom]!, to: dates[nextTo]! })
+          }
+        />
+      ) : null}
 
       <div className="mt-6 space-y-5">
         {DISPLAY_GROUP_ORDER.map((group) => {

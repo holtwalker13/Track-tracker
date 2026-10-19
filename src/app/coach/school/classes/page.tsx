@@ -1,12 +1,19 @@
 import { requireSchoolSession } from "@/lib/auth/session";
 import { coachProfileForSession } from "@/lib/auth/coach-scope";
 import { prisma } from "@/lib/db";
+import { classMatchesCoachFilter } from "@/lib/classes/coach-filter";
 import { ClassesPageActions } from "@/components/classes/classes-page-actions";
 import { SchoolClassExpandableRow } from "@/components/classes/school-class-expandable-row";
 import { ensureClassCoachRowsFromLead } from "@/lib/services/class-coaches";
 
-export default async function SchoolClassesPage() {
+export default async function SchoolClassesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ coach?: string }>;
+}) {
   const session = await requireSchoolSession();
+  const sp = await searchParams;
+  const coachFilter = sp.coach;
   const profile = await coachProfileForSession(session);
   await ensureClassCoachRowsFromLead(session.schoolId);
 
@@ -61,17 +68,30 @@ export default async function SchoolClassesPage() {
       ? profile.id
       : coachOptions[0]?.id ?? "";
 
+  const rows = classes.map((c) => {
+    const assignedIds = [
+      ...new Set([
+        ...c.coachAssignments.map((a) => a.coachId),
+        ...(c.coachId ? [c.coachId] : []),
+      ]),
+    ];
+    return { c, assignedIds };
+  });
+
+  const filteredRows = rows.filter(({ assignedIds }) =>
+    classMatchesCoachFilter(assignedIds, coachFilter)
+  );
+
   return (
     <>
-      <ClassesPageActions coaches={coachOptions} defaultCoachId={defaultCoachId} />
+      <ClassesPageActions
+        coaches={coachOptions}
+        defaultCoachId={defaultCoachId}
+        totalClassCount={classes.length}
+        filteredClassCount={filteredRows.length}
+      />
       <ul className="mt-4 space-y-2">
-        {classes.map((c) => {
-          const assignedIds = [
-            ...new Set([
-              ...c.coachAssignments.map((a) => a.coachId),
-              ...(c.coachId ? [c.coachId] : []),
-            ]),
-          ];
+        {filteredRows.map(({ c, assignedIds }) => {
           const canEdit =
             session.role === "ADMIN" ||
             assignedIds.length === 0 ||
@@ -98,6 +118,9 @@ export default async function SchoolClassesPage() {
           );
         })}
         {classes.length === 0 && <li className="text-sm text-muted">No classes yet.</li>}
+        {classes.length > 0 && filteredRows.length === 0 && (
+          <li className="text-sm text-muted">No classes match this coach filter.</li>
+        )}
       </ul>
     </>
   );

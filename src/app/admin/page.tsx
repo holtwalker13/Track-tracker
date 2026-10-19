@@ -66,7 +66,13 @@ export default async function AdminPage() {
   return (
     <AppShell title="App admin" nav={ADMIN_NAV}>
       <ResendTestPanel defaultTo={classJoinLab?.rosterEmail} />
-      <p className="mb-6 mt-8 max-w-3xl text-sm text-muted">
+      <p className="mb-4 mt-8 max-w-3xl text-sm text-muted">
+        <Link href="/admin/coach-performance" className="font-semibold text-accent hover:underline">
+          District coach performance →
+        </Link>{" "}
+        Fall vs Spring PE fitness gains across schools and coaches (admin-only).
+      </p>
+      <p className="mb-6 max-w-3xl text-sm text-muted">
         Pick a school system to work in. Coach and student logins stay locked to their own school.
         From here you can add weightlifting classes, add students, or upload a roster spreadsheet.
         Add coach accounts under{" "}

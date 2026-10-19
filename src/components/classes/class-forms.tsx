@@ -10,10 +10,13 @@ export function CreateClassForm({
   surface = "card",
   coaches = [],
   defaultCoachId = "",
+  onSuccess,
 }: {
   surface?: "card" | "none";
   coaches?: ClassCoachOption[];
   defaultCoachId?: string;
+  /** When set, stay on current page and run callback instead of navigating to class detail. */
+  onSuccess?: (classId: string) => void;
 }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
@@ -58,6 +61,11 @@ export function CreateClassForm({
     setPending(false);
     if (!res.ok) {
       setError(data.error ?? "Could not create class");
+      return;
+    }
+    if (onSuccess) {
+      onSuccess(String(data.id));
+      router.refresh();
       return;
     }
     router.push(`/coach/school/classes/${data.id}`);

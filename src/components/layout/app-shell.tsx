@@ -1,8 +1,7 @@
 import { Podium } from "lucide-react";
 import { redirect } from "next/navigation";
+import { HeaderSettingsMenu } from "@/components/layout/header-settings-menu";
 import { TopNav } from "@/components/layout/top-nav";
-import { SchoolSwitcher } from "@/components/admin/school-switcher";
-import { ThemeToggle } from "@/components/ui/theme-toggle";
 import type { NavItem } from "@/lib/navigation";
 import { userMustClaimSchoolEmail } from "@/lib/auth/school-email-claim";
 import { getSession } from "@/lib/auth/session";
@@ -58,8 +57,6 @@ export async function AppShell({
 
   const compact = density === "compact";
 
-  const showSchoolSwitcher = session?.role === "ADMIN" && schools.length > 0;
-
   return (
     <div className="min-h-screen bg-background">
       <header
@@ -90,30 +87,36 @@ export async function AppShell({
                 aria-hidden
               />
               <div className="min-w-0">
-                <h1
-                  className={cn(
-                    "truncate font-bold uppercase tracking-wide",
-                    compact ? "text-sm sm:text-base" : "text-base sm:text-lg"
-                  )}
-                >
-                  {title}
-                </h1>
                 {schoolName ? (
-                  <p
+                  <>
+                    <h1
+                      className={cn(
+                        "truncate font-bold uppercase tracking-wide",
+                        compact ? "text-sm sm:text-base" : "text-base sm:text-lg"
+                      )}
+                    >
+                      {schoolName}
+                    </h1>
+                    <p
+                      className={cn(
+                        "truncate font-semibold uppercase tracking-[0.16em] text-accent",
+                        compact ? "text-[9px] leading-tight" : "text-[10px] leading-tight"
+                      )}
+                    >
+                      {title}
+                    </p>
+                  </>
+                ) : (
+                  <h1
                     className={cn(
-                      "truncate font-semibold uppercase tracking-[0.16em] text-accent",
-                      compact ? "text-[9px] leading-tight" : "text-[10px] leading-tight"
+                      "truncate font-bold uppercase tracking-wide",
+                      compact ? "text-sm sm:text-base" : "text-base sm:text-lg"
                     )}
                   >
-                    {schoolName}
-                  </p>
-                ) : null}
+                    {title}
+                  </h1>
+                )}
               </div>
-              {showSchoolSwitcher ? (
-                <div className="hidden shrink-0 sm:block">
-                  <SchoolSwitcher schools={schools} currentSchoolId={session.schoolId} />
-                </div>
-              ) : null}
             </div>
             <div
               className={cn(
@@ -121,20 +124,16 @@ export async function AppShell({
                 competeMobileChrome && "hidden md:flex"
               )}
             >
-              <ThemeToggle className="hidden sm:inline-flex" />
               <TopNav items={items} compact={navCompact || compact} />
+              {session ? (
+                <HeaderSettingsMenu
+                  role={session.role}
+                  schools={schools}
+                  currentSchoolId={session.schoolId}
+                />
+              ) : null}
             </div>
           </div>
-          <ThemeToggle className="sm:hidden" />
-          {showSchoolSwitcher && !competeMobileChrome ? (
-            <div className="mt-2 border-t border-card-border/60 pt-2 sm:hidden">
-              <SchoolSwitcher
-                schools={schools}
-                currentSchoolId={session.schoolId}
-                layout="toolbar"
-              />
-            </div>
-          ) : null}
         </div>
       </header>
       <main

@@ -1,7 +1,5 @@
 import { notFound } from "next/navigation";
-import { Suspense } from "react";
 import { AppShell } from "@/components/layout/app-shell";
-import { AthleteProfileClassPicker } from "@/components/athletes/athlete-profile-class-picker";
 import { Card, CardTitle } from "@/components/ui/card";
 import { COACH_NAV } from "@/lib/navigation";
 import { requireSchoolSession } from "@/lib/auth/session";
@@ -42,12 +40,14 @@ import { ensureAccoladeDefinitions } from "@/lib/gamification/seed-accolades";
 import { getRankedKpiSlugsForStudent } from "@/lib/services/kpi-sets";
 import { ageBracketForClassYear, isAgeBracketId } from "@/lib/age-brackets";
 import { classYearLabel, DEFAULT_CLASS_YEAR } from "@/lib/grades";
-import { classSectionLabel, isGraduatingClassName } from "@/lib/periods";
+import { isGraduatingClassName } from "@/lib/periods";
 import { AthleteProfileCard } from "@/components/athletes/athlete-profile-card";
+import {
+  MedalClassNavigationProvider,
+  MedalScopeLoadingShell,
+} from "@/components/athletes/medal-class-navigation";
 import { genderFullLabel } from "@/lib/gender";
 import { leaderboardHighlightFromSearch } from "@/lib/leaderboard-link";
-import { StudentLoginLinkButton } from "@/components/athletes/student-login-link-button";
-import { studentLoginStatusFromRow } from "@/lib/services/student-login-invite";
 import { getStudentLeaderboard } from "@/lib/queries/leaderboard-student";
 import { listStudentCoreOneRepMaxRows } from "@/lib/queries/student-core-one-rep-max";
 import { StudentCoreOneRepMaxEditor } from "@/components/athletes/student-core-one-rep-max-editor";
@@ -76,8 +76,6 @@ export default async function StudentProfilePage({
   const student = await prisma.studentProfile.findUnique({
     where: { id },
     include: {
-      user: { select: { passwordSetAt: true } },
-      loginInvite: { select: { usedAt: true, expiresAt: true } },
       enrollments: {
         where: { schoolYear: { isCurrent: true } },
         include: { schoolYear: true },
@@ -273,24 +271,14 @@ export default async function StudentProfilePage({
   const ranks = { ...activityRanks };
 
   const fullName = `${student.firstName} ${student.lastName}`;
-  const loginStatus = studentLoginStatusFromRow({
-    userId: student.userId,
-    user: student.user,
-    loginInvite: student.loginInvite,
-  });
-  const sections = enrolledClasses.map((c) => ({
-    id: c.id,
-    label: classSectionLabel(c),
-  }));
-
   return (
     <AppShell title="Athlete" nav={COACH_NAV}>
+      <MedalClassNavigationProvider>
       <AthleteProfileCard
         name={fullName}
         studentNumber={student.studentNumber}
         gender={student.gender ? genderFullLabel(student.gender) : null}
         schoolYear={enrollment?.schoolYear?.label ?? null}
-        sections={sections}
         seed={student.id}
         sports={student.sports}
         classLabel={classYearLabel(grade)}
@@ -304,30 +292,16 @@ export default async function StudentProfilePage({
           classes: schoolClasses,
           enrolledClassIds: student.classEnrollments.map((e) => e.classId),
         }}
+        medalClassScope={{
+          classes: pickerClasses,
+          selectedClassId: profileClassId ?? null,
+          subgroupsByClassId,
+          selectedSubgroupId: profileSubgroupId,
+          defaultSubgroupId,
+        }}
       />
 
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-card-border bg-card/40 px-4 py-3">
-        <p className="text-sm text-muted">
-          Account link for <span className="font-mono text-foreground">{student.studentNumber}</span>.
-          It creates the account the first time and signs them in after that, on the student dashboard.
-        </p>
-        <StudentLoginLinkButton
-          studentId={student.id}
-          fullName={fullName}
-          loginStatus={loginStatus}
-        />
-      </div>
-
-      <Suspense fallback={null}>
-        <AthleteProfileClassPicker
-          classes={pickerClasses}
-          selectedClassId={profileClassId ?? null}
-          subgroupsByClassId={subgroupsByClassId}
-          selectedSubgroupId={profileSubgroupId}
-          defaultSubgroupId={defaultSubgroupId}
-        />
-      </Suspense>
-
+      <MedalScopeLoadingShell>
       <GamificationSummaryCard
         level={gamification.level}
         xpIntoLevel={gamification.xpIntoLevel}
@@ -364,6 +338,7 @@ export default async function StudentProfilePage({
           ranks={ranks}
           highlightSlug={highlight?.slug}
         />
+        <AthleteResultsHistory grouped={latestGrouped} attemptLog={attemptLog} />
         <PeerLeadersCard
           leaders={peerLeaders}
           windowLabel={window === "week" ? "This week" : "All-time"}
@@ -386,9 +361,9 @@ export default async function StudentProfilePage({
         progress={progress}
       />
 
-      <AthleteResultsHistory grouped={latestGrouped} attemptLog={attemptLog} />
-
       <StudentCoreOneRepMaxEditor studentId={student.id} initialRows={coreOneRepMaxRows} />
+      </MedalScopeLoadingShell>
+      </MedalClassNavigationProvider>
     </AppShell>
   );
 }

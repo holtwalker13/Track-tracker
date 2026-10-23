@@ -66,6 +66,7 @@ export function ProgramsSetBuilderGrid({
               <th className="px-2 py-2 font-semibold">Set</th>
               <th className="px-2 py-2 font-semibold">Reps</th>
               <th className="px-2 py-2 font-semibold">% 1RM</th>
+              <th className="px-2 py-2 font-semibold">Notes</th>
               <th className="px-2 py-2 font-semibold">Actions</th>
             </tr>
           </thead>
@@ -76,8 +77,12 @@ export function ProgramsSetBuilderGrid({
                   key={`${lift.activitySlug}-${setIdx}`}
                   className="border-b border-card-border/50 hover:bg-card/30"
                 >
-                  <td className="px-3 py-2 font-medium">
-                    {setIdx === 0 ? lift.name : ""}
+                  <td className="max-w-[12rem] px-3 py-2 font-medium">
+                    {setIdx === 0 ? (
+                      <span className="block break-words leading-snug">{lift.name}</span>
+                    ) : (
+                      ""
+                    )}
                   </td>
                   <td className="px-2 py-2 text-muted">{setIdx + 1}</td>
                   <td className="px-2 py-2">
@@ -115,6 +120,22 @@ export function ProgramsSetBuilderGrid({
                       />
                       <SetProjectionNote reps={set.reps} percentOf1Rm={set.percentOf1Rm} />
                     </div>
+                  </td>
+                  <td className="px-2 py-2">
+                    <input
+                      type="text"
+                      placeholder="Cues / intent"
+                      value={set.notes ?? ""}
+                      onChange={(e) => {
+                        const next = [...lift.sets];
+                        next[setIdx] = {
+                          ...set,
+                          notes: e.target.value,
+                        };
+                        onUpdateLift(liftIdx, next);
+                      }}
+                      className="min-w-[8rem] max-w-[14rem] rounded border border-card-border bg-background px-2 py-1 text-sm"
+                    />
                   </td>
                   <td className="px-2 py-2">
                     {setIdx === lift.sets.length - 1 ? (

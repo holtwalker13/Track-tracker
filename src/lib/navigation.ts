@@ -54,8 +54,8 @@ export const COMPETE_HUB_TABS = [
 ] as const;
 
 export const COACH_NAV: NavItem[] = [
-  { href: "/coach/school/roster", label: "School", icon: "classes" },
   { href: "/coach/programs", label: "Programs", icon: "workout" },
+  { href: "/coach/school/roster", label: "School", icon: "classes" },
   { href: "/coach/benchmarks", label: "KPIs", icon: "target" },
   { href: "/coach/compete", label: "Compete", icon: "trophy" },
 ];

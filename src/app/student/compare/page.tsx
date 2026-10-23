@@ -43,17 +43,14 @@ export default async function StudentComparePage({
     gender: student.gender === "M" ? "M" : "F",
   });
 
-  const pickerAthletes = peers.map((s) => ({
-    id: s.id,
-    name:
-      s.id === session.studentId
-        ? "You"
-        : s.nameHidden
-          ? "Hidden"
-          : s.name,
-    studentNumber: s.studentNumber,
-    grade: s.grade,
-  }));
+  const pickerAthletes = peers
+    .filter((s) => s.id === session.studentId || !s.nameHidden)
+    .map((s) => ({
+      id: s.id,
+      name: s.id === session.studentId ? "You" : s.name,
+      studentNumber: s.studentNumber,
+      grade: s.grade,
+    }));
 
   const fromIds = (sp.ids ?? "")
     .split(",")

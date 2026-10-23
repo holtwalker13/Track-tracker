@@ -292,7 +292,7 @@ export async function getLeaderboard(
         : r.resultValue! > prev.resultValue!;
     if (better) bestByStudent.set(r.studentId, r);
   }
-  const unique = [...bestByStudent.values()];
+  const unique = [...bestByStudent.values()].filter((r) => !r.student.nameHidden);
 
   const ranked = rankResults(
     unique.map((r) => ({ studentId: r.studentId, value: r.resultValue! })),

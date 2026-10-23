@@ -17,7 +17,7 @@ export function formatActivityValue(
     return `${Math.round(value)}"`;
   }
   if (unit === "x BW") return `${value.toFixed(2)}×`;
-  if (unit === "seconds") {
+  if (unit === "seconds" || unit === "time_mmss") {
     if (usesMinuteSecondDisplay(unit, activitySlug, activityName)) {
       return formatMinuteSecond(value);
     }

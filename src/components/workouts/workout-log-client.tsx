@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { cn } from "@/lib/utils";
 import { WorkoutXpToast } from "@/components/gamification/workout-xp-toast";
 import type { AccoladeUnlockLine, XpAwardLine } from "@/lib/gamification/engine";
 import { epleyE1rm } from "@/lib/services/workout-progression";
@@ -105,7 +106,11 @@ export function WorkoutLogClient({
   );
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [savedAt, setSavedAt] = useState<string | null>(null);
+  const [autosaveState, setAutosaveState] = useState<"idle" | "pending" | "saved" | "error">(
+    "idle"
+  );
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cellsSerializedRef = useRef("");
   const [completionRewards, setCompletionRewards] = useState<{
     xpLines: XpAwardLine[];
     totalXpToday: number;
@@ -155,23 +160,42 @@ export function WorkoutLogClient({
     []
   );
 
-  async function saveDraft() {
-    if (!data.session) return;
-    setPending(true);
-    setError(null);
+  const persistSets = useCallback(async () => {
+    if (!data.session || readOnly) return false;
     const res = await fetch(`/api/workouts/sessions/${data.session.id}/sets`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ sets: allSetsPayload }),
     });
-    const body = await res.json();
-    setPending(false);
+    const body = await res.json().catch(() => ({}));
     if (!res.ok) {
       setError(body.error ?? "Could not save");
-      return;
+      setAutosaveState("error");
+      return false;
     }
-    setSavedAt(new Date().toLocaleTimeString());
-  }
+    setAutosaveState("saved");
+    return true;
+  }, [allSetsPayload, data.session, readOnly]);
+
+  useEffect(() => {
+    cellsSerializedRef.current = JSON.stringify(allSetsPayload);
+    setAutosaveState("idle");
+  }, [data.session?.id]);
+
+  useEffect(() => {
+    if (!data.session || readOnly) return;
+    const serialized = JSON.stringify(allSetsPayload);
+    if (serialized === cellsSerializedRef.current) return;
+    cellsSerializedRef.current = serialized;
+    setAutosaveState("pending");
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      void persistSets();
+    }, 2000);
+    return () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    };
+  }, [allSetsPayload, data.session, persistSets, readOnly]);
 
   async function submitWorkout() {
     if (!data.session) return;
@@ -251,12 +275,33 @@ export function WorkoutLogClient({
       </div>
 
       {error && <p className="text-sm text-sport-red">{error}</p>}
-      {savedAt && !readOnly && (
-        <p className="text-xs text-muted">Draft saved at {savedAt}</p>
-      )}
+      {!readOnly && autosaveState !== "idle" ? (
+        <p
+          className={cn(
+            "text-xs",
+            autosaveState === "saved" && "text-emerald-300",
+            autosaveState === "pending" && "text-muted",
+            autosaveState === "error" && "text-sport-red"
+          )}
+        >
+          {autosaveState === "pending"
+            ? "Saving…"
+            : autosaveState === "saved"
+              ? "Autosaved"
+              : "Could not autosave"}
+        </p>
+      ) : null}
 
       {exercises.map((ex) => (
-        <section key={ex.id} className="rounded-2xl border border-card-border bg-card p-4">
+        <section
+          key={ex.id}
+          className={cn(
+            "rounded-2xl border bg-card p-4 transition-colors",
+            autosaveState === "saved" && !readOnly
+              ? "border-emerald-400/40"
+              : "border-card-border"
+          )}
+        >
           <h2 className="font-semibold">{ex.activity.name}</h2>
           <p className="text-sm text-muted">
             Target {ex.defaultSets}×{ex.defaultReps}
@@ -348,14 +393,6 @@ export function WorkoutLogClient({
 
       {!readOnly && (
         <div className="flex flex-wrap gap-3">
-          <button
-            type="button"
-            disabled={pending}
-            onClick={() => void saveDraft()}
-            className="rounded-lg border border-card-border px-4 py-2 text-sm font-medium disabled:opacity-50"
-          >
-            Save draft
-          </button>
           <button
             type="button"
             disabled={pending}

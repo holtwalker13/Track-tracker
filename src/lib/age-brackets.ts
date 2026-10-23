@@ -82,7 +82,8 @@ export const KPI_UNITS: {
   label: string;
   directionDefault: "HIGHER_BETTER" | "LOWER_BETTER";
 }[] = [
-  { id: "seconds", label: "Seconds (time)", directionDefault: "LOWER_BETTER" },
+  { id: "seconds", label: "Time - 00.00s", directionDefault: "LOWER_BETTER" },
+  { id: "time_mmss", label: "Time - 00:00", directionDefault: "LOWER_BETTER" },
   { id: "inches", label: "Inches", directionDefault: "HIGHER_BETTER" },
   { id: "meters", label: "Meters", directionDefault: "HIGHER_BETTER" },
   { id: "lb", label: "Pounds (lb)", directionDefault: "HIGHER_BETTER" },

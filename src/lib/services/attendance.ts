@@ -112,3 +112,24 @@ export async function markClassAttendanceAll(input: {
 
   return { ok: true, count: roster.length };
 }
+
+export async function deleteClassAttendanceForDate(input: {
+  session: Session;
+  classId: string;
+  date: string;
+}): Promise<{ ok: true; count: number } | { ok: false; error: string; status: number }> {
+  if (!isAttendanceDate(input.date)) {
+    return { ok: false, error: "Date must be YYYY-MM-DD", status: 400 };
+  }
+  const access = await assertCanMark(input.session, input.classId);
+  if (!access.ok) return access;
+
+  const result = await prisma.classAttendance.deleteMany({
+    where: {
+      schoolId: access.schoolId,
+      classId: input.classId,
+      date: input.date,
+    },
+  });
+  return { ok: true, count: result.count };
+}

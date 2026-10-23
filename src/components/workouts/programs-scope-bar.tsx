@@ -138,11 +138,12 @@ function ProgramsScopeBarInner({
           ) : (
             <Link
               href={qs ? `/coach/programs/creator?${qs}` : "/coach/programs/creator"}
-              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-card-border bg-background text-muted hover:border-accent/40 hover:text-accent"
-              aria-label="Program Creator"
-              title="Program Creator"
+              className="inline-flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-card-border bg-background px-3 text-xs font-semibold text-muted hover:border-accent/40 hover:text-accent"
+              aria-label="Create Program"
+              title="Create Program"
             >
               <Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />
+              Create Program
             </Link>
           )}
         </div>

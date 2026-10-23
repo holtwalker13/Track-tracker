@@ -281,6 +281,23 @@ export function ProgramsWeekCalendar({
     startTransition(() => router.refresh());
   }
 
+  async function removeAttendance(date: string) {
+    if (!window.confirm(`Remove attendance for ${date}?`)) return;
+    setActionPending(true);
+    setActionError(null);
+    const res = await fetch(
+      `/api/attendance?classId=${encodeURIComponent(classId)}&date=${encodeURIComponent(date)}`,
+      { method: "DELETE" }
+    );
+    const data = await res.json().catch(() => ({}));
+    setActionPending(false);
+    if (!res.ok) {
+      setActionError(data.error ?? "Could not remove attendance");
+      return;
+    }
+    startTransition(() => router.refresh());
+  }
+
   return (
     <section
       className={cn(
@@ -292,7 +309,7 @@ export function ProgramsWeekCalendar({
         <div>
           <h2 className="text-base font-semibold">Week calendar</h2>
           <p className="text-xs text-muted">
-            + Create adds a workout, test, or attendance · click a chip to review it · pencil edits or deletes
+            + Add adds a workout, test, or attendance · click a chip to review it · pencil edits or deletes
             <span className="sm:hidden"> · 3-day view, today centered</span>
             <span className="hidden sm:inline"> · Mon–Fri default · scroll for Sun/Sat</span>
           </p>
@@ -379,10 +396,10 @@ export function ProgramsWeekCalendar({
                     onClick={() => openAdd(date)}
                     disabled={!classId}
                     className="shrink-0 rounded-md px-1 py-0.5 text-[10px] font-semibold leading-none text-muted hover:bg-emerald-500/15 hover:text-emerald-300 disabled:opacity-30"
-                    aria-label={`Create on ${date}`}
+                    aria-label={`Add on ${date}`}
                     title="Add workout, test, or attendance"
                   >
-                    + Create
+                    + Add
                   </button>
                 </div>
                 <div className="flex min-h-0 flex-1 flex-col gap-1">
@@ -459,19 +476,46 @@ export function ProgramsWeekCalendar({
                     </div>
                   ))}
                   {attendanceByDate.get(date) ? (
-                    <button
-                      type="button"
-                      onClick={() => openAdd(date, "attendance")}
-                      className="rounded-md bg-emerald-500/10 px-1 py-0.5 text-left ring-1 ring-emerald-400/25"
+                    <div
+                      className="rounded-md bg-emerald-500/10 px-1 py-0.5 ring-1 ring-emerald-400/25"
                     >
-                      <div className="truncate text-[10px] font-medium leading-none text-emerald-100 sm:text-[11px]">
-                        Attendance
+                      <div className="flex items-center gap-0.5">
+                        <button
+                          type="button"
+                          onClick={() => openAdd(date, "attendance")}
+                          className="min-w-0 flex-1 truncate text-left text-[10px] font-medium leading-none text-emerald-100 hover:text-white sm:text-[11px]"
+                        >
+                          Attendance
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => openAdd(date, "attendance")}
+                          className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded text-muted hover:bg-background/40 hover:text-emerald-100"
+                          aria-label={`Edit attendance on ${date}`}
+                          title="Edit attendance"
+                        >
+                          <Pencil className="h-3 w-3" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void removeAttendance(date)}
+                          disabled={actionPending}
+                          className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded text-muted hover:bg-background/40 hover:text-emerald-100"
+                          aria-label={`Remove attendance on ${date}`}
+                          title="Remove attendance"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </button>
                       </div>
-                      <div className="text-[9px] tabular-nums leading-none text-muted sm:text-[10px]">
+                      <button
+                        type="button"
+                        onClick={() => openAdd(date, "attendance")}
+                        className="text-left text-[9px] tabular-nums leading-none text-muted sm:text-[10px]"
+                      >
                         {attendanceByDate.get(date)!.presentCount}/
                         {attendanceByDate.get(date)!.markedCount} here
-                      </div>
-                    </button>
+                      </button>
+                    </div>
                   ) : null}
                   <button
                     type="button"

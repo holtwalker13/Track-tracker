@@ -18,6 +18,9 @@ export function AddStudentForm({
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [classOptions, setClassOptions] = useState(classes);
+  const [classId, setClassId] = useState("");
+  const [subgroups, setSubgroups] = useState<{ id: string; name: string }[]>([]);
+  const [subgroupId, setSubgroupId] = useState("");
 
   useEffect(() => {
     setClassOptions(classes);
@@ -41,6 +44,27 @@ export function AddStudentForm({
     };
   }, [open]);
 
+  useEffect(() => {
+    if (!classId) {
+      setSubgroups([]);
+      setSubgroupId("");
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      const res = await fetch(`/api/classes/${classId}/subgroups`);
+      if (!res.ok || cancelled) return;
+      const data = (await res.json()) as { subgroups?: { id: string; name: string }[] };
+      if (!cancelled) {
+        setSubgroups(data.subgroups ?? []);
+        setSubgroupId("");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [classId]);
+
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setSaving(true);
@@ -58,6 +82,7 @@ export function AddStudentForm({
         sports: form.get("sports") || null,
         participationType: form.get("participationType") || null,
         classId: form.get("classId") || null,
+        subgroupId: form.get("subgroupId") || null,
       }),
     });
     setSaving(false);
@@ -160,7 +185,12 @@ export function AddStudentForm({
         </label>
         <label className="text-sm">
           Class hour
-          <select name="classId" defaultValue="" className="mt-1 w-full rounded-lg border border-card-border bg-background px-3 py-2">
+          <select
+            name="classId"
+            value={classId}
+            onChange={(e) => setClassId(e.target.value)}
+            className="mt-1 w-full rounded-lg border border-card-border bg-background px-3 py-2"
+          >
             <option value="">None</option>
             {classOptions.map((c) => (
               <option key={c.id} value={c.id}>
@@ -169,6 +199,24 @@ export function AddStudentForm({
             ))}
           </select>
         </label>
+        {classId && subgroups.length > 0 ? (
+          <label className="text-sm">
+            Subgroup
+            <select
+              name="subgroupId"
+              value={subgroupId}
+              onChange={(e) => setSubgroupId(e.target.value)}
+              className="mt-1 w-full rounded-lg border border-card-border bg-background px-3 py-2"
+            >
+              <option value="">None</option>
+              {subgroups.map((sg) => (
+                <option key={sg.id} value={sg.id}>
+                  {sg.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
       </div>
       {error && <p className="mt-3 text-sm text-red-400">{error}</p>}
       <button

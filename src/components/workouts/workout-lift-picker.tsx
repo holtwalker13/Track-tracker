@@ -100,7 +100,7 @@ export function WorkoutLiftPicker({
             <label
               key={l.slug}
               className={cn(
-                "flex cursor-pointer items-center gap-3 rounded-xl border px-3 py-2.5 text-sm",
+                "flex cursor-pointer items-start gap-2 rounded-xl border px-3 py-2.5 text-sm sm:items-center sm:gap-3",
                 l.enabled
                   ? "border-sky-400/40 bg-sky-500/10"
                   : "border-card-border bg-background/30"
@@ -110,17 +110,17 @@ export function WorkoutLiftPicker({
                 type="checkbox"
                 checked={l.enabled}
                 onChange={(e) => toggle(index, e.target.checked)}
-                className="shrink-0"
+                className="mt-1 shrink-0 sm:mt-0"
               />
               {l.enabled && l.order != null ? (
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-sky-500 text-xs font-bold text-white">
+                <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-sky-500 text-xs font-bold text-white sm:mt-0">
                   {l.order}
                 </span>
               ) : (
-                <span className="h-6 w-6 shrink-0" aria-hidden />
+                <span className="mt-0.5 h-6 w-6 shrink-0 sm:mt-0" aria-hidden />
               )}
-              <span className="min-w-0 flex-1 truncate font-medium">{l.name}</span>
-              <span className="flex shrink-0 items-center gap-1 text-xs text-muted">
+              <span className="min-w-0 flex-1 break-words font-medium leading-snug">{l.name}</span>
+              <span className="ml-auto flex shrink-0 items-center gap-1 text-xs text-muted">
                 <input
                   type="number"
                   min={1}

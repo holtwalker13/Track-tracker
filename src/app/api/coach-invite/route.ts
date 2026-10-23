@@ -58,7 +58,7 @@ export async function POST(request: Request) {
   const res = NextResponse.json({
     ok: true,
     email: result.email,
-    redirect: "/coach/school/roster",
+    redirect: "/coach/programs",
   });
   res.cookies.set(SESSION_COOKIE, sessionToken, opts);
   return res;

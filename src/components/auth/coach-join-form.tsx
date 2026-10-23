@@ -64,7 +64,7 @@ export function CoachJoinForm({ token }: { token: string }) {
         setError(data.error ?? "Could not create your account.");
         return;
       }
-      router.replace(data.redirect ?? "/coach/school/roster");
+      router.replace(data.redirect ?? "/coach/programs");
       router.refresh();
     } catch {
       setError("Something went wrong. Please try again.");

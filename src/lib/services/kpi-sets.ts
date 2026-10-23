@@ -12,6 +12,7 @@ import { DEFAULT_AGE_BRACKET, isAgeBracketId } from "@/lib/age-brackets";
 import { isCoachingSportId, sportLabel } from "@/lib/sports";
 import { ensureSchoolKpiTargets } from "@/lib/queries/kpi";
 import { listSchoolKpiLibrary } from "@/lib/queries/kpi-library";
+import { coachLeadsClass } from "@/lib/auth/coach-scope";
 
 export type KpiSetTargetCell = {
   gender: "F" | "M";
@@ -262,13 +263,29 @@ export type KpiSetWriteAccess = {
   asSchoolAdmin?: boolean;
 };
 
-function kpiSetWriteWhere(
+async function findWritableKpiSet(
   setId: string,
   coachProfileId: string,
   access?: KpiSetWriteAccess
 ) {
-  if (access?.asSchoolAdmin) return { id: setId, schoolId: access.schoolId };
-  return { id: setId, coachProfileId };
+  if (access?.asSchoolAdmin) {
+    return prisma.kpiSet.findFirst({
+      where: { id: setId, schoolId: access.schoolId },
+      include: { metrics: true, targets: true },
+    });
+  }
+
+  const set = await prisma.kpiSet.findFirst({
+    where: { id: setId },
+    include: { metrics: true, targets: true },
+  });
+  if (!set) return null;
+  if (set.coachProfileId === coachProfileId) return set;
+  if (set.classId) {
+    const leads = await coachLeadsClass(coachProfileId, set.classId, set.schoolId);
+    if (leads) return set;
+  }
+  return null;
 }
 
 export async function updateKpiSetMeta(
@@ -282,9 +299,7 @@ export async function updateKpiSetMeta(
   },
   access?: KpiSetWriteAccess
 ) {
-  const existing = await prisma.kpiSet.findFirst({
-    where: kpiSetWriteWhere(setId, coachProfileId, access),
-  });
+  const existing = await findWritableKpiSet(setId, coachProfileId, access);
   if (!existing) throw new Error("KPI set not found");
 
   if (patch.sport != null && !isCoachingSportId(patch.sport)) {
@@ -344,10 +359,7 @@ export async function saveKpiSetTargets(
   },
   access?: KpiSetWriteAccess
 ) {
-  const existing = await prisma.kpiSet.findFirst({
-    where: kpiSetWriteWhere(setId, coachProfileId, access),
-    include: { metrics: true, targets: true },
-  });
+  const existing = await findWritableKpiSet(setId, coachProfileId, access);
   if (!existing) throw new Error("KPI set not found");
 
   const knownSlugs = new Set<string>([
@@ -592,9 +604,7 @@ export async function deleteKpiSet(
   coachProfileId: string,
   access?: KpiSetWriteAccess
 ) {
-  const existing = await prisma.kpiSet.findFirst({
-    where: kpiSetWriteWhere(setId, coachProfileId, access),
-  });
+  const existing = await findWritableKpiSet(setId, coachProfileId, access);
   if (!existing) throw new Error("KPI set not found");
   if (existing.isDefault) throw new Error("Cannot delete the school default KPI set");
 

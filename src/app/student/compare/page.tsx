@@ -6,6 +6,7 @@ import { requireSession } from "@/lib/auth/session";
 import { getStudentContext } from "@/lib/queries/student";
 import { getStudentClassTags } from "@/lib/queries/kpi";
 import { getAthleteCompare, getAthleteLineup } from "@/lib/queries/compare";
+import { HIDDEN_STUDENT_LEADERBOARD_LABEL } from "@/lib/leaderboard-privacy";
 import { AthleteDuel } from "@/components/compare/athlete-duel";
 import { AthleteMultiPicker } from "@/components/compare/athlete-multi-picker";
 import { AthleteLineup } from "@/components/compare/athlete-lineup";
@@ -43,14 +44,17 @@ export default async function StudentComparePage({
     gender: student.gender === "M" ? "M" : "F",
   });
 
-  const pickerAthletes = peers
-    .filter((s) => s.id === session.studentId || !s.nameHidden)
-    .map((s) => ({
-      id: s.id,
-      name: s.id === session.studentId ? "You" : s.name,
-      studentNumber: s.studentNumber,
-      grade: s.grade,
-    }));
+  const pickerAthletes = peers.map((s) => ({
+    id: s.id,
+    name:
+      s.id === session.studentId
+        ? "You"
+        : s.nameHidden
+          ? HIDDEN_STUDENT_LEADERBOARD_LABEL
+          : s.name,
+    studentNumber: s.studentNumber,
+    grade: s.grade,
+  }));
 
   const fromIds = (sp.ids ?? "")
     .split(",")

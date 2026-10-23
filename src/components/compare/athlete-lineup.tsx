@@ -3,6 +3,7 @@ import { ActivityIcon } from "@/lib/activity-icons";
 import { DISPLAY_GROUP_LABELS, DISPLAY_GROUP_ORDER } from "@/lib/activity-groups";
 import { classYearLabel } from "@/lib/grades";
 import { cn, boxScoreNameFromFull } from "@/lib/utils";
+import { isHiddenStudentLeaderboardLabel } from "@/lib/leaderboard-privacy";
 import type { AthleteLineupView } from "@/lib/queries/compare";
 
 const ACCENTS = [
@@ -30,8 +31,17 @@ export function AthleteLineup({ view }: { view: AthleteLineupView }) {
         {athletes.map((a, i) => (
           <div key={a.id} className="flex flex-col items-center text-center">
             <PlayerAvatar name={a.name} size="lg" seed={a.id} />
-            <p className={cn("mt-2 font-bold", ACCENTS[i % ACCENTS.length])}>
-              {boxScoreNameFromFull(a.name)}
+            <p
+              className={cn(
+                "mt-2 font-bold",
+                isHiddenStudentLeaderboardLabel(a.name)
+                  ? "italic font-medium text-muted"
+                  : ACCENTS[i % ACCENTS.length]
+              )}
+            >
+              {isHiddenStudentLeaderboardLabel(a.name)
+                ? a.name
+                : boxScoreNameFromFull(a.name)}
             </p>
             <p className="text-xs text-muted">{classYearLabel(a.grade)}</p>
           </div>

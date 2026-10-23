@@ -9,6 +9,7 @@ import { formatActivityValue } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { LeaderboardBoard } from "@/lib/queries/leaderboard-grid";
 import { leaderboardProfileQuery } from "@/lib/leaderboard-link";
+import { LeaderboardEntryName } from "@/components/leaderboards/leaderboard-entry-name";
 import {
   DISPLAY_GROUP_LABELS,
   DISPLAY_GROUP_ORDER,
@@ -290,7 +291,9 @@ function LeaderboardGridInner({
                           <span className="text-[11px] text-muted">{dateLabel}</span>
                         )}
                       </div>
-                      <p className="mt-2.5 truncate text-sm font-semibold">{e.displayName}</p>
+                      <p className="mt-2.5 truncate text-sm font-semibold">
+                        <LeaderboardEntryName name={e.displayName} nameHidden={e.nameHidden} />
+                      </p>
                       <p className="mt-1.5 font-mono text-2xl font-bold tabular-nums tracking-tight text-sky-100">
                         {value}
                       </p>
@@ -335,7 +338,12 @@ function LeaderboardGridInner({
                       />
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-xs text-muted">{board.activity.name}</p>
-                        <p className="truncate text-sm font-semibold">{entry.displayName}</p>
+                        <p className="truncate text-sm font-semibold">
+                          <LeaderboardEntryName
+                            name={entry.displayName}
+                            nameHidden={entry.nameHidden}
+                          />
+                        </p>
                       </div>
                       <div className="shrink-0 text-right">
                         <p className="font-mono text-sm font-bold tabular-nums">{value}</p>
@@ -410,7 +418,7 @@ function LeaderboardGridInner({
                         </span>
                       )}
                       <span className="min-w-0 flex-1 truncate text-sm font-medium">
-                        {e.displayName}
+                        <LeaderboardEntryName name={e.displayName} nameHidden={e.nameHidden} />
                       </span>
                       {dateLabel && (
                         <span className="hidden shrink-0 text-xs text-muted sm:inline">

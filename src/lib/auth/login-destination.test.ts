@@ -12,6 +12,6 @@ describe("loginDestination", () => {
 
   it("still sends coaches to a coach path", () => {
     assert.equal(loginDestination("COACH", "/coach/programs"), "/coach/programs");
-    assert.equal(loginDestination("COACH", ""), "/coach/school/roster");
+    assert.equal(loginDestination("COACH", ""), "/coach/programs");
   });
 });

@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { isClassYear } from "@/lib/grades";
 import { buildStudentUsernameBase, pickUniqueUsername } from "@/lib/services/student-username";
 import { coachAssignedClassIds, ensureUnder13CollectionAllowed } from "@/lib/auth/tenant-access";
+import { enrollStudentInClass } from "@/lib/services/student-class-enrollment";
 
 export async function GET(request: Request) {
   const session = await requireSession(["COACH", "ADMIN"]);
@@ -67,6 +68,7 @@ export async function POST(request: Request) {
       ? participationTypeRaw
       : null;
   const classId = body.classId ? String(body.classId) : null;
+  const subgroupId = body.subgroupId ? String(body.subgroupId) : null;
 
   if (!firstName || !lastName) {
     return NextResponse.json({ error: "First and last name are required" }, { status: 400 });
@@ -110,6 +112,14 @@ export async function POST(request: Request) {
     if (!cls) {
       return NextResponse.json({ error: "Class not found" }, { status: 404 });
     }
+    if (subgroupId) {
+      const subgroup = await prisma.classSubgroup.findFirst({
+        where: { id: subgroupId, classId },
+      });
+      if (!subgroup) {
+        return NextResponse.json({ error: "Subgroup not found for this class" }, { status: 400 });
+      }
+    }
   }
 
   const dob = body.dateOfBirth ? new Date(String(body.dateOfBirth)) : new Date(2010, 0, 1);
@@ -141,15 +151,12 @@ export async function POST(request: Request) {
           gradeLevel: classYear,
         },
       },
-      ...(classId
-        ? {
-            classEnrollments: {
-              create: { classId },
-            },
-          }
-        : {}),
     },
   });
+
+  if (classId) {
+    await enrollStudentInClass(session.schoolId, student.id, classId, subgroupId);
+  }
 
   return NextResponse.json({ ok: true, studentId: student.id });
 }

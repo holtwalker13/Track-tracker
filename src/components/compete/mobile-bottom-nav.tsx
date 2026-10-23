@@ -7,8 +7,8 @@ import { isNavActive } from "@/lib/navigation";
 import { cn } from "@/lib/utils";
 
 const ITEMS = [
-  { href: "/coach/school/roster", label: "School", icon: School },
   { href: "/coach/programs", label: "Programs", icon: Dumbbell },
+  { href: "/coach/school/roster", label: "School", icon: School },
   { href: "/coach/benchmarks", label: "KPIs", icon: Target },
   { href: "/coach/compete/leaderboards", label: "Compete", icon: Trophy },
 ] as const;

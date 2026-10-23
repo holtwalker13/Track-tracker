@@ -15,6 +15,7 @@ import {
 } from "@/lib/age-brackets";
 import { COACHING_SPORTS, sportLabel } from "@/lib/sports";
 import { cn } from "@/lib/utils";
+import { scoringDirectionForUnit } from "@/lib/kpi-display";
 import { KpiTargetsMobile } from "@/components/kpi/kpi-targets-mobile";
 
 type MetricInfo = {
@@ -305,17 +306,63 @@ export function KpiTargetsEditor({
     router.refresh();
   }
 
-  async function renameMetric(slug: string, name: string) {
+  async function updateMetric(
+    slug: string,
+    payload: {
+      title: string;
+      categorySlug: string;
+      unit: string;
+      direction: "HIGHER_BETTER" | "LOWER_BETTER";
+      acknowledgeLoggedData?: boolean;
+    }
+  ) {
     const res = await fetch("/api/kpi-targets", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ slug, name }),
+      body: JSON.stringify({
+        action: "update",
+        slug,
+        title: payload.title,
+        categorySlug: payload.categorySlug,
+        unit: payload.unit,
+        direction: payload.direction,
+        acknowledgeLoggedData: payload.acknowledgeLoggedData,
+      }),
     });
+    const data = await res.json().catch(() => ({}));
+    if (res.status === 409 && data.requiresAcknowledgement) {
+      const count = data.resultCount ?? 0;
+      if (
+        !window.confirm(
+          `This KPI has ${count} logged result${count === 1 ? "" : "s"}. Save unit/format changes anyway?`
+        )
+      ) {
+        return false;
+      }
+      return updateMetric(slug, { ...payload, acknowledgeLoggedData: true });
+    }
     if (!res.ok) {
-      window.alert("Could not rename KPI.");
+      window.alert(typeof data.error === "string" ? data.error : "Could not update KPI.");
       return false;
     }
-    setMetricList((prev) => prev.map((m) => (m.slug === slug ? { ...m, name } : m)));
+    const activity = data.activity as {
+      slug: string;
+      name: string;
+      unit: string;
+      categorySlug: string;
+    };
+    setMetricList((prev) =>
+      prev.map((m) =>
+        m.slug === slug
+          ? {
+              ...m,
+              name: activity.name,
+              unit: activity.unit,
+              categorySlug: activity.categorySlug,
+            }
+          : m
+      )
+    );
     setEditing(null);
     router.refresh();
     return true;
@@ -775,10 +822,10 @@ export function KpiTargetsEditor({
       )}
 
       {editing && (
-        <KpiRenameModal
+        <KpiEditModal
           metric={editing}
           onClose={() => setEditing(null)}
-          onSave={renameMetric}
+          onSave={updateMetric}
         />
       )}
 
@@ -1188,22 +1235,79 @@ function DuplicateKpiSetModal({
   );
 }
 
-function KpiRenameModal({
+function KpiEditModal({
   metric,
   onClose,
   onSave,
 }: {
   metric: MetricInfo;
   onClose: () => void;
-  onSave: (slug: string, name: string) => Promise<boolean>;
+  onSave: (
+    slug: string,
+    payload: {
+      title: string;
+      categorySlug: string;
+      unit: string;
+      direction: "HIGHER_BETTER" | "LOWER_BETTER";
+      acknowledgeLoggedData?: boolean;
+    }
+  ) => Promise<boolean>;
 }) {
-  const [name, setName] = useState(metric.name);
+  const [title, setTitle] = useState(metric.name);
+  const [categorySlug, setCategorySlug] = useState(metric.categorySlug ?? "speed");
+  const [unit, setUnit] = useState(metric.unit);
+  const [direction, setDirection] = useState<"HIGHER_BETTER" | "LOWER_BETTER">(
+    scoringDirectionForUnit(metric.unit)
+  );
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const res = await fetch(`/api/kpi-targets?slug=${encodeURIComponent(metric.slug)}`);
+      if (!res.ok || cancelled) {
+        setLoading(false);
+        return;
+      }
+      const data = await res.json();
+      if (cancelled) return;
+      const act = data.activity as {
+        name: string;
+        unit: string;
+        categorySlug: string;
+        direction: "HIGHER_BETTER" | "LOWER_BETTER";
+      };
+      setTitle(act.name);
+      setCategorySlug(act.categorySlug);
+      setUnit(act.unit);
+      setDirection(act.direction);
+      setLoading(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [metric.slug]);
+
+  useEffect(() => {
+    const unitMeta = KPI_UNITS.find((u) => u.id === unit);
+    if (unitMeta) setDirection(unitMeta.directionDefault);
+  }, [unit]);
+
+  const unitOptions =
+    categorySlug === "strength"
+      ? KPI_UNITS.filter((u) => LIFT_UNIT_IDS.has(u.id))
+      : KPI_UNITS;
+
   async function submit() {
-    if (!name.trim()) return;
+    if (!title.trim()) return;
     setSaving(true);
-    await onSave(metric.slug, name.trim());
+    await onSave(metric.slug, {
+      title: title.trim(),
+      categorySlug,
+      unit,
+      direction,
+    });
     setSaving(false);
   }
 
@@ -1218,11 +1322,11 @@ function KpiRenameModal({
       <div
         role="dialog"
         aria-modal="true"
-        aria-label="Rename KPI"
-        className="relative z-10 w-full max-w-sm rounded-2xl border border-card-border bg-card p-4 shadow-2xl"
+        aria-label="Edit KPI"
+        className="relative z-10 w-full max-w-md rounded-2xl border border-card-border bg-card p-4 shadow-2xl"
       >
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Rename KPI</h2>
+          <h2 className="text-lg font-semibold">Edit KPI</h2>
           <button
             type="button"
             onClick={onClose}
@@ -1232,15 +1336,61 @@ function KpiRenameModal({
             <X className="h-4 w-4" />
           </button>
         </div>
-        <label className="block text-sm">
-          Title
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="mt-1 w-full rounded-lg border border-card-border bg-background px-3 py-2.5"
-          />
-        </label>
-        <p className="mt-2 text-xs text-muted">Unit: {metric.unit}</p>
+        {loading ? (
+          <p className="text-sm text-muted">Loading…</p>
+        ) : (
+          <div className="space-y-3 text-sm">
+            <label className="block">
+              Title
+              <input
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                className="mt-1 w-full rounded-lg border border-card-border bg-background px-3 py-2.5"
+              />
+            </label>
+            <label className="block">
+              Category
+              <select
+                value={categorySlug}
+                onChange={(e) => setCategorySlug(e.target.value)}
+                className="mt-1 w-full rounded-lg border border-card-border bg-background px-3 py-2.5"
+              >
+                {KPI_CATEGORIES.map((c) => (
+                  <option key={c.slug} value={c.slug}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="block">
+              Unit / metric
+              <select
+                value={unit}
+                onChange={(e) => setUnit(e.target.value)}
+                className="mt-1 w-full rounded-lg border border-card-border bg-background px-3 py-2.5"
+              >
+                {unitOptions.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="block">
+              Scoring
+              <select
+                value={direction}
+                onChange={(e) =>
+                  setDirection(e.target.value as "HIGHER_BETTER" | "LOWER_BETTER")
+                }
+                className="mt-1 w-full rounded-lg border border-card-border bg-background px-3 py-2.5"
+              >
+                <option value="HIGHER_BETTER">Higher is better</option>
+                <option value="LOWER_BETTER">Lower is better</option>
+              </select>
+            </label>
+          </div>
+        )}
         <div className="mt-4 flex gap-2">
           <button
             type="button"
@@ -1251,8 +1401,8 @@ function KpiRenameModal({
           </button>
           <button
             type="button"
-            onClick={submit}
-            disabled={saving || !name.trim()}
+            onClick={() => void submit()}
+            disabled={saving || loading || !title.trim()}
             className="flex-1 rounded-lg bg-accent py-2.5 text-sm font-semibold text-background disabled:opacity-50"
           >
             {saving ? "Saving…" : "Save"}

@@ -10,6 +10,7 @@ import { RosterUsernameField } from "@/components/athletes/roster-username-field
 import { RosterEmailField } from "@/components/athletes/roster-email-field";
 import { classYearShort } from "@/lib/grades";
 import { cn } from "@/lib/utils";
+import { RosterClassAssignButton } from "@/components/athletes/roster-class-assign-button";
 
 type SortKey =
   | "firstName"
@@ -20,6 +21,7 @@ type SortKey =
   | "classYear"
   | "sports"
   | "participationType"
+  | "className"
   | "nameHidden"
   | "loginStatus"
   | (typeof ROSTER_COLUMNS)[number]["slug"];
@@ -33,9 +35,11 @@ function participationLabel(value: string | null) {
 export function RosterTable({
   athletes,
   columns = [],
+  hourClasses = [],
 }: {
   athletes: RosterAthlete[];
   columns?: { slug: string; label: string }[];
+  hourClasses?: { id: string; name: string; period: string | null }[];
 }) {
   const router = useRouter();
   const [sortKey, setSortKey] = useState<SortKey>("lastName");
@@ -102,6 +106,8 @@ export function RosterTable({
                     ? row.sports ?? ""
                     : sortKey === "participationType"
                       ? row.participationType ?? ""
+                      : sortKey === "className"
+                        ? row.className ?? ""
                       : "";
       const astr = text(a);
       const bstr = text(b);
@@ -247,6 +253,7 @@ export function RosterTable({
             <Header label="Email" sortId="rosterEmail" />
             <Header label="ID" sortId="studentNumber" />
             <Header label="Year" sortId="classYear" />
+            <Header label="Class" sortId="className" />
             <Header label="Type" sortId="participationType" />
             <Header label="Sports" sortId="sports" />
             {columns.map((col) => (
@@ -320,6 +327,18 @@ export function RosterTable({
                 </td>
                 <td className="whitespace-nowrap px-3 py-2 tabular-nums text-muted">
                   {a.classYear != null ? classYearShort(a.classYear) : "—"}
+                </td>
+                <td className="whitespace-nowrap px-3 py-2">
+                  {hourClasses.length > 0 ? (
+                    <RosterClassAssignButton
+                      studentId={a.studentId}
+                      studentName={a.fullName}
+                      classes={hourClasses}
+                      currentClassName={a.className}
+                    />
+                  ) : (
+                    <span className="text-muted">{a.className ?? "—"}</span>
+                  )}
                 </td>
                 <td className="px-3 py-2">
                   <span

@@ -12,11 +12,11 @@ export function loginDestination(role: string, nextRaw: string | undefined | nul
 
   if (relative) {
     if (role !== "ADMIN" && (next === "/admin" || next.startsWith("/admin/"))) {
-      return "/coach/school/roster";
+      return "/coach/programs";
     }
     return next;
   }
 
   if (role === "ADMIN") return "/admin";
-  return "/coach/school/roster";
+  return "/coach/programs";
 }

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { isClassYear } from "@/lib/grades";
+import { enrollStudentInClass } from "@/lib/services/student-class-enrollment";
 import { assertCoachOrAdminStudentAccess } from "@/lib/auth/tenant-access";
 import { writeAuditLog } from "@/lib/security/audit-log";
 import { normalizeLoginEmail } from "@/lib/school-login-email";
@@ -120,15 +121,16 @@ export async function PATCH(
 
   if ("classId" in body) {
     const classId = body.classId ? String(body.classId) : null;
+    const subgroupId = body.subgroupId ? String(body.subgroupId) : null;
     if (classId) {
-      const cls = await prisma.class.findFirst({
-        where: { id: classId, schoolId: session.schoolId },
-      });
-      if (!cls) return NextResponse.json({ error: "Class not found" }, { status: 404 });
-      await prisma.classEnrollment.createMany({
-        data: [{ classId, studentId: id }],
-        skipDuplicates: true,
-      });
+      try {
+        await enrollStudentInClass(session.schoolId, id, classId, subgroupId);
+      } catch (e) {
+        return NextResponse.json(
+          { error: e instanceof Error ? e.message : "Could not enroll in class" },
+          { status: 400 }
+        );
+      }
     }
   }
 

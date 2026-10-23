@@ -5,6 +5,7 @@ export function usesMinuteSecondDisplay(
   activitySlug?: string,
   activityName?: string
 ): boolean {
+  if (unit === "time_mmss") return true;
   if (unit !== "seconds") return false;
   const hay = `${activitySlug ?? ""} ${activityName ?? ""}`.toLowerCase();
   return (
@@ -15,7 +16,10 @@ export function usesMinuteSecondDisplay(
 }
 
 /** Parse plain seconds or `m:ss` / `m:s` into total seconds. */
-export function parseDurationInput(raw: string | number | null): number | null {
+export function parseDurationInput(
+  raw: string | number | null,
+  unit?: string
+): number | null {
   if (raw === "" || raw == null) return null;
   if (typeof raw === "number") return Number.isFinite(raw) ? raw : null;
   const t = String(raw).trim();
@@ -24,13 +28,18 @@ export function parseDurationInput(raw: string | number | null): number | null {
     const [minPart, secPart] = t.split(":");
     const min = Number(minPart);
     const sec = Number(secPart);
-    if (Number.isFinite(min) && Number.isFinite(sec) && sec >= 0 && sec < 60) {
+    if (Number.isFinite(min) && Number.isFinite(sec) && sec >= 0) {
       return min * 60 + sec;
     }
     return null;
   }
   const n = Number(t);
-  return Number.isFinite(n) ? n : null;
+  if (!Number.isFinite(n)) return null;
+  // Bare integer for mm:ss KPIs is treated as minutes (e.g. "9" → 9:00).
+  if (unit === "time_mmss" && Number.isInteger(n) && !t.includes(".")) {
+    return n * 60;
+  }
+  return n;
 }
 
 export function formatMinuteSecond(value: number): string {
@@ -47,7 +56,7 @@ export function parseAttemptInput(
   activityName?: string
 ): number | null {
   if (usesMinuteSecondDisplay(unit ?? "", activitySlug, activityName)) {
-    return parseDurationInput(raw);
+    return parseDurationInput(raw, unit);
   }
   if (raw === "" || raw == null) return null;
   const n = Number(raw);

@@ -4,6 +4,7 @@ import { formatActivityValue } from "@/lib/format";
 /** Short unit label for compact mobile target cards. */
 export function kpiUnitShort(unit: string): string {
   if (unit === "seconds") return "s";
+  if (unit === "time_mmss") return "min:sec";
   if (unit === "lb") return "lbs";
   if (unit === "x BW") return "× BW";
   if (unit === "inches") return "in";

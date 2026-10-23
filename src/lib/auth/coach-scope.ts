@@ -95,3 +95,15 @@ export async function coachCanAdministerTestingSession(
   if (!rec?.classId) return false;
   return coachCanAdministerTestsForClass(session, rec.classId);
 }
+
+/** Whether a coach profile leads (or co-leads) a class. */
+export async function coachLeadsClass(
+  coachProfileId: string,
+  classId: string,
+  schoolId: string
+): Promise<boolean> {
+  const ids = await classCoachIds(classId, schoolId);
+  if (!ids) return false;
+  if (ids.size === 0) return true;
+  return ids.has(coachProfileId);
+}

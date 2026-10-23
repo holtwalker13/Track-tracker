@@ -92,7 +92,7 @@ export default async function SchoolRosterPage({
         gender={gender}
       />
 
-      <RosterTable athletes={athletes} columns={[]} />
+      <RosterTable athletes={athletes} columns={[]} hourClasses={classOptions} />
       <div className="mt-6 max-w-2xl">
         <ImportRosterForm />
       </div>

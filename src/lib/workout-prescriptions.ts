@@ -5,6 +5,8 @@ export type SetPrescription = {
   reps: number;
   /** Percent of athlete 1RM (e.g. 85). Null = no recommended weight. */
   percentOf1Rm: number | null;
+  /** Coach cues for this set when scheduling a workout. */
+  notes?: string | null;
 };
 
 export function normalizeSetPrescriptions(
@@ -14,16 +16,22 @@ export function normalizeSetPrescriptions(
 ): SetPrescription[] {
   if (Array.isArray(raw) && raw.length > 0) {
     return raw.slice(0, 20).map((row) => {
-      const r = row as { reps?: unknown; percentOf1Rm?: unknown };
+      const r = row as { reps?: unknown; percentOf1Rm?: unknown; notes?: unknown };
       const reps = Math.min(50, Math.max(1, Number(r.reps) || fallbackReps));
       const pctRaw = r.percentOf1Rm;
       const pct =
         pctRaw === null || pctRaw === undefined || pctRaw === ""
           ? null
           : Math.min(120, Math.max(1, Number(pctRaw)));
+      const notesRaw = r.notes;
+      const notes =
+        notesRaw == null || notesRaw === ""
+          ? null
+          : String(notesRaw).trim().slice(0, 500) || null;
       return {
         reps,
         percentOf1Rm: pct != null && Number.isFinite(pct) ? pct : null,
+        notes,
       };
     });
   }

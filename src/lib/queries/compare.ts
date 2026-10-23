@@ -13,6 +13,7 @@ import {
 } from "@/lib/kpi-marks";
 import { DEFAULT_AGE_BRACKET } from "@/lib/age-brackets";
 import { MEDAL_LABELS } from "@/lib/kpi-targets";
+import { HIDDEN_STUDENT_LEADERBOARD_LABEL } from "@/lib/leaderboard-privacy";
 import { omitArchivedSessionResults } from "@/lib/services/results";
 
 export type CompareEventRow = {
@@ -374,13 +375,12 @@ export async function getAthleteLineup(
     const ctx = await getStudentContext(id);
     if (ctx.student.schoolId !== schoolId) continue;
     const fullName = `${ctx.student.firstName} ${ctx.student.lastName}`;
-    const name = opts?.anonymize
-      ? opts.viewerStudentId === ctx.student.id
+    const name =
+      opts?.viewerStudentId === ctx.student.id
         ? "You"
         : ctx.student.nameHidden
-          ? "Hidden"
-          : fullName
-      : fullName;
+          ? HIDDEN_STUDENT_LEADERBOARD_LABEL
+          : fullName;
     athletes.push({
       id: ctx.student.id,
       name,

@@ -10,6 +10,8 @@ import type { LeaderboardBoard } from "@/lib/queries/leaderboard-grid";
 import type { AthleteLineupView } from "@/lib/queries/compare";
 import { AthleteLineup } from "@/components/compare/athlete-lineup";
 import { cn } from "@/lib/utils";
+import { LeaderboardEntryName } from "@/components/leaderboards/leaderboard-entry-name";
+import { isHiddenStudentLeaderboardLabel } from "@/lib/leaderboard-privacy";
 import { restoreCompeteLeaderboardScroll } from "@/components/compete/compete-leaderboard";
 import { useCompeteMenu } from "@/components/compete/compete-ui-provider";
 
@@ -170,7 +172,12 @@ function CompareInner({
                       >
                         {isSelected ? <Check className="h-3.5 w-3.5" strokeWidth={3} /> : null}
                       </span>
-                      <span className="min-w-0 flex-1 text-sm font-semibold">{e.displayName}</span>
+                      <span className="min-w-0 flex-1 text-sm font-semibold">
+                        <LeaderboardEntryName
+                          name={e.displayName}
+                          nameHidden={e.nameHidden ?? isHiddenStudentLeaderboardLabel(e.displayName)}
+                        />
+                      </span>
                       <span className="shrink-0 text-sm font-bold tabular-nums">{value}</span>
                     </button>
                   </li>

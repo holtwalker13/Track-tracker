@@ -83,6 +83,7 @@ export type LeaderboardBoardEntry = {
   studentId: string;
   testingDate?: string;
   linkable?: boolean;
+  nameHidden?: boolean;
 };
 
 export type LeaderboardBoard = {

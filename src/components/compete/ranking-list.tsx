@@ -6,6 +6,7 @@ import { formatActivityValue } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { LeaderboardBoard } from "@/lib/queries/leaderboard-grid";
 import { leaderboardProfileQuery } from "@/lib/leaderboard-link";
+import { LeaderboardEntryName } from "@/components/leaderboards/leaderboard-entry-name";
 
 function formatRecordDate(iso?: string) {
   if (!iso) return null;
@@ -110,7 +111,7 @@ export function RankingList({
                   compact ? "text-xs" : "text-sm"
                 )}
               >
-                {e.displayName}
+                <LeaderboardEntryName name={e.displayName} nameHidden={e.nameHidden} />
               </span>
               {dateLabel ? (
                 <span className={cn("block text-muted", compact ? "text-[10px]" : "text-xs")}>

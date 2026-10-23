@@ -8,6 +8,7 @@ import {
   type LeaderboardPeriod,
 } from "@/lib/leaderboard-periods";
 import { omitArchivedSessionResults } from "@/lib/services/results";
+import { HIDDEN_STUDENT_LEADERBOARD_LABEL } from "@/lib/leaderboard-privacy";
 
 export async function getCoachDashboard(schoolId: string) {
   const currentYear = await prisma.schoolYear.findFirst({
@@ -292,7 +293,7 @@ export async function getLeaderboard(
         : r.resultValue! > prev.resultValue!;
     if (better) bestByStudent.set(r.studentId, r);
   }
-  const unique = [...bestByStudent.values()].filter((r) => !r.student.nameHidden);
+  const unique = [...bestByStudent.values()];
 
   const ranked = rankResults(
     unique.map((r) => ({ studentId: r.studentId, value: r.resultValue! })),
@@ -359,12 +360,13 @@ export function leaderboardEntryName(
   }
 ) {
   if (!viewer) return `Student ${student.anonymousId ?? "—"}`;
+  if (viewer.studentId === student.id) return "You";
+  if (student.nameHidden) return HIDDEN_STUDENT_LEADERBOARD_LABEL;
   if (viewer.role === "COACH" || viewer.role === "ADMIN") {
     if (student.schoolId !== viewer.schoolId) return "Other school";
     return `${student.firstName} ${student.lastName}`;
   }
-  if (viewer.studentId === student.id) return "You";
-  if (student.schoolId !== viewer.schoolId || student.nameHidden) return "Hidden";
+  if (student.schoolId !== viewer.schoolId) return "Hidden";
   if (viewer.studentLeaderboardDisplayMode === "LEGAL_NAME") {
     return `${student.firstName} ${student.lastName}`;
   }

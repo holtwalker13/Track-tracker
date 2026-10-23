@@ -32,6 +32,33 @@ function participationLabel(value: string | null) {
   return "—";
 }
 
+const ROSTER_COLUMN_PREFS_KEY = "sap-roster-column-prefs";
+
+type RosterColumnPrefs = { username: boolean; studentId: boolean };
+
+function readColumnPrefs(): RosterColumnPrefs {
+  if (typeof window === "undefined") return { username: false, studentId: false };
+  try {
+    const raw = localStorage.getItem(ROSTER_COLUMN_PREFS_KEY);
+    if (!raw) return { username: false, studentId: false };
+    const parsed = JSON.parse(raw) as Partial<RosterColumnPrefs>;
+    return {
+      username: Boolean(parsed.username),
+      studentId: Boolean(parsed.studentId),
+    };
+  } catch {
+    return { username: false, studentId: false };
+  }
+}
+
+function writeColumnPrefs(prefs: RosterColumnPrefs) {
+  try {
+    localStorage.setItem(ROSTER_COLUMN_PREFS_KEY, JSON.stringify(prefs));
+  } catch {
+    /* ignore */
+  }
+}
+
 export function RosterTable({
   athletes,
   columns = [],
@@ -49,6 +76,24 @@ export function RosterTable({
     Object.fromEntries(athletes.map((a) => [a.studentId, a.nameHidden]))
   );
   const [pending, setPending] = useState(false);
+  const [showUsername, setShowUsername] = useState(false);
+  const [showStudentId, setShowStudentId] = useState(false);
+
+  useEffect(() => {
+    const prefs = readColumnPrefs();
+    setShowUsername(prefs.username);
+    setShowStudentId(prefs.studentId);
+  }, []);
+
+  function setColumnPref(key: keyof RosterColumnPrefs, value: boolean) {
+    const next = {
+      username: key === "username" ? value : showUsername,
+      studentId: key === "studentId" ? value : showStudentId,
+    };
+    if (key === "username") setShowUsername(value);
+    else setShowStudentId(value);
+    writeColumnPrefs(next);
+  }
 
   function toggleSort(key: SortKey) {
     if (sortKey === key) {
@@ -232,6 +277,27 @@ export function RosterTable({
           </button>
         </div>
       )}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-card-border bg-card/40 px-3 py-2 text-xs">
+        <span className="font-semibold uppercase tracking-wide text-muted">Columns</span>
+        <label className="inline-flex cursor-pointer items-center gap-1.5 text-foreground">
+          <input
+            type="checkbox"
+            checked={showUsername}
+            onChange={(e) => setColumnPref("username", e.target.checked)}
+            className="rounded border-card-border"
+          />
+          Username
+        </label>
+        <label className="inline-flex cursor-pointer items-center gap-1.5 text-foreground">
+          <input
+            type="checkbox"
+            checked={showStudentId}
+            onChange={(e) => setColumnPref("studentId", e.target.checked)}
+            className="rounded border-card-border"
+          />
+          ID
+        </label>
+      </div>
       <table className="min-w-full text-left text-sm">
         <thead className="bg-card text-xs uppercase tracking-wide text-muted">
           <tr>
@@ -249,9 +315,9 @@ export function RosterTable({
             <Header label="Last" sortId="lastName" />
             <Header label="Visible" sortId="nameHidden" />
             <Header label="Login" sortId="loginStatus" />
-            <Header label="Username" sortId="username" />
+            {showUsername ? <Header label="Username" sortId="username" /> : null}
             <Header label="Email" sortId="rosterEmail" />
-            <Header label="ID" sortId="studentNumber" />
+            {showStudentId ? <Header label="ID" sortId="studentNumber" /> : null}
             <Header label="Year" sortId="classYear" />
             <Header label="Class" sortId="className" />
             <Header label="Type" sortId="participationType" />
@@ -312,19 +378,23 @@ export function RosterTable({
                     loginStatus={a.loginStatus}
                   />
                 </td>
-                <td className="whitespace-nowrap px-3 py-2">
-                  <RosterUsernameField
-                    studentId={a.studentId}
-                    username={a.username}
-                    usernameHint={a.usernameHint}
-                  />
-                </td>
+                {showUsername ? (
+                  <td className="whitespace-nowrap px-3 py-2">
+                    <RosterUsernameField
+                      studentId={a.studentId}
+                      username={a.username}
+                      usernameHint={a.usernameHint}
+                    />
+                  </td>
+                ) : null}
                 <td className="whitespace-nowrap px-3 py-2">
                   <RosterEmailField studentId={a.studentId} rosterEmail={a.rosterEmail} />
                 </td>
-                <td className="whitespace-nowrap px-3 py-2 font-mono text-xs tabular-nums text-muted">
-                  {a.studentNumber}
-                </td>
+                {showStudentId ? (
+                  <td className="whitespace-nowrap px-3 py-2 font-mono text-xs tabular-nums text-muted">
+                    {a.studentNumber}
+                  </td>
+                ) : null}
                 <td className="whitespace-nowrap px-3 py-2 tabular-nums text-muted">
                   {a.classYear != null ? classYearShort(a.classYear) : "—"}
                 </td>
@@ -369,7 +439,8 @@ export function RosterTable({
       </table>
       <p className="border-t border-card-border px-3 py-2 text-xs text-muted">
         {athletes.length} student{athletes.length === 1 ? "" : "s"} · type any email and click away to
-        save it, including a test address · username = sign-in handle · eye = visible to other students
+        save it, including a test address · use Columns above to show username or ID · eye = visible to
+        other students
       </p>
     </RosterHorizontalScroll>
   );
